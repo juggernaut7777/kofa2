@@ -1,0 +1,25 @@
+services:
+  # FastAPI Backend
+  - type: web
+    name: owoflow-api
+    runtime: docker
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: NAIRA_RAMP_BASE_URL
+        value: https://api.nairaramp.com
+      - key: GEMINI_API_KEY
+        sync: false
+
+  # Static Landing Page
+  - type: static
+    name: owoflow-landing
+    staticPublishPath: ./landing
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: DENY

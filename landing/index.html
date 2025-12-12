@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="OwoFlow - Your business never sleeps. AI-powered commerce engine for Nigerian vendors.">
+    <title>OwoFlow | Your Business Never Sleeps</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            /* Premium muted palette - Spotify/Apple inspired */
+            --bg: #000000;
+            --bg-elevated: #121212;
+            --bg-card: #181818;
+            --bg-card-hover: #282828;
+
+            /* Single accent color - OwoFlow green */
+            --accent: #1DB954;
+            --accent-dim: rgba(29, 185, 84, 0.1);
+
+            /* Text hierarchy */
+            --text-primary: #FFFFFF;
+            --text-secondary: #B3B3B3;
+            --text-muted: #727272;
+
+            /* Subtle borders */
+            --border: rgba(255, 255, 255, 0.1);
+            --border-hover: rgba(255, 255, 255, 0.2);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text-primary);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container {
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            padding: 16px 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+
+        nav .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: var(--accent);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 32px;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover {
+            color: var(--text-primary);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border-radius: 500px;
+            font-weight: 600;
+            font-size: 0.875rem;
+            text-decoration: none;
+            transition: all 0.2s;
+            cursor: pointer;
+            border: none;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #000;
+        }
+
+        .btn-primary:hover {
+            transform: scale(1.04);
+            background: #1ed760;
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--text-primary);
+            border: 1px solid var(--border-hover);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-card);
+            border-color: var(--text-muted);
+        }
+
+        /* Hero */
+        .hero {
+            padding: 180px 0 120px;
+            text-align: center;
+        }
+
+        .hero-eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--accent);
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 24px;
+        }
+
+        .hero-brand {
+            font-size: clamp(3rem, 8vw, 5rem);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1;
+            margin-bottom: 16px;
+        }
+
+        .hero-tagline {
+            font-size: clamp(2rem, 5vw, 3rem);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1.1;
+            margin-bottom: 24px;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .hero h1 {
+            font-size: clamp(2.5rem, 6vw, 4rem);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1.1;
+            margin-bottom: 24px;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .hero p {
+            font-size: 1.125rem;
+            color: var(--text-secondary);
+            max-width: 540px;
+            margin: 0 auto 40px;
+        }
+
+        .hero-cta {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        .hero-visual {
+            margin-top: 80px;
+            position: relative;
+        }
+
+        .phone-preview {
+            max-width: 320px;
+            margin: 0 auto;
+            background: var(--bg-card);
+            border-radius: 40px;
+            padding: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .phone-screen {
+            background: var(--bg-elevated);
+            border-radius: 32px;
+            overflow: hidden;
+            aspect-ratio: 9/16;
+            max-height: 500px;
+        }
+
+        .chat-demo {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            height: 100%;
+        }
+
+        .chat-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .chat-avatar {
+            width: 36px;
+            height: 36px;
+            background: var(--accent);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.875rem;
+        }
+
+        .chat-info h4 {
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .chat-info span {
+            font-size: 0.75rem;
+            color: var(--accent);
+        }
+
+        .chat-messages {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding-top: 16px;
+        }
+
+        .msg {
+            max-width: 80%;
+            padding: 10px 14px;
+            border-radius: 16px;
+            font-size: 0.8rem;
+            line-height: 1.4;
+        }
+
+        .msg-in {
+            background: var(--bg-card);
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+        }
+
+        .msg-out {
+            background: var(--accent);
+            color: #000;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+        }
+
+        /* Stats */
+        .stats {
+            padding: 80px 0;
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 32px;
+            text-align: center;
+        }
+
+        .stats-grid.stats-3 {
+            grid-template-columns: repeat(3, 1fr);
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        /* Problems */
+        .problems {
+            padding: 100px 0;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .section-label {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            margin-bottom: 16px;
+        }
+
+        .section-header h2 {
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: 12px;
+        }
+
+        .section-header p {
+            color: var(--text-secondary);
+            max-width: 420px;
+            margin: 0 auto;
+        }
+
+        .problems-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+
+        .problem-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 28px;
+            transition: all 0.2s;
+        }
+
+        .problem-card:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--border-hover);
+        }
+
+        .problem-card h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .problem-card p {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        /* Features */
+        .features {
+            padding: 100px 0;
+            background: var(--bg-elevated);
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 32px;
+            transition: all 0.2s;
+        }
+
+        .feature-card:hover {
+            border-color: var(--border-hover);
+            transform: translateY(-4px);
+        }
+
+        .feature-icon {
+            width: 48px;
+            height: 48px;
+            background: var(--accent-dim);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            margin-bottom: 20px;
+        }
+
+        .feature-card h3 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .feature-card>p {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            margin-bottom: 20px;
+        }
+
+        .feature-list {
+            list-style: none;
+        }
+
+        .feature-list li {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            padding: 6px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .feature-list li::before {
+            content: '✓';
+            color: var(--accent);
+            font-size: 0.7rem;
+        }
+
+        /* Pricing */
+        .pricing {
+            padding: 100px 0;
+        }
+
+        .pricing-location {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .location-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            padding: 8px 16px;
+            border-radius: 500px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .pricing-toggle {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 48px;
+            align-items: center;
+        }
+
+        .pricing-toggle span {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        .toggle {
+            width: 48px;
+            height: 24px;
+            background: var(--bg-card);
+            border-radius: 500px;
+            position: relative;
+            cursor: pointer;
+            border: 1px solid var(--border);
+        }
+
+        .toggle::after {
+            content: '';
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            background: var(--accent);
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: 0.2s;
+        }
+
+        .toggle.active::after {
+            left: 26px;
+        }
+
+        .save-tag {
+            background: var(--accent);
+            color: #000;
+            padding: 4px 10px;
+            border-radius: 500px;
+            font-size: 0.7rem;
+            font-weight: 700;
+        }
+
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+        }
+
+        .price-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 32px 24px;
+            text-align: center;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .price-card:hover {
+            border-color: var(--border-hover);
+        }
+
+        .price-card.popular {
+            border-color: var(--accent);
+            background: linear-gradient(180deg, rgba(29, 185, 84, 0.05) 0%, var(--bg-card) 100%);
+        }
+
+        .popular-tag {
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--accent);
+            color: #000;
+            padding: 4px 12px;
+            border-radius: 500px;
+            font-size: 0.7rem;
+            font-weight: 700;
+        }
+
+        .price-name {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .price-desc {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 20px;
+        }
+
+        .price-amount {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .price-amount span {
+            font-size: 0.875rem;
+            font-weight: 400;
+            color: var(--text-muted);
+        }
+
+        .price-features {
+            list-style: none;
+            text-align: left;
+            margin: 24px 0;
+            font-size: 0.8rem;
+        }
+
+        .price-features li {
+            padding: 8px 0;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .price-features li:last-child {
+            border-bottom: none;
+        }
+
+        .price-features li .check {
+            color: var(--accent);
+            font-size: 0.7rem;
+        }
+
+        .price-features li.off {
+            color: var(--text-muted);
+            text-decoration: line-through;
+        }
+
+        /* Testimonials */
+        .testimonials {
+            padding: 100px 0;
+            background: var(--bg-elevated);
+        }
+
+        .testimonial-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+
+        .testimonial {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 28px;
+        }
+
+        .testimonial-stars {
+            color: #FFD700;
+            font-size: 0.875rem;
+            margin-bottom: 16px;
+        }
+
+        .testimonial p {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .testimonial-author {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .author-avatar {
+            width: 40px;
+            height: 40px;
+            background: var(--bg-card-hover);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .author-name {
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .author-role {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* CTA */
+        .cta {
+            padding: 100px 0;
+            text-align: center;
+        }
+
+        .cta h2 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: 16px;
+        }
+
+        .cta p {
+            color: var(--text-secondary);
+            margin-bottom: 32px;
+            max-width: 440px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .cta-btns {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        /* Footer */
+        footer {
+            padding: 60px 0 40px;
+            border-top: 1px solid var(--border);
+        }
+
+        .footer-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr;
+            gap: 48px;
+            margin-bottom: 48px;
+        }
+
+        .footer-brand p {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            margin-top: 16px;
+            max-width: 280px;
+        }
+
+        .footer-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+        }
+
+        .footer-links {
+            list-style: none;
+        }
+
+        .footer-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.875rem;
+            display: block;
+            padding: 6px 0;
+            transition: color 0.2s;
+        }
+
+        .footer-links a:hover {
+            color: var(--text-primary);
+        }
+
+        .footer-bottom {
+            text-align: center;
+            padding-top: 32px;
+            border-top: 1px solid var(--border);
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .pricing-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .features-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+            }
+
+            .hero h1 {
+                font-size: 2rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .problems-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .pricing-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .testimonial-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .footer-grid {
+                grid-template-columns: 1fr;
+                text-align: center;
+            }
+
+            .footer-brand p {
+                margin: 16px auto 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Nav -->
+    <nav>
+        <div class="container">
+            <div class="logo">
+                <div class="logo-icon">💰</div>
+                <span>OwoFlow</span>
+            </div>
+            <ul class="nav-links">
+                <li><a href="#features">Features</a></li>
+                <li><a href="#pricing">Pricing</a></li>
+                <li><a href="#testimonials">Reviews</a></li>
+            </ul>
+            <a href="https://wa.me/2348000000000?text=I%20want%20to%20start%20using%20OwoFlow" class="btn btn-primary">
+                Get Started
+            </a>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <section class="hero">
+        <div class="container">
+            <h1 class="hero-brand">OWOFLOW</h1>
+            <div class="hero-eyebrow">
+                <span>●</span> For Nigerian Vendors
+            </div>
+            <h2 class="hero-tagline">Your Business Never Sleeps</h2>
+            <p>AI-powered sales on WhatsApp. Know your real profit. Manage all platforms in one place.</p>
+            <div class="hero-cta">
+                <a href="https://wa.me/2348000000000?text=Start" class="btn btn-primary">Start Free on WhatsApp</a>
+                <a href="#features" class="btn btn-secondary">Learn More</a>
+            </div>
+
+            <div class="hero-visual">
+                <div class="phone-preview">
+                    <div class="phone-screen">
+                        <div class="chat-demo">
+                            <div class="chat-header">
+                                <div class="chat-avatar">🤖</div>
+                                <div class="chat-info">
+                                    <h4>OwoFlow Bot</h4>
+                                    <span>Online 24/7</span>
+                                </div>
+                            </div>
+                            <div class="chat-messages">
+                                <div class="msg msg-in">How much is the red canvas?</div>
+                                <div class="msg msg-out">The red Nike canvas is ₦45,000. We have 4 in stock. Want to
+                                    order?</div>
+                                <div class="msg msg-in">Yes, I want to buy</div>
+                                <div class="msg msg-out">Great! Here's your payment link: pay.owoflow.com/abc123</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats -->
+    <section class="stats">
+        <div class="container">
+            <div class="stats-grid stats-3">
+                <div>
+                    <div class="stat-value">24/7</div>
+                    <div class="stat-label">AI Sales Bot</div>
+                </div>
+                <div>
+                    <div class="stat-value">3+</div>
+                    <div class="stat-label">Platforms Unified</div>
+                </div>
+                <div>
+                    <div class="stat-value">₦0</div>
+                    <div class="stat-label">To Start</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Problems -->
+    <section class="problems">
+        <div class="container">
+            <div class="section-header">
+                <div class="section-label">The Problem</div>
+                <h2>Running a business shouldn't be this hard</h2>
+                <p>The challenges holding back African vendors</p>
+            </div>
+
+            <div class="problems-grid">
+                <div class="problem-card">
+                    <h3>Missed sales opportunities</h3>
+                    <p>Customers reach out around the clock, but you can't be available 24/7. Every unanswered message
+                        is a potential sale lost to a competitor.</p>
+                </div>
+                <div class="problem-card">
+                    <h3>No visibility into your actual profit</h3>
+                    <p>Revenue flows in, expenses flow out — but without clear tracking, you're flying blind. Most
+                        vendors have no idea what their real margins are.</p>
+                </div>
+                <div class="problem-card">
+                    <h3>Fragmented sales across platforms</h3>
+                    <p>Orders come from WhatsApp, Instagram, TikTok, and walk-ins. Managing multiple channels manually
+                        leads to errors, delays, and frustrated customers.</p>
+                </div>
+                <div class="problem-card">
+                    <h3>Infrastructure that works against you</h3>
+                    <p>Power outages and network failures are unpredictable. When you go offline, customers assume
+                        you're ignoring them — and move on.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features -->
+    <section class="features" id="features">
+        <div class="container">
+            <div class="section-header">
+                <div class="section-label">Features</div>
+                <h2>Everything you need to grow</h2>
+                <p>Built specifically for Nigerian vendors</p>
+            </div>
+
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🤖</div>
+                    <h3>24/7 AI Sales Bot</h3>
+                    <p>Responds to customers on WhatsApp in Nigerian English, even while you sleep.</p>
+                    <ul class="feature-list">
+                        <li>Instant responses</li>
+                        <li>Takes orders automatically</li>
+                        <li>Sends payment links</li>
+                        <li>Nigerian Pidgin support</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">💰</div>
+                    <h3>Real Profit Tracking</h3>
+                    <p>Daily message: "Today you made ₦45,000 profit." Finally, clarity.</p>
+                    <ul class="feature-list">
+                        <li>Revenue tracking</li>
+                        <li>Cost of goods</li>
+                        <li>Expense management</li>
+                        <li>Daily summaries</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <h3>Unified Dashboard</h3>
+                    <p>All orders from every platform in one place. Never lose track again.</p>
+                    <ul class="feature-list">
+                        <li>WhatsApp orders</li>
+                        <li>Instagram DMs</li>
+                        <li>TikTok sales</li>
+                        <li>Walk-in customers</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing -->
+    <section class="pricing" id="pricing">
+        <div class="container">
+            <div class="section-header">
+                <div class="section-label">Pricing</div>
+                <h2>Simple, transparent pricing</h2>
+                <p>Start free. Upgrade when ready.</p>
+            </div>
+
+            <div class="pricing-location">
+                <div class="location-badge" id="locationBadge">📍 Detecting location...</div>
+            </div>
+
+            <div class="pricing-toggle">
+                <span>Monthly</span>
+                <div class="toggle" id="toggle"></div>
+                <span>Yearly</span>
+                <span class="save-tag">Save 20%</span>
+            </div>
+
+            <div class="pricing-grid">
+                <div class="price-card">
+                    <div class="price-name">Free</div>
+                    <div class="price-desc">Get started</div>
+                    <div class="price-amount">₦0<span>/mo</span></div>
+                    <ul class="price-features">
+                        <li><span class="check">✓</span> 50 products</li>
+                        <li><span class="check">✓</span> Basic inventory</li>
+                        <li><span class="check">✓</span> Manual orders</li>
+                        <li class="off"><span class="check">✓</span> AI Chatbot</li>
+                        <li class="off"><span class="check">✓</span> Profit tracking</li>
+                    </ul>
+                    <a href="#" class="btn btn-secondary" style="width:100%;">Start Free</a>
+                </div>
+
+                <div class="price-card">
+                    <div class="price-name">Starter</div>
+                    <div class="price-desc">Growing vendors</div>
+                    <div class="price-amount" id="p-starter" data-ng="3000" data-af="4500" data-intl="5">
+                        ₦3,000<span>/mo</span></div>
+                    <ul class="price-features">
+                        <li><span class="check">✓</span> Unlimited products</li>
+                        <li><span class="check">✓</span> AI Bot (500 msgs)</li>
+                        <li><span class="check">✓</span> Profit reports</li>
+                        <li><span class="check">✓</span> WhatsApp + IG</li>
+                        <li><span class="check">✓</span> Invoicing</li>
+                    </ul>
+                    <a href="#" class="btn btn-primary" style="width:100%;">Get Started</a>
+                </div>
+
+                <div class="price-card popular">
+                    <div class="popular-tag">Popular</div>
+                    <div class="price-name">Pro</div>
+                    <div class="price-desc">Serious sellers</div>
+                    <div class="price-amount" id="p-pro" data-ng="8000" data-af="12000" data-intl="12">
+                        ₦8,000<span>/mo</span></div>
+                    <ul class="price-features">
+                        <li><span class="check">✓</span> Everything in Starter</li>
+                        <li><span class="check">✓</span> Unlimited AI Bot</li>
+                        <li><span class="check">✓</span> All channels</li>
+                        <li><span class="check">✓</span> Debt recovery</li>
+                        <li><span class="check">✓</span> Installments</li>
+                    </ul>
+                    <a href="#" class="btn btn-primary" style="width:100%;">Go Pro</a>
+                </div>
+
+                <div class="price-card">
+                    <div class="price-name">Scale</div>
+                    <div class="price-desc">Multi-store</div>
+                    <div class="price-amount" id="p-scale" data-ng="15000" data-af="22500" data-intl="23">
+                        ₦15,000<span>/mo</span></div>
+                    <ul class="price-features">
+                        <li><span class="check">✓</span> Everything in Pro</li>
+                        <li><span class="check">✓</span> 5 team members</li>
+                        <li><span class="check">✓</span> Multi-store</li>
+                        <li><span class="check">✓</span> API access</li>
+                        <li><span class="check">✓</span> Priority support</li>
+                    </ul>
+                    <a href="#" class="btn btn-secondary" style="width:100%;">Contact Sales</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials -->
+    <section class="testimonials" id="testimonials">
+        <div class="container">
+            <div class="section-header">
+                <div class="section-label">Reviews</div>
+                <h2>Loved by vendors</h2>
+                <p>Real stories from Nigerian business owners</p>
+            </div>
+
+            <div class="testimonial-grid">
+                <div class="testimonial">
+                    <div class="testimonial-stars">★★★★★</div>
+                    <p>"Before OwoFlow, I used calculator and paper. Now I know exactly how much I make every day."</p>
+                    <div class="testimonial-author">
+                        <div class="author-avatar">👩🏾</div>
+                        <div>
+                            <div class="author-name">Amara O.</div>
+                            <div class="author-role">Fashion Seller, Lagos</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="testimonial">
+                    <div class="testimonial-stars">★★★★★</div>
+                    <p>"The bot was closing sales while I was in church on Sunday. Customer paid before I even saw the
+                        message."</p>
+                    <div class="testimonial-author">
+                        <div class="author-avatar">👨🏾</div>
+                        <div>
+                            <div class="author-name">Chidi E.</div>
+                            <div class="author-role">Phone Dealer, CMS</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="testimonial">
+                    <div class="testimonial-stars">★★★★★</div>
+                    <p>"I sell on Instagram and WhatsApp. OwoFlow shows everything in one place. No more confusion."</p>
+                    <div class="testimonial-author">
+                        <div class="author-avatar">👩🏾‍🦱</div>
+                        <div>
+                            <div class="author-name">Fatima B.</div>
+                            <div class="author-role">Abaya Seller, Abuja</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="cta">
+        <div class="container">
+            <h2>Ready to know your money?</h2>
+            <p>Join vendors who finally have clarity on their business. Start free today.</p>
+            <div class="cta-btns">
+                <a href="https://wa.me/2348000000000?text=Start" class="btn btn-primary">Start on WhatsApp</a>
+                <a href="#" class="btn btn-secondary">Book a Demo</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <div class="logo">
+                        <div class="logo-icon">💰</div>
+                        <span>OwoFlow</span>
+                    </div>
+                    <p>AI-powered commerce engine for Nigerian vendors. Your business never sleeps.</p>
+                </div>
+                <div>
+                    <div class="footer-title">Product</div>
+                    <ul class="footer-links">
+                        <li><a href="#features">Features</a></li>
+                        <li><a href="#pricing">Pricing</a></li>
+                        <li><a href="#">API</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <div class="footer-title">Company</div>
+                    <ul class="footer-links">
+                        <li><a href="#">About</a></li>
+                        <li><a href="#">Blog</a></li>
+                        <li><a href="#">Careers</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <div class="footer-title">Support</div>
+                    <ul class="footer-links">
+                        <li><a href="#">Help</a></li>
+                        <li><a href="#">WhatsApp</a></li>
+                        <li><a href="#">Contact</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                © 2024 OwoFlow. All rights reserved.
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Geo pricing
+        const AFRICA = ['GH', 'KE', 'ZA', 'EG', 'TZ', 'UG', 'RW', 'ET', 'SN', 'CI', 'CM', 'MA'];
+        let region = 'ng';
+        let yearly = false;
+
+        async function detectLocation() {
+            try {
+                const r = await fetch('https://ipapi.co/json/');
+                const d = await r.json();
+                region = d.country_code === 'NG' ? 'ng' : AFRICA.includes(d.country_code) ? 'af' : 'intl';
+            } catch (e) { region = 'ng'; }
+            updatePrices();
+        }
+
+        function updatePrices() {
+            const badge = document.getElementById('locationBadge');
+            const labels = { ng: '🇳🇬 Nigeria', af: '🌍 Africa', intl: '🌎 International' };
+            badge.textContent = '📍 ' + labels[region];
+
+            ['starter', 'pro', 'scale'].forEach(t => {
+                const el = document.getElementById('p-' + t);
+                let val = parseInt(el.dataset[region]);
+                if (yearly) val = Math.round(val * 0.8);
+                const sym = region === 'intl' ? '$' : '₦';
+                const fmt = region === 'intl' ? val : val.toLocaleString();
+                el.innerHTML = `${sym}${fmt}<span>/mo</span>`;
+            });
+        }
+
+        document.getElementById('toggle').addEventListener('click', function () {
+            this.classList.toggle('active');
+            yearly = this.classList.contains('active');
+            updatePrices();
+        });
+
+        document.querySelectorAll('a[href^="#"]').forEach(a => {
+            a.addEventListener('click', e => {
+                e.preventDefault();
+                document.querySelector(a.getAttribute('href'))?.scrollIntoView({ behavior: 'smooth' });
+            });
+        });
+
+        detectLocation();
+    </script>
+</body>
+
+</html>

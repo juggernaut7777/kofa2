@@ -1,0 +1,15 @@
+.git
+.gitignore
+.env
+.env.example
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+tests/
+*.md
+mobile/
+landing/
+.vscode/
+.agent/

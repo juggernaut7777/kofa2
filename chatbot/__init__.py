@@ -1,0 +1,4 @@
+"""
+Owo Flow Commerce Engine - Chatbot Module
+"""
+__version__ = "1.0.0"
