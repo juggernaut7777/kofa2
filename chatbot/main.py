@@ -708,9 +708,14 @@ async def update_order_status(order_id: str, update: OrderStatusUpdate):
     if update.status.lower() not in valid_statuses:
         raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {valid_statuses}")
     
-    # For demo purposes, we'll just return success
-    # In production, this would update Supabase
-    ORDERS_STORE[order_id] = update.status.lower()
+    # Check if order exists in ORDERS_STORE
+    if order_id in ORDERS_STORE:
+        # Update the status field of the order object, not replace the whole order
+        ORDERS_STORE[order_id]["status"] = update.status.lower()
+        order = ORDERS_STORE[order_id]
+    else:
+        # For orders not in ORDERS_STORE (demo/mock orders), just acknowledge
+        order = {"id": order_id, "status": update.status.lower()}
     
     return {
         "status": "success",
