@@ -284,13 +284,13 @@ async def process_message(request: MessageRequest):
                 f"✅ *Payment Confirmed!*\n\n"
                 f"Order ID: {order_id}\n"
                 f"Amount: ₦{order.get('total_amount', 0):,}\n\n"
-                f"We go process your order now now! 🚀\n"
+                f"Your order is now being processed. 🚀\n"
                 f"Thank you for shopping with us! 🙏"
             )
         else:
             response_text = (
-                "🤔 We no see any pending order for you o.\n\n"
-                "Make sure you don place order first before saying you don pay. "
+                "🤔 I couldn't find a pending order for you.\n\n"
+                "Please place an order first before confirming payment. "
                 "Type 'show me products' to start shopping!"
             )
         
