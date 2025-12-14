@@ -7,6 +7,7 @@ from .inventory import InventoryManager
 from .intent import IntentRecognizer, Intent
 from .payment import PaymentManager
 from .response_formatter import ResponseFormatter, ResponseStyle
+from .conversation import conversation_manager
 from .routers import (
     expenses, delivery, analytics, invoice, 
     recommendations, notifications, installments, profit_loss, sales_channels, whatsapp
