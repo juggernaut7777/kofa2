@@ -9,6 +9,7 @@ class Intent(str, Enum):
     PRICE_INQUIRY = "price_inquiry"
     AVAILABILITY_CHECK = "availability_check"
     PURCHASE = "purchase"
+    PAYMENT_CONFIRMATION = "payment_confirmation"
     GREETING = "greeting"
     HELP = "help"
     UNKNOWN = "unknown"
@@ -32,6 +33,11 @@ class IntentRecognizer:
         "buy", "purchase", "order", "get", "want", "need", "yes", "okay", "ok", "sure",
         "I go buy", "I wan buy", "make I buy", "abeg sell me", "I dey buy",
         "send link", "gimme", "make I pay", "I go pay", "proceed"
+    ]
+    PAYMENT_CONFIRMATION_KEYWORDS = [
+        "paid", "i paid", "i've paid", "done", "sent", "transferred", "i don pay",
+        "i don transfer", "money don go", "e don go", "i send am", "i sent it",
+        "payment done", "i have paid", "check your account", "check account"
     ]
     GREETING_KEYWORDS = [
         "hello", "hi", "hey", "good morning", "good afternoon", "good evening",
@@ -67,6 +73,14 @@ class IntentRecognizer:
         product_indicators = ['canvas', 'shoe', 'shirt', 'bag', 'jeans', 'charger', 
                              'trouser', 'joggers', 'polo', 'packing', 'sneakers']
         has_product_mention = any(word in message_lower for word in product_indicators)
+        
+        # Check for payment confirmation FIRST (highest priority after a purchase)
+        # User saying they've paid for an order
+        payment_signals = ['paid', 'i paid', "i've paid", 'transferred', 'i don pay', 
+                          'i don transfer', 'money don go', 'i send am', 'i sent',
+                          'payment done', 'i have paid', 'check your account']
+        if any(signal in message_lower for signal in payment_signals):
+            return Intent.PAYMENT_CONFIRMATION
         
         # Check for help requests early - especially "how do/how to" questions
         # These should take priority over purchase intent

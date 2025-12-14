@@ -160,55 +160,69 @@ async def create_order(request: OrderRequest):
 async def get_orders(status: Optional[str] = None):
     """
     Get all orders for merchant dashboard.
-    For MVP, returns mock orders. In production, query Supabase.
+    Returns chatbot-created orders from ORDERS_STORE + mock demo orders.
     """
-    # In production, this would query Supabase:
-    # orders = supabase.table("orders").select("*").execute()
-    
-    # For MVP demo, return mock orders
     import datetime
     
-    mock_orders = [
-        {
-            "id": "order-001",
-            "customer_phone": "+2348012345678",
+    # Get real orders from ORDERS_STORE (created by chatbot)
+    real_orders = []
+    for order_id, order in ORDERS_STORE.items():
+        # Convert to API format
+        real_orders.append({
+            "id": order.get("id", order_id),
+            "customer_phone": order.get("customer_phone", "Unknown"),
             "items": [
-                {"product_id": "1", "product_name": "Nike Air Max Red", "quantity": 1, "price": 45000}
+                {
+                    "product_id": order.get("product_id", ""),
+                    "product_name": order.get("product_name", "Product"),
+                    "quantity": order.get("quantity", 1),
+                    "price": order.get("unit_price", 0)
+                }
             ],
-            "total_amount": 45000,
-            "status": "pending",
-            "created_at": (datetime.datetime.now() - datetime.timedelta(minutes=30)).isoformat()
-        },
-        {
-            "id": "order-002",
-            "customer_phone": "+2349087654321",
-            "items": [
-                {"product_id": "3", "product_name": "Men Formal Shirt White", "quantity": 2, "price": 15000},
-                {"product_id": "6", "product_name": "Plain Round Neck T-Shirt", "quantity": 3, "price": 8000}
-            ],
-            "total_amount": 54000,
-            "status": "paid",
-            "payment_ref": "PAY-ABC123",
-            "created_at": (datetime.datetime.now() - datetime.timedelta(hours=2)).isoformat()
-        },
-        {
-            "id": "order-003",
-            "customer_phone": "+2348055551234",
-            "items": [
-                {"product_id": "5", "product_name": "Black Leather Bag", "quantity": 1, "price": 35000}
-            ],
-            "total_amount": 35000,
-            "status": "fulfilled",
-            "payment_ref": "PAY-XYZ789",
-            "created_at": (datetime.datetime.now() - datetime.timedelta(days=1)).isoformat()
-        }
-    ]
+            "total_amount": order.get("total_amount", 0),
+            "status": order.get("status", "pending"),
+            "payment_ref": order.get("payment_ref"),
+            "created_at": order.get("created_at", datetime.datetime.now().isoformat()),
+            "source": "chatbot"  # Mark as chatbot order
+        })
+    
+    # Add mock orders for demo if no real orders exist
+    if not real_orders:
+        mock_orders = [
+            {
+                "id": "demo-001",
+                "customer_phone": "+2348012345678",
+                "items": [
+                    {"product_id": "1", "product_name": "Nike Air Max Red", "quantity": 1, "price": 45000}
+                ],
+                "total_amount": 45000,
+                "status": "pending",
+                "created_at": (datetime.datetime.now() - datetime.timedelta(minutes=30)).isoformat(),
+                "source": "demo"
+            },
+            {
+                "id": "demo-002",
+                "customer_phone": "+2349087654321",
+                "items": [
+                    {"product_id": "3", "product_name": "Men Formal Shirt White", "quantity": 2, "price": 15000}
+                ],
+                "total_amount": 30000,
+                "status": "paid",
+                "payment_ref": "PAY-ABC123",
+                "created_at": (datetime.datetime.now() - datetime.timedelta(hours=2)).isoformat(),
+                "source": "demo"
+            }
+        ]
+        real_orders = mock_orders
     
     # Filter by status if provided
     if status:
-        mock_orders = [o for o in mock_orders if o["status"].lower() == status.lower()]
+        real_orders = [o for o in real_orders if o.get("status", "").lower() == status.lower()]
     
-    return mock_orders
+    # Sort by created_at descending (newest first)
+    real_orders.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+    
+    return real_orders
 
 @router.post("/message")
 async def process_message(request: MessageRequest):
@@ -328,6 +342,37 @@ async def process_message(request: MessageRequest):
             intent=intent.value,
             product=product_data,
             payment_link=payment_link
+        )
+    
+    # ========== STEP 2B: Check for payment confirmation ==========
+    if intent == Intent.PAYMENT_CONFIRMATION:
+        if state.pending_order_id and state.pending_order_id in ORDERS_STORE:
+            order = ORDERS_STORE[state.pending_order_id]
+            order["status"] = "paid"  # Update order status
+            
+            response_text = (
+                f"🎉 Thank you for your payment!\n\n"
+                f"**Order {order['id']}** has been marked as PAID.\n"
+                f"📦 {order.get('quantity', 1)}x {order.get('product_name', 'Product')}\n"
+                f"💰 {payment_manager.format_naira(order.get('total_amount', 0))}\n\n"
+                f"The seller has been notified and will fulfill your order soon.\n"
+                f"Thank you for shopping with us! 🙏"
+            )
+            
+            # Clear pending order from state
+            state.pending_order_id = None
+            state.current_product = None
+        else:
+            response_text = (
+                "I don't see a pending order for you. "
+                "If you've made a payment, please share the order ID or proof of payment."
+            )
+        
+        return MessageResponse(
+            response=response_text,
+            intent=intent.value,
+            product=None,
+            payment_link=None
         )
     
     # ========== STEP 3: Handle standard intents ==========
