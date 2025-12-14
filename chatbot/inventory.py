@@ -230,28 +230,50 @@ class InventoryManager:
     def get_product_by_name(self, name: str) -> Optional[dict]:
         """Finds a product by name (case-insensitive partial match or voice tag)."""
         name_lower = name.lower()
+        query_words = name_lower.split()  # Split query into individual words
+        
+        def matches_product(prod: dict) -> bool:
+            """Check if any query word matches product name or tags."""
+            prod_name_lower = prod["name"].lower()
+            tags = [t.lower() for t in prod.get("voice_tags", [])]
+            
+            for word in query_words:
+                # Skip very short words (articles, etc)
+                if len(word) < 3:
+                    continue
+                    
+                # Check if word is in product name
+                if word in prod_name_lower:
+                    return True
+                
+                # Check if word matches any voice tag
+                for tag in tags:
+                    if word in tag or tag in word:
+                        return True
+            
+            # Also check full query against tags (for multi-word tags like "red shoe")
+            for tag in tags:
+                if name_lower in tag or tag in name_lower:
+                    return True
+            
+            return False
         
         # Use mock data if Supabase unavailable
         if self._use_mock or self.supabase is None:
             for prod in self._mock_products:
-                # Check name match
-                if name_lower in prod["name"].lower():
+                if matches_product(prod):
                     return prod
-                # Check voice tags
-                for tag in prod.get("voice_tags", []):
-                    if name_lower in tag.lower() or tag.lower() in name_lower:
-                        return prod
             return None
         
+        # Try name match first using ILIKE
         response = self.supabase.table("products").select("*").ilike("name", f"%{name}%").execute()
         if response.data:
             return response.data[0]
             
-        # Fallback: check voice tags
+        # Fallback: check all products with improved matching
         all_products = self.supabase.table("products").select("*").execute()
         for prod in all_products.data:
-            tags = prod.get("voice_tags") or []
-            if name_lower in [t.lower() for t in tags]:
+            if matches_product(prod):
                 return prod
                 
         return None
