@@ -1,4 +1,4 @@
-# OwoFlow Deployment Guide
+# KOFA Commerce Engine - Deployment Guide
 
 ## Step 1: Set Up Supabase (Free Tier)
 
@@ -6,7 +6,7 @@
 1. Go to **https://supabase.com** and click "Start your project"
 2. Sign up with GitHub or email (free)
 3. Create a new project:
-   - Name: `owoflow`
+   - Name: `kofa`
    - Database Password: (save this somewhere safe!)
    - Region: Choose closest to Nigeria (e.g., London or Frankfurt)
 4. Wait ~2 minutes for project to initialize
@@ -92,10 +92,10 @@ INSERT INTO products (name, price_ngn, stock_level, description, voice_tags, cat
 3. Connect your GitHub account if not already connected
 
 ### Deploy the Backend
-1. Select your OwoFlow repository (or "Public Git Repository")
+1. Select your KOFA repository (or "Public Git Repository")
 2. Enter repo URL if needed: `https://github.com/YOUR_USERNAME/kofa`
 3. Configure:
-   - **Name**: `owoflow-api`
+   - **Name**: `kofa-api`
    - **Region**: Frankfurt (closest to Africa)
    - **Branch**: `main`
    - **Runtime**: `Docker`
@@ -113,7 +113,7 @@ INSERT INTO products (name, price_ngn, stock_level, description, voice_tags, cat
 1. Click "New +" → "Static Site"
 2. Select your repository
 3. Configure:
-   - **Name**: `owoflow-landing`
+   - **Name**: `kofa-landing`
    - **Publish Directory**: `./landing`
 4. Deploy
 
@@ -124,17 +124,17 @@ INSERT INTO products (name, price_ngn, stock_level, description, voice_tags, cat
 After deployment completes:
 
 1. **Test Health Endpoint**:
-   Visit: `https://owoflow-api.onrender.com/health`
+   Visit: `https://kofa-api.onrender.com/health`
    Should return: `{"status": "healthy"}`
 
 2. **View API Docs**:
-   Visit: `https://owoflow-api.onrender.com/docs`
+   Visit: `https://kofa-api.onrender.com/docs`
    Full Swagger documentation
 
 3. **Update Mobile App**:
    Edit `mobile/lib/api.ts`:
    ```typescript
-   const API_BASE_URL = 'https://owoflow-api.onrender.com';
+   const API_BASE_URL = 'https://kofa-api.onrender.com';
    ```
 
 ---
