@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, APIRouter, UploadFile, File, Request
 from fastapi.responses import PlainTextResponse, JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 from typing import Optional, List
 import uuid
 from datetime import datetime
@@ -78,6 +78,20 @@ class MessageRequest(BaseModel):
     """Incoming message payload."""
     user_id: str  # Customer phone number
     message_text: str
+    
+    @validator('user_id')
+    def validate_user_id(cls, v):
+        if not v or not v.strip():
+            raise ValueError('User ID is required')
+        return v.strip()
+    
+    @validator('message_text')
+    def validate_message_text(cls, v):
+        if not v or not v.strip():
+            raise ValueError('Message text is required')
+        if len(v) > 1000:
+            raise ValueError('Message text must be 1000 characters or less')
+        return v.strip()
 
 class MessageResponse(BaseModel):
     """Chatbot reply."""
@@ -97,10 +111,30 @@ class ProductResponse(BaseModel):
 class OrderItem(BaseModel):
     product_id: str
     quantity: int
+    
+    @validator('quantity')
+    def validate_quantity(cls, v):
+        if v <= 0:
+            raise ValueError('Quantity must be greater than 0')
+        return v
 
 class OrderRequest(BaseModel):
     items: List[OrderItem]
     user_id: str # Phone number
+    
+    @validator('items')
+    def validate_items(cls, v):
+        if not v or len(v) == 0:
+            raise ValueError('Order must contain at least one item')
+        if len(v) > 50:  # Reasonable limit
+            raise ValueError('Order cannot contain more than 50 items')
+        return v
+    
+    @validator('user_id')
+    def validate_user_id(cls, v):
+        if not v or not v.strip():
+            raise ValueError('User ID is required')
+        return v.strip()
 
 class OrderResponse(BaseModel):
     order_id: str
@@ -126,48 +160,106 @@ async def get_products():
 @router.post("/orders", response_model=OrderResponse)
 async def create_order(request: OrderRequest):
     """Create a new order and generate payment link."""
+    # Validate request
+    if not request.items:
+        raise HTTPException(status_code=400, detail="Order must contain at least one item")
+    
+    if not request.user_id or not request.user_id.strip():
+        raise HTTPException(status_code=400, detail="User ID is required")
+    
     total_amount = 0.0
+    order_items = []
+    products_to_decrement = []  # Track products for stock decrement
     
-    # Calculate total and verify stock (simplified)
-    # in a real app, we should lock stock or check immediately before
+    # Validate all products exist and have sufficient stock
     for item in request.items:
-        # We need to fetch product details. For now we assume we have them or fetch them.
-        # Since InventoryManager.list_products returns dicts, we can use that or get_product_by_id if we added it.
-        # For MVP, let's just trust the price passed or fetch all products to look up price.
-        # Optimally: InventoryManager should have get_product_by_id
-        pass 
-    
-    # Let's iterate over inventory to find prices. This is inefficient but fine for this MVP step.
-    # In production, implement get_product_by_id in InventoryManager
-    all_products = inventory_manager.list_products()
-    product_map = {str(p.get('id')): p for p in all_products}
-    
-    for item in request.items:
-        product = product_map.get(item.product_id)
+        # Validate quantity
+        if item.quantity <= 0:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Invalid quantity for product {item.product_id}: {item.quantity}. Quantity must be greater than 0"
+            )
+        
+        # Get product by ID
+        product = inventory_manager.get_product_by_id(item.product_id)
         if not product:
-            # If not found by ID, maybe mock logic used name as ID? 
-            # In Supabase logic, ID should be UUID.
-            # If we can't find it, skip or error.
-            print(f"Product {item.product_id} not found")
-            continue
-            
-        total_amount += product['price_ngn'] * item.quantity
+            raise HTTPException(
+                status_code=404, 
+                detail=f"Product {item.product_id} not found"
+            )
+        
+        # Check stock availability
+        current_stock = product.get("stock_level", 0)
+        if current_stock < item.quantity:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Insufficient stock for {product.get('name', 'product')}. Available: {current_stock}, Requested: {item.quantity}"
+            )
+        
+        # Calculate item total
+        price = float(product.get("price_ngn", 0))
+        if price <= 0:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid price for product {product.get('name', 'product')}: {price}"
+            )
+        
+        item_total = price * item.quantity
+        total_amount += item_total
+        
+        # Store order item details
+        order_items.append({
+            "product_id": item.product_id,
+            "product_name": product.get("name", "Unknown"),
+            "quantity": item.quantity,
+            "price": price,
+            "total": item_total
+        })
+        
+        # Track for stock decrement
+        products_to_decrement.append((item.product_id, item.quantity))
+    
+    if total_amount <= 0:
+        raise HTTPException(status_code=400, detail="Order total must be greater than 0")
 
-    if total_amount == 0:
-        # Fallback for testing if IDs don't match or empty
-        # If we are testing with mocks, let's assume a default price
-        total_amount = 1000.0 * len(request.items)
-
+    # Generate order ID
     order_id = str(uuid.uuid4())
+    
+    # Decrement stock for all items (do this before creating payment link)
+    for product_id, quantity in products_to_decrement:
+        success = inventory_manager.decrement_stock(product_id, quantity)
+        if not success:
+            # This should rarely happen since we checked above, but handle it anyway
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to reserve stock for product {product_id}. Please try again."
+            )
+    
+    # Generate payment link
     payment_link = payment_manager.generate_payment_link(
         order_id=order_id,
-        amount_ngn=int(total_amount),
+        amount_ngn=int(round(total_amount)),
         customer_phone=request.user_id,
         description=f"Order {order_id[:8]}"
     )
     
     if not payment_link:
+        # Rollback stock decrements if payment link generation fails
+        # Note: In production, use database transactions for this
+        for product_id, quantity in products_to_decrement:
+            inventory_manager.update_stock(product_id, quantity)  # Restore stock
         raise HTTPException(status_code=500, detail="Failed to generate payment link")
+    
+    # Store order in ORDERS_STORE
+    ORDERS_STORE[order_id] = {
+        "id": order_id,
+        "customer_phone": request.user_id,
+        "items": order_items,
+        "total_amount": total_amount,
+        "status": "pending",
+        "payment_ref": None,
+        "created_at": datetime.now().isoformat()
+    }
         
     return OrderResponse(
         order_id=order_id,
@@ -541,6 +633,28 @@ class ProductCreate(BaseModel):
     description: Optional[str] = None
     category: Optional[str] = None
     voice_tags: Optional[List[str]] = None
+    
+    @validator('name')
+    def validate_name(cls, v):
+        if not v or not v.strip():
+            raise ValueError('Product name is required and cannot be empty')
+        if len(v.strip()) > 255:
+            raise ValueError('Product name must be 255 characters or less')
+        return v.strip()
+    
+    @validator('price_ngn')
+    def validate_price(cls, v):
+        if v < 0:
+            raise ValueError('Price cannot be negative')
+        if v > 100000000:  # 100 million naira max
+            raise ValueError('Price exceeds maximum allowed value')
+        return v
+    
+    @validator('stock_level')
+    def validate_stock(cls, v):
+        if v < 0:
+            raise ValueError('Stock level cannot be negative')
+        return v
 
 class ManualSale(BaseModel):
     """Log a manual sale."""
@@ -613,6 +727,14 @@ class ProductUpdate(BaseModel):
 class RestockRequest(BaseModel):
     """Restock a product."""
     quantity: int
+    
+    @validator('quantity')
+    def validate_quantity(cls, v):
+        if v <= 0:
+            raise ValueError('Quantity must be greater than 0')
+        if v > 100000:
+            raise ValueError('Quantity exceeds maximum allowed (100,000)')
+        return v
 
 
 class OrderStatusUpdate(BaseModel):
@@ -652,6 +774,8 @@ async def restock_product(product_id: str, restock: RestockRequest):
     """Add stock to a product."""
     if restock.quantity <= 0:
         raise HTTPException(status_code=400, detail="Quantity must be positive")
+    if restock.quantity > 100000:  # Reasonable upper limit
+        raise HTTPException(status_code=400, detail="Quantity exceeds maximum allowed (100,000)")
     
     # Find product
     products = inventory_manager.list_products()
