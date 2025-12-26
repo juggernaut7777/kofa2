@@ -82,14 +82,16 @@ class PaymentManager:
             print(f"Error verifying payment: {e}")
             return False
     
-    def format_naira(self, amount: int) -> str:
+    def format_naira(self, amount: float | int) -> str:
         """
         Format an amount in Naira with proper thousand separators.
         
         Args:
-            amount: Amount in Naira (integer)
+            amount: Amount in Naira (integer or float)
             
         Returns:
             Formatted string (e.g., "₦15,000")
         """
-        return f"₦{amount:,}"
+        # Convert to int for formatting (rounds to nearest naira)
+        amount_int = int(round(amount))
+        return f"₦{amount_int:,}"

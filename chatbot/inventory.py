@@ -278,18 +278,25 @@ class InventoryManager:
                 
         return None
 
-    def check_stock(self, product_id: str) -> int:
-        """Check the stock level for a product by ID."""
+    def get_product_by_id(self, product_id: str) -> Optional[dict]:
+        """Get a product by its ID."""
         # Use mock data if Supabase unavailable
         if self._use_mock or self.supabase is None:
             for prod in self._mock_products:
-                if prod["id"] == product_id:
-                    return prod.get("stock_level", 0)
-            return 0
+                if str(prod.get("id")) == product_id:
+                    return prod.copy()
+            return None
         
-        response = self.supabase.table("products").select("stock_level").eq("id", product_id).execute()
+        response = self.supabase.table("products").select("*").eq("id", product_id).execute()
         if response.data:
-            return response.data[0].get("stock_level", 0)
+            return response.data[0]
+        return None
+
+    def check_stock(self, product_id: str) -> int:
+        """Check the stock level for a product by ID."""
+        product = self.get_product_by_id(product_id)
+        if product:
+            return product.get("stock_level", 0)
         return 0
 
     def decrement_stock(self, product_id: str, quantity: int) -> bool:
