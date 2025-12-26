@@ -5,20 +5,21 @@ from typing import Optional, List
 import uuid
 from datetime import datetime
 
-from .inventory import InventoryManager
-from .intent import IntentRecognizer, Intent
-from .payment import PaymentManager
-from .response_formatter import ResponseFormatter, ResponseStyle
-from .conversation import conversation_manager
-from .services import vendor_state
-from .services.push_notifications import push_service, PushNotification
-from .services.bulk_operations import bulk_service
-from .services.payments import paystack_service, PaymentLinkRequest
-from .services.subscription import subscription_service, SubscriptionTier
-from .services.privacy import privacy_service, ConsentType
-from .services.localization import localization_service, Language, t
-from .services import storage_service
-from .routers import (
+# --- FIXED IMPORTS (No dots) ---
+from inventory import InventoryManager
+from intent import IntentRecognizer, Intent
+from payment import PaymentManager
+from response_formatter import ResponseFormatter, ResponseStyle
+from conversation import conversation_manager
+from services import vendor_state
+from services.push_notifications import push_service, PushNotification
+from services.bulk_operations import bulk_service
+from services.payments import paystack_service, PaymentLinkRequest
+from services.subscription import subscription_service, SubscriptionTier
+from services.privacy import privacy_service, ConsentType
+from services.localization import localization_service, Language, t
+from services import storage_service
+from routers import (
     expenses, delivery, analytics, invoice, 
     recommendations, notifications, installments, profit_loss, sales_channels, whatsapp,
     instagram, tiktok
@@ -335,7 +336,7 @@ async def process_message(request: MessageRequest):
     3. Handle multiple matches by asking user to choose
     4. Remember context for follow-up queries
     """
-    from .conversation import conversation_manager
+    from conversation import conversation_manager
     
     user_id = request.user_id
     text = request.message_text
@@ -1588,5 +1589,3 @@ app.include_router(sales_channels.router, prefix="/channels", tags=["Sales Chann
 app.include_router(whatsapp.router, prefix="/whatsapp", tags=["WhatsApp"])
 app.include_router(instagram.router, prefix="/instagram", tags=["Instagram"])
 app.include_router(tiktok.router, prefix="/tiktok", tags=["TikTok"])
-
-
