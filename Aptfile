@@ -1,0 +1,5 @@
+unixodbc
+unixodbc-dev
+libgssapi-krb5-2
+https://packages.microsoft.com/ubuntu/24.04/prod/pool/main/m/msodbcsql18/msodbcsql18_18.4.1.1-1_amd64.deb
+
