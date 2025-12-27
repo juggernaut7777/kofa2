@@ -61,10 +61,8 @@ VENDOR_SETTINGS: dict = {
 def safe_order_id(user_id: str, prod_id: str) -> str:
     """Generate a safe order ID from user and product IDs."""
     import uuid
-    # Use last 4 chars of user_id if available, else random
-    user_part = user_id[-4:] if len(user_id) >= 4 else uuid.uuid4().hex[:4]
-    prod_part = prod_id[:4] if len(prod_id) >= 4 else uuid.uuid4().hex[:4]
-    return f"ORD-{user_part}-{prod_part}"
+    # Generate proper UUID for database compatibility
+    return str(uuid.uuid4())
 
 router = APIRouter()
 
@@ -696,7 +694,7 @@ async def get_bot_style():
 async def create_product(product: ProductCreate):
     """Add a new product to inventory."""
     new_product = {
-        "id": f"prod-{uuid.uuid4().hex[:8]}",
+        "id": str(uuid.uuid4()),
         "name": product.name,
         "price_ngn": product.price_ngn,
         "stock_level": product.stock_level,
@@ -932,7 +930,7 @@ async def update_order_status(order_id: str, update: OrderStatusUpdate):
 async def log_manual_sale(sale: ManualSale):
     """Log a sale made outside of KOFA (walk-in, Instagram DM, etc.)."""
     sale_record = {
-        "id": f"sale-{uuid.uuid4().hex[:8]}",
+        "id": str(uuid.uuid4()),
         "product_name": sale.product_name,
         "quantity": sale.quantity,
         "amount_ngn": sale.amount_ngn,
