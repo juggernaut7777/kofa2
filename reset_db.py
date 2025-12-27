@@ -1,5 +1,5 @@
-from chatbot.database import engine, Base
-from chatbot.models import User, Product, Order, OrderItem
+from chatbot.database import engine
+from chatbot.models import Base, User, Product, Order, OrderItem
 import logging
 
 logging.basicConfig()
