@@ -48,91 +48,45 @@ function TabBarIcon(props: {
 export default function TabLayout() {
   const { accountType } = useAuth();
 
-  // Define tab configurations for different account types
-  const getTabConfig = (accountType: AccountType) => {
-    if (accountType === 'logistics') {
-      return [
-        {
-          name: 'index',
-          title: 'Fleet',
-          icon: 'truck-delivery',
-          iconType: 'material' as const,
-        },
-        {
-          name: 'orders',
-          title: 'Deliveries',
-          icon: 'package-variant-closed',
-          iconType: 'material' as const,
-        },
-        {
-          name: 'analytics',
-          title: 'Performance',
-          icon: 'chart-timeline-variant',
-          iconType: 'material' as const,
-        },
-        {
-          name: 'customers',
-          title: 'Routes',
-          icon: 'routes',
-          iconType: 'material' as const,
-        },
-        {
-          name: 'spend',
-          title: 'Expenses',
-          icon: 'wallet-outline',
-          iconType: 'ionicons' as const,
-        },
-        {
-          name: 'settings',
-          title: 'Settings',
-          icon: 'settings-outline',
-          iconType: 'ionicons' as const,
-        },
-      ];
-    }
-
-    // Default to sales/retail tabs
-    return [
-      {
-        name: 'index',
-        title: 'Inventory',
-        icon: 'cube-outline',
-        iconType: 'ionicons' as const,
-      },
-      {
-        name: 'orders',
-        title: 'Orders',
-        icon: 'receipt-outline',
-        iconType: 'ionicons' as const,
-      },
-      {
-        name: 'analytics',
-        title: 'Analytics',
-        icon: 'bar-chart-outline',
-        iconType: 'ionicons' as const,
-      },
-      {
-        name: 'customers',
-        title: 'Customers',
-        icon: 'people-outline',
-        iconType: 'ionicons' as const,
-      },
-      {
-        name: 'spend',
-        title: 'Expenses',
-        icon: 'wallet-outline',
-        iconType: 'ionicons' as const,
-      },
-      {
-        name: 'settings',
-        title: 'Settings',
-        icon: 'settings-outline',
-        iconType: 'ionicons' as const,
-      },
-    ];
-  };
-
-  const tabs = getTabConfig(accountType);
+  // KOFA Vendor tabs
+  const tabs = [
+    {
+      name: 'index',
+      title: 'Inventory',
+      icon: 'cube-outline',
+      iconType: 'ionicons' as const,
+    },
+    {
+      name: 'orders',
+      title: 'Orders',
+      icon: 'receipt-outline',
+      iconType: 'ionicons' as const,
+    },
+    {
+      name: 'analytics',
+      title: 'Analytics',
+      icon: 'bar-chart-outline',
+      iconType: 'ionicons' as const,
+    },
+    {
+      name: 'customers',
+      title: 'Customers',
+      icon: 'people-outline',
+      iconType: 'ionicons' as const,
+    },
+    {
+      name: 'spend',
+      title: 'Expenses',
+      icon: 'wallet-outline',
+      iconType: 'ionicons' as const,
+    },
+    {
+      name: 'settings',
+      title: 'Settings',
+      icon: 'settings-outline',
+      iconType: 'ionicons' as const,
+    },
+  ];
 
   return (
     <Tabs
@@ -159,38 +113,13 @@ export default function TabLayout() {
           name={tab.name}
           options={{
             title: tab.title,
-            tabBarIcon: ({ color, focused }) => {
-              if (tab.iconType === 'material') {
-                return (
-                  <View style={[styles.iconContainer, focused && styles.iconContainerFocused]}>
-                    {focused ? (
-                      <LinearGradient
-                        colors={['rgba(43, 175, 242, 0.25)', 'rgba(31, 87, 245, 0.1)']}
-                        style={styles.focusedBackground}
-                      />
-                    ) : null}
-                    <Animated.View style={useAnimatedStyle(() => ({
-                      transform: [{ scale: withSpring(focused ? 1.1 : 1) }],
-                    }))}>
-                      <MaterialCommunityIcons
-                        size={focused ? 24 : 22}
-                        color={focused ? '#2BAFF2' : color}
-                        name={tab.icon}
-                      />
-                    </Animated.View>
-                  </View>
-                );
-              }
-
-              // Default to Ionicons
-              return (
-                <TabBarIcon
-                  name={tab.icon as keyof typeof Ionicons.glyphMap}
-                  color={color}
-                  focused={focused}
-                />
-              );
-            },
+            tabBarIcon: ({ color, focused }) => (
+              <TabBarIcon
+                name={tab.icon as keyof typeof Ionicons.glyphMap}
+                color={color}
+                focused={focused}
+              />
+            ),
           }}
         />
       ))}

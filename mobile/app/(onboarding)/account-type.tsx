@@ -16,34 +16,19 @@ import { router } from 'expo-router';
 
 const ACCOUNT_TYPES = [
     {
-        id: 'sales',
-        title: 'Sales & Retail',
-        subtitle: 'For shops, stores, and online sellers',
+        id: 'vendor',
+        title: 'KOFA Vendor',
+        subtitle: 'For small business owners and retailers',
         icon: 'storefront',
         iconType: 'ionicons',
         color: '#2BAFF2',
         features: [
             '📦 Inventory Management',
             '🤖 AI Sales Chatbot',
-            '💰 Revenue Tracking',
-            '📱 Customer Orders',
+            '💰 Revenue & Profit Tracking',
+            '📱 Social Media Integration',
         ],
-        description: 'Perfect for fashion stores, electronics shops, beauty products, and online retailers.'
-    },
-    {
-        id: 'logistics',
-        title: 'Logistics & Delivery',
-        subtitle: 'For delivery companies and couriers',
-        icon: 'truck-delivery',
-        iconType: 'material',
-        color: '#22C55E',
-        features: [
-            '🚚 Fleet Management',
-            '📍 Route Optimization',
-            '⏰ Delivery Tracking',
-            '💳 Payment Collection',
-        ],
-        description: 'Ideal for delivery services, logistics companies, and last-mile delivery providers.'
+        description: 'Perfect for fashion stores, electronics shops, beauty products, market vendors, and online sellers.'
     }
 ];
 

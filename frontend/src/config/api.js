@@ -30,11 +30,6 @@ export const API_ENDPOINTS = {
   DASHBOARD_SUMMARY: '/dashboard/summary',
 
   // Delivery
-  DELIVERY_ZONES: '/delivery/zones',
-  DELIVERY_ESTIMATE: '/delivery/estimate',
-  DELIVERY_CREATE: '/delivery/create',
-  DELIVERY_TRACK: (trackingId) => `/delivery/track/${trackingId}`,
-  DELIVERY_UPDATE_TRACKING: (trackingId) => `/delivery/track/${trackingId}/update`,
 
   // Analytics
   ANALYTICS: '/analytics',

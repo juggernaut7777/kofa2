@@ -19,47 +19,24 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 
-const BUSINESS_CONFIGS = {
-    sales: {
-        title: 'Set Up Your Sales Business',
-        subtitle: 'Configure your retail business details',
-        icon: 'storefront',
-        fields: [
-            { key: 'businessName', label: 'Business Name *', placeholder: "e.g. Sarah's Fashion Hub", required: true },
-            { key: 'phone', label: 'Phone Number', placeholder: '+234 XXX XXX XXXX', keyboardType: 'phone-pad' },
-            { key: 'address', label: 'Business Address', placeholder: 'Your shop or office address' },
-            { key: 'bankName', label: 'Bank Name', placeholder: 'e.g. GTBank, First Bank' },
-            { key: 'accountNumber', label: 'Account Number', placeholder: '10-digit account number' },
-            { key: 'accountName', label: 'Account Name', placeholder: 'Account holder name' },
-        ],
-        features: [
-            '📦 Product inventory management',
-            '💬 AI chatbot for customer support',
-            '📊 Sales analytics & reporting',
-            '🚚 Automated delivery integration'
-        ]
-    },
-    logistics: {
-        title: 'Set Up Your Logistics Business',
-        subtitle: 'Configure your delivery service details',
-        icon: 'car-sport',
-        fields: [
-            { key: 'businessName', label: 'Company Name *', placeholder: 'e.g. FastTrack Logistics', required: true },
-            { key: 'phone', label: 'Phone Number', placeholder: '+234 XXX XXX XXXX', keyboardType: 'phone-pad' },
-            { key: 'address', label: 'Headquarters Address', placeholder: 'Your main office address' },
-            { key: 'serviceArea', label: 'Service Areas', placeholder: 'e.g. Lagos, Abuja, Port Harcourt' },
-            { key: 'fleetSize', label: 'Fleet Size', placeholder: 'Number of vehicles/drivers', keyboardType: 'numeric' },
-            { key: 'bankName', label: 'Bank Name', placeholder: 'e.g. GTBank, First Bank' },
-            { key: 'accountNumber', label: 'Account Number', placeholder: '10-digit account number' },
-            { key: 'accountName', label: 'Account Name', placeholder: 'Account holder name' },
-        ],
-        features: [
-            '🚚 Fleet & driver management',
-            '📍 Real-time delivery tracking',
-            '💰 COD payment collection',
-            '📊 Performance analytics'
-        ]
-    }
+const BUSINESS_CONFIG = {
+    title: 'Set Up Your KOFA Business',
+    subtitle: 'Configure your business details to start selling with AI',
+    icon: 'storefront',
+    fields: [
+        { key: 'businessName', label: 'Business Name *', placeholder: "e.g. Sarah's Fashion Hub", required: true },
+        { key: 'phone', label: 'Phone Number', placeholder: '+234 XXX XXX XXXX', keyboardType: 'phone-pad' },
+        { key: 'address', label: 'Business Address', placeholder: 'Your shop or office address' },
+        { key: 'bankName', label: 'Bank Name', placeholder: 'e.g. GTBank, First Bank' },
+        { key: 'accountNumber', label: 'Account Number', placeholder: '10-digit account number' },
+        { key: 'accountName', label: 'Account Name', placeholder: 'Account holder name' },
+    ],
+    features: [
+        '📦 Smart inventory management',
+        '🤖 AI chatbot for 24/7 sales',
+        '📱 WhatsApp/Instagram/TikTok integration',
+        '📊 Sales & profit analytics'
+    ]
 };
 
 export default function BusinessSetup() {
@@ -68,7 +45,7 @@ export default function BusinessSetup() {
     const [isLoading, setIsLoading] = useState(false);
     const { completeOnboarding } = useAuth();
 
-    const config = BUSINESS_CONFIGS[accountType] || BUSINESS_CONFIGS.sales;
+    const config = BUSINESS_CONFIG;
 
     const updateField = (key, value) => {
         setFormData(prev => ({ ...prev, [key]: value }));
@@ -314,4 +291,5 @@ const styles = StyleSheet.create({
         marginTop: 16,
     },
 });
+
 

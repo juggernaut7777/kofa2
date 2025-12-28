@@ -34,7 +34,7 @@ from .services.privacy import privacy_service, ConsentType
 from .services.localization import localization_service, Language, t
 from .services import storage_service
 from .routers import (
-    expenses, delivery, analytics, invoice, 
+    expenses, analytics, invoice, 
     recommendations, notifications, installments, profit_loss, sales_channels, whatsapp,
     instagram, tiktok
 )
@@ -1962,7 +1962,6 @@ async def get_translation(key: str, language: str = "en", **kwargs):
 # Include routers
 app.include_router(router)
 app.include_router(expenses.router, prefix="/expenses", tags=["Spend"])
-app.include_router(delivery.router, prefix="/delivery", tags=["Delivery"])
 app.include_router(analytics.router, prefix="/analytics", tags=["Analytics"])
 app.include_router(invoice.router, prefix="/invoice", tags=["Invoice"])
 app.include_router(recommendations.router, prefix="/recommendations", tags=["Recommendations"])
