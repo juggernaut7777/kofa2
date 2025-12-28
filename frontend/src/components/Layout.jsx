@@ -7,7 +7,6 @@ const Layout = ({ children }) => {
     { path: '/', label: 'Dashboard', icon: '📊' },
     { path: '/products', label: 'Products', icon: '📦' },
     { path: '/orders', label: 'Orders', icon: '🛒' },
-    { path: '/deliveries', label: 'Deliveries', icon: '🚚' },
     { path: '/subscription', label: 'Plans', icon: '💎' },
     { path: '/support', label: 'Support', icon: '🆘' },
   ]
@@ -23,7 +22,7 @@ const Layout = ({ children }) => {
               <span className="ml-2 text-xs text-gray-500 hidden sm:inline">Commerce Engine</span>
             </div>
             <div className="text-sm text-gray-600 hidden sm:block">
-              Vendor + Logistics
+              AI-Powered Vendor Platform
             </div>
           </div>
         </div>
@@ -31,7 +30,7 @@ const Layout = ({ children }) => {
 
       {/* Bottom Navigation (Mobile) */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 sm:hidden z-50">
-        <div className="grid grid-cols-4 gap-1">
+        <div className="grid grid-cols-5 gap-1">
           {navItems.map((item) => (
             <Link
               key={item.path}

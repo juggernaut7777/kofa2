@@ -17,14 +17,14 @@ const Subscription = () => {
       setPlans(response.plans || [])
     } catch (error) {
       console.error('Failed to load plans:', error)
-      // Fallback mock data
+      // Fallback mock data for KOFA vendor plans
       setPlans([
         {
           id: 'free',
           name: 'Free',
           price_ngn: 0,
           duration_months: 0,
-          features: ['Up to 50 products', 'Basic chatbot', 'Manual order tracking'],
+          features: ['Up to 50 products', 'Basic chatbot', 'WhatsApp integration', 'Basic analytics'],
           max_products: 50,
           max_messages: 100
         },
@@ -33,7 +33,7 @@ const Subscription = () => {
           name: 'Starter',
           price_ngn: 5000,
           duration_months: 1,
-          features: ['Up to 200 products', 'AI chatbot', 'Order management', 'Basic analytics'],
+          features: ['Up to 200 products', 'AI chatbot', 'WhatsApp + Instagram', 'Order management', 'Sales analytics'],
           max_products: 200,
           max_messages: 1000
         },
@@ -42,7 +42,7 @@ const Subscription = () => {
           name: 'Professional',
           price_ngn: 15000,
           duration_months: 1,
-          features: ['Unlimited products', 'Advanced AI chatbot', 'Full analytics', 'Multi-channel sales', 'Priority support'],
+          features: ['Unlimited products', 'Advanced AI chatbot', 'All platforms (WhatsApp, IG, TikTok)', 'Full analytics', 'Customer insights', 'Priority support'],
           max_products: -1,
           max_messages: -1
         }
@@ -117,10 +117,10 @@ const Subscription = () => {
       {/* Header */}
       <div className="text-center mb-12">
         <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 via-blue-900 to-indigo-900 bg-clip-text text-transparent mb-4">
-          Choose Your Plan
+          KOFA Subscription Plans
         </h1>
         <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-          Unlock the full power of KOFA with our flexible subscription plans designed for businesses of all sizes.
+          Scale your business with AI-powered chatbot automation and inventory management.
         </p>
       </div>
 
@@ -185,25 +185,53 @@ const Subscription = () => {
         </div>
       )}
 
+      {/* KOFA-Specific Features */}
+      <div className="mt-16 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-8">
+        <h2 className="text-2xl font-bold text-center text-gray-900 mb-8">Why KOFA?</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="text-2xl">🤖</span>
+            </div>
+            <h3 className="font-semibold text-gray-900 mb-2">AI Chatbot</h3>
+            <p className="text-gray-600">Never miss a sale with 24/7 automated responses on WhatsApp, Instagram & TikTok</p>
+          </div>
+          <div className="text-center">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="text-2xl">📦</span>
+            </div>
+            <h3 className="font-semibold text-gray-900 mb-2">Smart Inventory</h3>
+            <p className="text-gray-600">Real-time stock tracking prevents overselling and helps your chatbot know what's available</p>
+          </div>
+          <div className="text-center">
+            <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="text-2xl">📊</span>
+            </div>
+            <h3 className="font-semibold text-gray-900 mb-2">Business Insights</h3>
+            <p className="text-gray-600">Track sales, profits, and customer behavior across all your social media channels</p>
+          </div>
+        </div>
+      </div>
+
       {/* FAQ Section */}
       <div className="mt-16 bg-gray-50 rounded-2xl p-8">
         <h2 className="text-2xl font-bold text-center text-gray-900 mb-8">Frequently Asked Questions</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <div>
-            <h3 className="font-semibold text-gray-900 mb-2">Can I change plans anytime?</h3>
-            <p className="text-gray-600">Yes, you can upgrade or downgrade your plan at any time. Changes take effect immediately.</p>
+            <h3 className="font-semibold text-gray-900 mb-2">How does the chatbot work?</h3>
+            <p className="text-gray-600">Connect your WhatsApp/Instagram/TikTok and our AI automatically responds to customer inquiries using your inventory data.</p>
           </div>
           <div>
-            <h3 className="font-semibold text-gray-900 mb-2">What payment methods do you accept?</h3>
-            <p className="text-gray-600">We accept all major payment methods including card, bank transfer, and mobile money.</p>
+            <h3 className="font-semibold text-gray-900 mb-2">Can I manage multiple social media accounts?</h3>
+            <p className="text-gray-600">Yes! Professional plan includes unlimited social media connections with unified analytics.</p>
           </div>
           <div>
-            <h3 className="font-semibold text-gray-900 mb-2">Is there a free trial?</h3>
-            <p className="text-gray-600">Yes! Start with our Free plan to explore all features before upgrading.</p>
+            <h3 className="font-semibold text-gray-900 mb-2">What happens if I run out of stock?</h3>
+            <p className="text-gray-600">Our system automatically stops selling out-of-stock items and alerts you when inventory is low.</p>
           </div>
           <div>
-            <h3 className="font-semibold text-gray-900 mb-2">Do you offer refunds?</h3>
-            <p className="text-gray-600">We offer a 30-day money-back guarantee on all paid plans.</p>
+            <h3 className="font-semibold text-gray-900 mb-2">Do you support voice messages?</h3>
+            <p className="text-gray-600">Yes! Our AI can transcribe voice notes and respond appropriately, with voice-to-text capabilities.</p>
           </div>
         </div>
       </div>
@@ -212,3 +240,4 @@ const Subscription = () => {
 }
 
 export default Subscription
+
