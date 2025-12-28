@@ -19,6 +19,30 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
+# #region agent log - FastAPI startup
+import os
+import json
+
+def log_to_file(message, data=None):
+    """Log to debug file for debugging"""
+    try:
+        log_entry = {
+            "sessionId": "debug-session",
+            "runId": "initial",
+            "hypothesisId": "E",
+            "location": "main.py",
+            "message": message,
+            "data": data or {},
+            "timestamp": int(datetime.now().timestamp() * 1000)
+        }
+        with open(r"c:\Users\USER\kofa 2\.cursor\debug.log", "a") as f:
+            f.write(json.dumps(log_entry) + "\n")
+    except Exception as e:
+        print(f"Debug logging failed: {e}")
+
+log_to_file("FastAPI application starting", {"python_version": "3.x", "platform": "windows"})
+# #endregion
+
 # Relative imports for package structure
 from .inventory import InventoryManager
 from .intent import IntentRecognizer, Intent
@@ -1960,6 +1984,10 @@ async def get_translation(key: str, language: str = "en", **kwargs):
 
 
 # Include routers
+# #region agent log - Router setup
+log_to_file("Setting up main router", {"routers_count": "12+"})
+# #endregion
+
 app.include_router(router)
 app.include_router(expenses.router, prefix="/expenses", tags=["Spend"])
 app.include_router(analytics.router, prefix="/analytics", tags=["Analytics"])
@@ -1972,3 +2000,12 @@ app.include_router(sales_channels.router, prefix="/channels", tags=["Sales Chann
 app.include_router(whatsapp.router, prefix="/whatsapp", tags=["WhatsApp"])
 app.include_router(instagram.router, prefix="/instagram", tags=["Instagram"])
 app.include_router(tiktok.router, prefix="/tiktok", tags=["TikTok"])
+
+# #region agent log - FastAPI app fully configured
+log_to_file("FastAPI app fully configured", {
+    "routers_loaded": 12,
+    "cors_enabled": True,
+    "app_title": app.title,
+    "app_version": app.version
+})
+# #endregion
