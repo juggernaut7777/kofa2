@@ -67,6 +67,24 @@ class InventoryManager:
             self._db.close()
             self._db = None
 
+    def _log_debug(self, message: str, data: dict = None):
+        """Log debug information to the debug log file."""
+        try:
+            import json
+            log_entry = {
+                "sessionId": "debug-session",
+                "runId": "initial",
+                "hypothesisId": "F",
+                "location": "inventory.py",
+                "message": message,
+                "data": data or {},
+                "timestamp": int(__import__('datetime').datetime.now().timestamp() * 1000)
+            }
+            with open(r"c:\Users\USER\kofa 2\.cursor\debug.log", "a") as f:
+                f.write(json.dumps(log_entry) + "\n")
+        except Exception as e:
+            logger.warning(f"Debug logging failed: {e}")
+
     def _model_to_dict(self, product: ProductModel) -> dict:
         """Convert SQLAlchemy Product model to dictionary."""
         # Parse voice_tags from JSON string if stored as text
@@ -289,27 +307,63 @@ class InventoryManager:
     def decrement_stock(self, product_id: str, quantity: int) -> bool:
         """
         Atomically decrement stock for a product. Returns True if successful, False if insufficient stock.
-        Uses Supabase RPC function for atomic operations to prevent race conditions.
+        Uses Azure SQL atomic operations to prevent race conditions.
         """
-        try:
-            # Use Supabase RPC for atomic stock decrement
-            # This is more secure and prevents SQL injection
-            result = self.supabase.rpc(
-                'decrement_product_stock',
-                {
-                    'p_product_id': product_id,
-                    'p_vendor_id': self.user_id,
-                    'p_quantity': quantity
-                }
-            ).execute()
+        # #region agent log - decrement_stock called
+        self._log_debug("decrement_stock called", {
+            "product_id": product_id,
+            "quantity": quantity,
+            "user_id": self.user_id
+        })
+        # #endregion
 
-            # RPC returns boolean indicating success
-            return result.data if result.data is not None else False
+        db = self._get_db()
+        try:
+            # Use atomic SQL update to prevent race conditions
+            # This checks stock availability AND decrements in a single statement
+            result = db.execute(
+                """
+                UPDATE products
+                SET stock_level = stock_level - :quantity,
+                    updated_at = GETDATE()
+                WHERE id = :product_id
+                  AND vendor_id = :vendor_id
+                  AND stock_level >= :quantity
+                """,
+                {
+                    "product_id": product_id,
+                    "vendor_id": self.user_id,
+                    "quantity": quantity
+                }
+            )
+
+            db.commit()
+
+            # #region agent log - decrement_stock result
+            success = result.rowcount > 0
+            self._log_debug("decrement_stock completed", {
+                "product_id": product_id,
+                "success": success,
+                "rows_affected": result.rowcount
+            })
+            # #endregion
+
+            # Check if the update affected any rows
+            # If stock_level < quantity, no rows will be updated
+            return success
 
         except Exception as e:
-            # Fallback to atomic SQL update if RPC fails
-            logger.warning(f"RPC decrement_stock failed for product {product_id}, falling back to SQL update: {e}")
-            return self._decrement_stock_fallback(product_id, quantity)
+            db.rollback()
+            # #region agent log - decrement_stock error
+            self._log_debug("decrement_stock error", {
+                "product_id": product_id,
+                "error": str(e)
+            })
+            # #endregion
+            logger.error(f"Error in decrement_stock for product {product_id}: {e}")
+            return False
+        finally:
+            self._close_db()
 
     def _decrement_stock_fallback(self, product_id: str, quantity: int) -> bool:
         """
