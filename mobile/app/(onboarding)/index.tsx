@@ -56,7 +56,7 @@ export default function OnboardingWelcome() {
             flatListRef.current?.scrollToIndex({ index: currentIndex + 1, animated: true });
             setCurrentIndex(currentIndex + 1);
         } else {
-            router.push('/(onboarding)/setup');
+            router.push('/(onboarding)/account-type');
         }
     };
 

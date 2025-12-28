@@ -48,3 +48,9 @@ htmlcov/
 # OS
 .DS_Store
 Thumbs.db
+# --- FRONTEND IGNORES ---
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+.DS_Store

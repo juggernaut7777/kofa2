@@ -10,6 +10,9 @@ import hashlib
 from typing import Optional, Dict, Any
 from datetime import datetime
 from pydantic import BaseModel
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class PaystackConfig:
@@ -80,7 +83,7 @@ class PaystackService:
             Payment URL or None if creation fails
         """
         if not self.config.is_configured:
-            print("⚠️ Paystack not configured - returning mock link")
+            logger.warning("Paystack not configured - returning mock payment link")
             return f"https://paystack.com/pay/kofa-{request.order_id}"
         
         try:
@@ -131,21 +134,21 @@ class PaystackService:
                 ) as response:
                     if response.status != 200:
                         error = await response.text()
-                        print(f"❌ Paystack error: {error}")
+                        logger.error(f"Paystack API error: {error}")
                         return None
                     
                     data = await response.json()
                     
                     if data.get("status"):
                         authorization_url = data["data"]["authorization_url"]
-                        print(f"✅ Payment link created: {authorization_url}")
+                        logger.info(f"Payment link created successfully: {authorization_url}")
                         return authorization_url
                     else:
-                        print(f"❌ Paystack error: {data.get('message')}")
+                        logger.error(f"Paystack API returned error: {data.get('message')}")
                         return None
                         
         except Exception as e:
-            print(f"❌ Error creating payment link: {e}")
+            logger.error(f"Error creating payment link: {e}")
             return None
     
     async def verify_payment(self, reference: str) -> Optional[PaymentVerification]:
@@ -159,7 +162,7 @@ class PaystackService:
             PaymentVerification object or None
         """
         if not self.config.is_configured:
-            print("⚠️ Paystack not configured")
+            logger.warning("Paystack not configured for payment verification")
             return None
         
         try:
@@ -194,7 +197,7 @@ class PaystackService:
                     )
                     
         except Exception as e:
-            print(f"❌ Error verifying payment: {e}")
+            logger.error(f"Error verifying payment: {e}")
             return None
     
     def verify_webhook_signature(self, payload: bytes, signature: str) -> bool:
@@ -209,7 +212,7 @@ class PaystackService:
             True if signature is valid
         """
         if not self.config.webhook_secret:
-            print("⚠️ Webhook secret not configured")
+            logger.warning("Paystack webhook secret not configured")
             return False
         
         expected = hmac.new(

@@ -1,9 +1,23 @@
 from fastapi import FastAPI, HTTPException, APIRouter, UploadFile, File, Request
 from fastapi.responses import PlainTextResponse, JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, validator
 from typing import Optional, List
 import uuid
 from datetime import datetime
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),  # Console output
+        logging.FileHandler('kofa.log', mode='a')  # File output
+    ]
+)
+
+logger = logging.getLogger(__name__)
 
 # Relative imports for package structure
 from .inventory import InventoryManager
@@ -29,6 +43,15 @@ app = FastAPI(
     title="KOFA Commerce Engine",
     description="AI-powered commerce platform for modern merchants",
     version="2.0.0"
+)
+
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # In production, specify your frontend domain
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # In‑memory store for demo purposes (User preferences)
@@ -325,6 +348,97 @@ async def get_orders(status: Optional[str] = None):
     
     return all_orders
 
+def create_chatbot_order(user_id: str, product: dict, quantity: int = 1) -> tuple[str, str]:
+    """
+    Create an order for chatbot purchase - validates stock, decrements inventory,
+    creates order record, and generates payment link.
+
+    Returns: (order_id, payment_link) or raises HTTPException
+    """
+    product_id = str(product.get("id", ""))
+    product_name = product.get("name", "Unknown Product")
+    price = float(product.get("price_ngn", 0))
+
+    # Validate product and price
+    if not product_id:
+        raise HTTPException(status_code=400, detail="Invalid product ID")
+
+    if price <= 0:
+        raise HTTPException(status_code=400, detail=f"Invalid price for {product_name}: ₦{price}")
+
+    if quantity <= 0:
+        raise HTTPException(status_code=400, detail="Quantity must be greater than 0")
+
+    # Check stock availability
+    current_stock = product.get("stock_level", 0)
+    if current_stock < quantity:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Insufficient stock for {product_name}. Available: {current_stock}, Requested: {quantity}"
+        )
+
+    # Calculate total
+    total_amount = price * quantity
+
+    # Generate order ID
+    order_id = str(uuid.uuid4())
+
+    # Decrement stock first
+    success = inventory_manager.decrement_stock(product_id, quantity)
+    if not success:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to reserve stock for {product_name}. Please try again."
+        )
+
+    # Generate payment link
+    payment_link = payment_manager.generate_payment_link(
+        order_id=order_id,
+        amount_ngn=int(round(total_amount)),
+        customer_phone=user_id,
+        description=f"Purchase {product_name}" + (f" (x{quantity})" if quantity > 1 else "")
+    )
+
+    if not payment_link:
+        # Rollback stock decrement if payment link generation fails
+        inventory_manager.update_stock(product_id, quantity)  # Restore stock
+        raise HTTPException(status_code=500, detail="Failed to generate payment link")
+
+    # Create order item details
+    order_items = [{
+        "product_id": product_id,
+        "product_name": product_name,
+        "quantity": quantity,
+        "price": price,
+        "total": total_amount
+    }]
+
+    # Store order in ORDERS_STORE
+    ORDERS_STORE[order_id] = {
+        "id": order_id,
+        "customer_phone": user_id,
+        "items": order_items,
+        "total_amount": total_amount,
+        "status": "pending",
+        "payment_ref": None,
+        "created_at": datetime.now().isoformat(),
+        "source": "chatbot"  # Track that this came from chatbot
+    }
+
+    # Update customer history
+    if user_id not in CUSTOMER_HISTORY:
+        CUSTOMER_HISTORY[user_id] = {"orders": [], "total_spent": 0}
+
+    CUSTOMER_HISTORY[user_id]["orders"].append({
+        "order_id": order_id,
+        "product_name": product_name,
+        "amount": total_amount,
+        "timestamp": datetime.now().isoformat()
+    })
+    CUSTOMER_HISTORY[user_id]["total_spent"] += total_amount
+
+    return order_id, payment_link
+
 @router.post("/message")
 async def process_message(request: MessageRequest):
     """
@@ -433,25 +547,20 @@ async def process_message(request: MessageRequest):
         product = state.current_product
         product_data = product
         price_fmt = payment_manager.format_naira(product["price_ngn"])
-        
+
         if product["stock_level"] > 0:
-            prod_id = str(product.get("id", ""))
-            link = payment_manager.generate_payment_link(
-                order_id=safe_order_id(user_id, prod_id),
-                amount_ngn=int(product["price_ngn"]),
-                customer_phone=user_id,
-                description=f"Purchase {product['name']}"
-            )
-            if link:
+            try:
+                # Create order, decrement stock, and generate payment link
+                order_id, link = create_chatbot_order(user_id, product, quantity=1)
                 payment_link = link
                 response_text = response_formatter.format_payment_link(
                     product['name'], link, price_fmt, 15
                 )
-            else:
-                response_text = response_formatter.format_payment_link_failed()
+            except HTTPException as e:
+                response_text = f"❌ Sorry, I couldn't process your order: {e.detail}"
         else:
             response_text = response_formatter.format_out_of_stock(product["name"])
-        
+
         return MessageResponse(
             response=response_text,
             intent=intent.value,
@@ -495,22 +604,17 @@ async def process_message(request: MessageRequest):
                     product = state.current_product
                     product_data = product
                     price_fmt = payment_manager.format_naira(product["price_ngn"])
-                    
+
                     if product["stock_level"] > 0:
-                        prod_id = str(product.get("id", ""))
-                        link = payment_manager.generate_payment_link(
-                            order_id=safe_order_id(user_id, prod_id),
-                            amount_ngn=int(product["price_ngn"]),
-                            customer_phone=user_id,
-                            description=f"Purchase {product['name']}"
-                        )
-                        if link:
+                        try:
+                            # Create order, decrement stock, and generate payment link
+                            order_id, link = create_chatbot_order(user_id, product, quantity=1)
                             payment_link = link
                             response_text = response_formatter.format_payment_link(
                                 product['name'], link, price_fmt, 15
                             )
-                        else:
-                            response_text = response_formatter.format_payment_link_failed()
+                        except HTTPException as e:
+                            response_text = f"❌ Sorry, I couldn't process your order: {e.detail}"
                     else:
                         response_text = response_formatter.format_out_of_stock(product["name"])
                 else:
@@ -534,20 +638,15 @@ async def process_message(request: MessageRequest):
                 
                 if intent == Intent.PURCHASE:
                     if product["stock_level"] > 0:
-                        prod_id = str(product.get("id", ""))
-                        link = payment_manager.generate_payment_link(
-                            order_id=safe_order_id(user_id, prod_id),
-                            amount_ngn=int(product["price_ngn"]),
-                            customer_phone=user_id,
-                            description=f"Purchase {product['name']}"
-                        )
-                        if link:
+                        try:
+                            # Create order, decrement stock, and generate payment link
+                            order_id, link = create_chatbot_order(user_id, product, quantity=1)
                             payment_link = link
                             response_text = response_formatter.format_payment_link(
                                 product['name'], link, price_fmt, 15
                             )
-                        else:
-                            response_text = response_formatter.format_payment_link_failed()
+                        except HTTPException as e:
+                            response_text = f"❌ Sorry, I couldn't process your order: {e.detail}"
                     else:
                         response_text = response_formatter.format_out_of_stock(product["name"])
                 else:
@@ -1016,6 +1115,293 @@ async def get_payment_account():
         "payment_account": account
     }
 
+
+# ============== SUBSCRIPTION & PAYMENT SYSTEM ==============
+
+class SubscriptionPlan(BaseModel):
+    """Subscription plan details."""
+    id: str
+    name: str
+    price_ngn: float
+    duration_months: int
+    features: List[str]
+    max_products: int
+    max_messages: int
+
+class SubscriptionPurchase(BaseModel):
+    """Purchase request for subscription."""
+    plan_id: str
+    payment_method: str = "paystack"  # paystack, bank_transfer, etc.
+
+class PaymentReceipt(BaseModel):
+    """Payment receipt/invoice details."""
+    transaction_id: str
+    amount_ngn: float
+    description: str
+    customer_name: str
+    customer_email: Optional[str] = None
+    payment_date: str
+    payment_method: str
+    vendor_account: Optional[Dict] = None
+
+# Subscription plans
+SUBSCRIPTION_PLANS = {
+    "free": SubscriptionPlan(
+        id="free",
+        name="Free",
+        price_ngn=0,
+        duration_months=0,
+        features=["Up to 50 products", "Basic chatbot", "Manual order tracking"],
+        max_products=50,
+        max_messages=100
+    ),
+    "starter": SubscriptionPlan(
+        id="starter",
+        name="Starter",
+        price_ngn=5000,
+        duration_months=1,
+        features=["Up to 200 products", "AI chatbot", "Order management", "Basic analytics"],
+        max_products=200,
+        max_messages=1000
+    ),
+    "professional": SubscriptionPlan(
+        id="professional",
+        name="Professional",
+        price_ngn=15000,
+        duration_months=1,
+        features=["Unlimited products", "Advanced AI chatbot", "Full analytics", "Multi-channel sales", "Priority support"],
+        max_products=-1,  # unlimited
+        max_messages=-1   # unlimited
+    ),
+    "enterprise": SubscriptionPlan(
+        id="enterprise",
+        name="Enterprise",
+        price_ngn=50000,
+        duration_months=1,
+        features=["Everything in Professional", "Custom integrations", "Dedicated support", "White-label options"],
+        max_products=-1,
+        max_messages=-1
+    )
+}
+
+@router.get("/subscription/plans")
+async def get_subscription_plans():
+    """Get all available subscription plans."""
+    return {
+        "status": "success",
+        "plans": list(SUBSCRIPTION_PLANS.values())
+    }
+
+@router.post("/subscription/purchase")
+async def purchase_subscription(request: SubscriptionPurchase):
+    """Purchase a subscription plan."""
+    if request.plan_id not in SUBSCRIPTION_PLANS:
+        raise HTTPException(status_code=404, detail="Subscription plan not found")
+
+    plan = SUBSCRIPTION_PLANS[request.plan_id]
+
+    if plan.price_ngn == 0:
+        # Free plan - activate immediately
+        return {
+            "status": "success",
+            "message": "Free plan activated successfully",
+            "plan": plan.dict(),
+            "activated_at": datetime.now().isoformat()
+        }
+
+    # For paid plans, create payment link
+    payment_link = payment_manager.generate_payment_link(
+        order_id=f"sub_{request.plan_id}_{int(datetime.now().timestamp())}",
+        amount_ngn=int(plan.price_ngn),
+        customer_phone="vendor_phone",  # Would come from auth
+        description=f"KOFA {plan.name} Subscription"
+    )
+
+    if not payment_link:
+        raise HTTPException(status_code=500, detail="Failed to create payment link")
+
+    return {
+        "status": "success",
+        "payment_link": payment_link,
+        "plan": plan.dict(),
+        "amount_ngn": plan.price_ngn
+    }
+
+# ============== RECEIPTS & INVOICES ==============
+
+@router.post("/receipts/generate")
+async def generate_receipt(receipt_data: PaymentReceipt):
+    """Generate a payment receipt."""
+    # In production, this would generate a PDF or send email
+    # For now, return receipt data
+    receipt = {
+        "receipt_id": f"RCP_{receipt_data.transaction_id}",
+        "transaction_id": receipt_data.transaction_id,
+        "amount_ngn": receipt_data.amount_ngn,
+        "description": receipt_data.description,
+        "customer_name": receipt_data.customer_name,
+        "customer_email": receipt_data.customer_email,
+        "payment_date": receipt_data.payment_date,
+        "payment_method": receipt_data.payment_method,
+        "vendor_account": receipt_data.vendor_account,
+        "generated_at": datetime.now().isoformat(),
+        "status": "generated"
+    }
+
+    return {
+        "status": "success",
+        "receipt": receipt,
+        "message": "Receipt generated successfully"
+    }
+
+@router.post("/invoices/generate")
+async def generate_invoice(invoice_data: PaymentReceipt):
+    """Generate an invoice for pending payments."""
+    invoice = {
+        "invoice_id": f"INV_{invoice_data.transaction_id}",
+        "transaction_id": invoice_data.transaction_id,
+        "amount_ngn": invoice_data.amount_ngn,
+        "description": invoice_data.description,
+        "customer_name": invoice_data.customer_name,
+        "customer_email": invoice_data.customer_email,
+        "due_date": (datetime.now() + timedelta(days=30)).isoformat(),
+        "payment_method": invoice_data.payment_method,
+        "vendor_account": invoice_data.vendor_account,
+        "generated_at": datetime.now().isoformat(),
+        "status": "pending"
+    }
+
+    return {
+        "status": "success",
+        "invoice": invoice,
+        "message": "Invoice generated successfully"
+    }
+
+# ============== SUPPORT & TROUBLESHOOTING ==============
+
+class SupportTicket(BaseModel):
+    """Support ticket submission."""
+    subject: str
+    message: str
+    priority: str = "normal"  # low, normal, high, urgent
+    category: str = "general"  # general, technical, billing, feature_request
+
+class TroubleshootingGuide(BaseModel):
+    """Troubleshooting guide entry."""
+    issue: str
+    solution: str
+    category: str
+    tags: List[str] = []
+
+# Support tickets storage (in production, use database)
+SUPPORT_TICKETS = []
+
+# Troubleshooting guides
+TROUBLESHOOTING_GUIDES = [
+    TroubleshootingGuide(
+        issue="Chatbot not responding",
+        solution="Check if bot is paused in settings. Ensure internet connection. Try restarting the conversation.",
+        category="chatbot",
+        tags=["bot", "response", "connection"]
+    ),
+    TroubleshootingGuide(
+        issue="Payment link not working",
+        solution="Verify Paystack keys are configured. Check payment account settings. Ensure amount is valid.",
+        category="payments",
+        tags=["payment", "paystack", "link"]
+    ),
+    TroubleshootingGuide(
+        issue="Products not showing in search",
+        solution="Check voice tags are added to products. Ensure product is in stock. Try different search terms.",
+        category="products",
+        tags=["search", "voice", "stock"]
+    ),
+    TroubleshootingGuide(
+        issue="Orders not updating",
+        solution="Check internet connection. Refresh the page. Contact support if issue persists.",
+        category="orders",
+        tags=["orders", "sync", "update"]
+    ),
+    TroubleshootingGuide(
+        issue="Cannot add products",
+        solution="Check subscription limits. Ensure all required fields are filled. Verify account permissions.",
+        category="products",
+        tags=["add", "products", "limits"]
+    )
+]
+
+@router.post("/support/ticket")
+async def submit_support_ticket(ticket: SupportTicket):
+    """Submit a support ticket."""
+    ticket_data = {
+        "id": f"TICKET_{int(datetime.now().timestamp())}",
+        "subject": ticket.subject,
+        "message": ticket.message,
+        "priority": ticket.priority,
+        "category": ticket.category,
+        "status": "open",
+        "created_at": datetime.now().isoformat(),
+        "updated_at": datetime.now().isoformat()
+    }
+
+    SUPPORT_TICKETS.append(ticket_data)
+
+    return {
+        "status": "success",
+        "ticket": ticket_data,
+        "message": "Support ticket submitted successfully. We'll respond within 24 hours."
+    }
+
+@router.get("/support/troubleshooting")
+async def get_troubleshooting_guides(category: Optional[str] = None, query: Optional[str] = None):
+    """Get troubleshooting guides."""
+    guides = TROUBLESHOOTING_GUIDES
+
+    if category:
+        guides = [g for g in guides if g.category == category]
+
+    if query:
+        query_lower = query.lower()
+        guides = [g for g in guides if
+                 query_lower in g.issue.lower() or
+                 any(query_lower in tag for tag in g.tags)]
+
+    return {
+        "status": "success",
+        "guides": [g.dict() for g in guides],
+        "total": len(guides)
+    }
+
+@router.get("/support/faq")
+async def get_faq():
+    """Get frequently asked questions."""
+    faq = [
+        {
+            "question": "How do I add products to my inventory?",
+            "answer": "Go to the Products tab and click 'Add Product'. Fill in the name, price, stock level, and optional description. Voice tags help customers find products via chat."
+        },
+        {
+            "question": "How does the AI chatbot work?",
+            "answer": "The chatbot automatically responds to customer inquiries on WhatsApp, Instagram, and other platforms. It uses voice tags to find products and can create payment links for orders."
+        },
+        {
+            "question": "How do I receive payments?",
+            "answer": "Add your bank account details in Settings. The chatbot will use your account for payment links. You can also integrate with Paystack for direct payments."
+        },
+        {
+            "question": "What are subscription plans?",
+            "answer": "Choose from Free (basic features), Starter (₦5,000/month), Professional (₦15,000/month), or Enterprise (₦50,000/month) plans based on your business needs."
+        },
+        {
+            "question": "How do I track my sales?",
+            "answer": "Use the Analytics dashboard to see revenue, top products, and customer insights. All orders are automatically tracked and reported."
+        }
+    ]
+
+    return {
+        "status": "success",
+        "faq": faq
+    }
 
 # ============== QUICK WIN FEATURES ==============
 

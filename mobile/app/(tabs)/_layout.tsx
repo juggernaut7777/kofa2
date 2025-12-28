@@ -1,11 +1,12 @@
 import React from 'react';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import { View, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Theme } from '@/constants/Theme';
 import Animated, { useAnimatedStyle, withSpring, useSharedValue, withTiming } from 'react-native-reanimated';
+import { useAuth, AccountType } from '@/context/AuthContext';
 
 function TabBarIcon(props: {
   name: keyof typeof Ionicons.glyphMap;
@@ -45,6 +46,94 @@ function TabBarIcon(props: {
 }
 
 export default function TabLayout() {
+  const { accountType } = useAuth();
+
+  // Define tab configurations for different account types
+  const getTabConfig = (accountType: AccountType) => {
+    if (accountType === 'logistics') {
+      return [
+        {
+          name: 'index',
+          title: 'Fleet',
+          icon: 'truck-delivery',
+          iconType: 'material' as const,
+        },
+        {
+          name: 'orders',
+          title: 'Deliveries',
+          icon: 'package-variant-closed',
+          iconType: 'material' as const,
+        },
+        {
+          name: 'analytics',
+          title: 'Performance',
+          icon: 'chart-timeline-variant',
+          iconType: 'material' as const,
+        },
+        {
+          name: 'customers',
+          title: 'Routes',
+          icon: 'routes',
+          iconType: 'material' as const,
+        },
+        {
+          name: 'spend',
+          title: 'Expenses',
+          icon: 'wallet-outline',
+          iconType: 'ionicons' as const,
+        },
+        {
+          name: 'settings',
+          title: 'Settings',
+          icon: 'settings-outline',
+          iconType: 'ionicons' as const,
+        },
+      ];
+    }
+
+    // Default to sales/retail tabs
+    return [
+      {
+        name: 'index',
+        title: 'Inventory',
+        icon: 'cube-outline',
+        iconType: 'ionicons' as const,
+      },
+      {
+        name: 'orders',
+        title: 'Orders',
+        icon: 'receipt-outline',
+        iconType: 'ionicons' as const,
+      },
+      {
+        name: 'analytics',
+        title: 'Analytics',
+        icon: 'bar-chart-outline',
+        iconType: 'ionicons' as const,
+      },
+      {
+        name: 'customers',
+        title: 'Customers',
+        icon: 'people-outline',
+        iconType: 'ionicons' as const,
+      },
+      {
+        name: 'spend',
+        title: 'Expenses',
+        icon: 'wallet-outline',
+        iconType: 'ionicons' as const,
+      },
+      {
+        name: 'settings',
+        title: 'Settings',
+        icon: 'settings-outline',
+        iconType: 'ionicons' as const,
+      },
+    ];
+  };
+
+  const tabs = getTabConfig(accountType);
+
   return (
     <Tabs
       screenOptions={{
@@ -64,60 +153,47 @@ export default function TabLayout() {
           </View>
         ),
       }}>
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Inventory',
-          tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon name="cube-outline" color={color} focused={focused} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="orders"
-        options={{
-          title: 'Orders',
-          tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon name="receipt-outline" color={color} focused={focused} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="analytics"
-        options={{
-          title: 'Analytics',
-          tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon name="bar-chart-outline" color={color} focused={focused} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="customers"
-        options={{
-          title: 'Customers',
-          tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon name="people-outline" color={color} focused={focused} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="spend"
-        options={{
-          title: 'Expenses',
-          tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon name="wallet-outline" color={color} focused={focused} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="settings"
-        options={{
-          title: 'Settings',
-          tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon name="settings-outline" color={color} focused={focused} />
-          ),
-        }}
-      />
+      {tabs.map((tab) => (
+        <Tabs.Screen
+          key={tab.name}
+          name={tab.name}
+          options={{
+            title: tab.title,
+            tabBarIcon: ({ color, focused }) => {
+              if (tab.iconType === 'material') {
+                return (
+                  <View style={[styles.iconContainer, focused && styles.iconContainerFocused]}>
+                    {focused ? (
+                      <LinearGradient
+                        colors={['rgba(43, 175, 242, 0.25)', 'rgba(31, 87, 245, 0.1)']}
+                        style={styles.focusedBackground}
+                      />
+                    ) : null}
+                    <Animated.View style={useAnimatedStyle(() => ({
+                      transform: [{ scale: withSpring(focused ? 1.1 : 1) }],
+                    }))}>
+                      <MaterialCommunityIcons
+                        size={focused ? 24 : 22}
+                        color={focused ? '#2BAFF2' : color}
+                        name={tab.icon}
+                      />
+                    </Animated.View>
+                  </View>
+                );
+              }
+
+              // Default to Ionicons
+              return (
+                <TabBarIcon
+                  name={tab.icon as keyof typeof Ionicons.glyphMap}
+                  color={color}
+                  focused={focused}
+                />
+              );
+            },
+          }}
+        />
+      ))}
     </Tabs>
   );
 }

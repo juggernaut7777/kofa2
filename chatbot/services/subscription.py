@@ -7,6 +7,9 @@ from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta
 from enum import Enum
 from pydantic import BaseModel
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class SubscriptionTier(str, Enum):
@@ -262,7 +265,7 @@ class SubscriptionService:
         
         self._subscriptions[vendor_id] = subscription
         
-        print(f"✅ Vendor {vendor_id} upgraded to {new_tier.value}")
+        logger.info(f"Vendor {vendor_id} upgraded to {new_tier.value}")
         return subscription
     
     def get_upgrade_url(self, vendor_id: str, target_tier: SubscriptionTier) -> str:

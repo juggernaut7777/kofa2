@@ -96,9 +96,9 @@ def test_chatbot(base_url="http://localhost:8000"):
 
 
 if __name__ == "__main__":
+    print("🤖 Testing KOFA Chatbot Purchase Flow Fix\n")
     print("Make sure the server is running: uvicorn chatbot.main:app --reload\n")
-    input("Press Enter to start testing...")
-    
+
     try:
         test_chatbot()
     except requests.exceptions.ConnectionError:

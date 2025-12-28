@@ -410,4 +410,109 @@ const styles = StyleSheet.create({
         fontSize: 13,
         marginTop: 16,
     },
+    accountTypesContainer: {
+        gap: 20,
+        marginBottom: 24,
+    },
+    accountTypeCard: {
+        borderRadius: 16,
+        overflow: 'hidden',
+        borderWidth: 2,
+        borderColor: 'transparent',
+    },
+    accountTypeCardSelected: {
+        borderColor: '#2BAFF2',
+        shadowColor: '#2BAFF2',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.3,
+        shadowRadius: 10,
+        elevation: 10,
+    },
+    accountTypeGradient: {
+        padding: 24,
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+    },
+    iconContainer: {
+        width: 60,
+        height: 60,
+        borderRadius: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 16,
+    },
+    accountTypeContent: {
+        flex: 1,
+    },
+    accountTypeTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#FFFFFF',
+        marginBottom: 4,
+    },
+    accountTypeSubtitle: {
+        fontSize: 14,
+        color: 'rgba(255,255,255,0.7)',
+        marginBottom: 12,
+    },
+    accountTypeDescription: {
+        fontSize: 13,
+        color: 'rgba(255,255,255,0.6)',
+        lineHeight: 18,
+        marginBottom: 16,
+    },
+    featuresContainer: {
+        gap: 6,
+    },
+    featureText: {
+        fontSize: 12,
+        color: 'rgba(255,255,255,0.8)',
+        fontWeight: '500',
+    },
+    selectionIndicator: {
+        marginLeft: 12,
+    },
+    noticeContainer: {
+        flexDirection: 'row',
+        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+        borderColor: 'rgba(245, 158, 11, 0.3)',
+        borderWidth: 1,
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 24,
+        alignItems: 'flex-start',
+    },
+    noticeText: {
+        fontSize: 13,
+        color: 'rgba(255,255,255,0.8)',
+        lineHeight: 18,
+        marginLeft: 12,
+        flex: 1,
+    },
+    noticeBold: {
+        fontWeight: '700',
+        color: '#F59E0B',
+    },
+    continueButton: {
+        borderRadius: 14,
+        overflow: 'hidden',
+    },
+    continueButtonDisabled: {
+        opacity: 0.5,
+    },
+    continueButtonGradient: {
+        flexDirection: 'row',
+        paddingVertical: 18,
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 8,
+    },
+    continueButtonText: {
+        color: '#FFF',
+        fontWeight: '700',
+        fontSize: 16,
+    },
+    continueButtonTextDisabled: {
+        color: 'rgba(255,255,255,0.5)',
+    },
 });

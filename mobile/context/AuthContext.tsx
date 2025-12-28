@@ -6,6 +6,9 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 import { Session, User } from '@supabase/supabase-js';
 import { supabase, getSession, signIn, signUp, signOut, hasCompletedOnboarding, setOnboardingComplete } from '@/lib/auth';
 
+// Account types
+export type AccountType = 'sales' | 'logistics';
+
 // Auth context type
 interface AuthContextType {
     user: User | null;
@@ -13,10 +16,13 @@ interface AuthContextType {
     isLoading: boolean;
     isAuthenticated: boolean;
     hasOnboarded: boolean;
+    accountType: AccountType | null;
+    businessData: any;
     signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
     signUp: (email: string, password: string, businessName?: string) => Promise<{ success: boolean; error?: string }>;
     signOut: () => Promise<void>;
-    completeOnboarding: () => Promise<void>;
+    completeOnboarding: (businessData?: any) => Promise<void>;
+    updateAccountType: (type: AccountType) => Promise<void>;
 }
 
 // Create context with default values
@@ -26,10 +32,13 @@ const AuthContext = createContext<AuthContextType>({
     isLoading: true,
     isAuthenticated: false,
     hasOnboarded: false,
+    accountType: null,
+    businessData: null,
     signIn: async () => ({ success: false }),
     signUp: async () => ({ success: false }),
     signOut: async () => { },
     completeOnboarding: async () => { },
+    updateAccountType: async () => { },
 });
 
 // Hook to use auth context
@@ -51,6 +60,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const [session, setSession] = useState<Session | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [hasOnboarded, setHasOnboarded] = useState(false);
+    const [accountType, setAccountType] = useState<AccountType | null>(null);
+    const [businessData, setBusinessData] = useState<any>(null);
 
     // Initialize auth state on mount
     useEffect(() => {
@@ -65,10 +76,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 if (event === 'SIGNED_IN' && newSession) {
                     const onboarded = await hasCompletedOnboarding();
                     setHasOnboarded(onboarded);
+
+                    // Load account type and business data if onboarded
+                    if (onboarded) {
+                        // TODO: Load from AsyncStorage or backend
+                        // For now, we'll set defaults
+                    }
                 }
 
                 if (event === 'SIGNED_OUT') {
                     setHasOnboarded(false);
+                    setAccountType(null);
+                    setBusinessData(null);
                 }
             }
         );
@@ -127,9 +146,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
 
     // Complete onboarding handler
-    async function handleCompleteOnboarding() {
+    async function handleCompleteOnboarding(businessInfo?: any) {
+        if (businessInfo) {
+            setAccountType(businessInfo.accountType);
+            setBusinessData(businessInfo);
+            // TODO: Save to AsyncStorage or backend
+        }
         await setOnboardingComplete();
         setHasOnboarded(true);
+    }
+
+    // Update account type handler
+    async function handleUpdateAccountType(type: AccountType) {
+        setAccountType(type);
+        // TODO: Save to backend/AsyncStorage
     }
 
     const value: AuthContextType = {
@@ -138,10 +168,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
         isLoading,
         isAuthenticated: !!user,
         hasOnboarded,
+        accountType,
+        businessData,
         signIn: handleSignIn,
         signUp: handleSignUp,
         signOut: handleSignOut,
         completeOnboarding: handleCompleteOnboarding,
+        updateAccountType: handleUpdateAccountType,
     };
 
     return (

@@ -7,6 +7,9 @@ from typing import Optional, Dict, Any, List
 from datetime import datetime
 from enum import Enum
 from pydantic import BaseModel
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class ConsentType(str, Enum):
@@ -169,7 +172,7 @@ class PrivacyService:
         
         self._consents[key][consent_type] = record
         
-        print(f"📋 Consent recorded: {consent_type.value} = {granted} for {customer_phone}")
+        logger.info(f"Consent recorded: {consent_type.value} = {granted} for {customer_phone}")
         return record
     
     def revoke_consent(
@@ -197,7 +200,7 @@ class PrivacyService:
         consent.granted = False
         consent.revoked_at = datetime.now().isoformat()
         
-        print(f"🚫 Consent revoked: {consent_type.value} for {customer_phone}")
+        logger.info(f"Consent revoked: {consent_type.value} for {customer_phone}")
         return True
     
     def get_all_consents(
@@ -236,7 +239,7 @@ class PrivacyService:
         self._data_requests.append(request)
         
         # In production: Queue for processing, notify vendor
-        print(f"🗑️ Data deletion request: {request_id}")
+        logger.info(f"Data deletion request created: {request_id}")
         
         return {
             "request_id": request_id,
