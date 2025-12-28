@@ -2,6 +2,9 @@
 import sys
 import os
 from typing import Optional
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Add parent directory to path to import nairaramp utils
 # Adjust path based on your project structure
@@ -58,7 +61,7 @@ class PaymentManager:
             return payment_link
             
         except Exception as e:
-            print(f"Error generating payment link: {e}")
+            logger.error(f"Error generating payment link for order {order_id}: {e}")
             return None
     
     def verify_payment(self, payment_ref: str) -> bool:
@@ -79,7 +82,7 @@ class PaymentManager:
             return True
             
         except Exception as e:
-            print(f"Error verifying payment: {e}")
+            logger.error(f"Error verifying payment {payment_ref}: {e}")
             return False
     
     def format_naira(self, amount: float | int) -> str:

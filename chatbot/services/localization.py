@@ -4,6 +4,9 @@ Supports English, Nigerian Pidgin, Hausa, Igbo, and Yoruba for national expansio
 """
 from typing import Dict, Optional
 from enum import Enum
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class Language(str, Enum):
@@ -204,7 +207,7 @@ class LocalizationService:
     def set_user_language(self, user_id: str, language: Language) -> None:
         """Set language preference for a user."""
         self._user_languages[user_id] = language
-        print(f"🌍 Language set to {language.value} for {user_id}")
+        logger.info(f"Language set to {language.value} for user {user_id}")
     
     def translate(
         self, 

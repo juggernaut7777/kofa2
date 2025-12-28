@@ -255,6 +255,36 @@ INSERT INTO products (vendor_id, name, price_ngn, stock_level, voice_tags, descr
 ON CONFLICT DO NOTHING;
 
 -- ===========================================
+-- ATOMIC STOCK DECREMENT RPC FUNCTION
+-- ===========================================
+CREATE OR REPLACE FUNCTION decrement_product_stock(
+    p_product_id UUID,
+    p_vendor_id UUID,
+    p_quantity INTEGER
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    rows_affected INTEGER;
+BEGIN
+    -- Atomic update: check stock and decrement in one statement
+    UPDATE products
+    SET stock_level = stock_level - p_quantity,
+        updated_at = NOW()
+    WHERE id = p_product_id
+      AND vendor_id = p_vendor_id
+      AND stock_level >= p_quantity;
+
+    GET DIAGNOSTICS rows_affected = ROW_COUNT;
+
+    -- Return true if update succeeded (stock was available)
+    RETURN rows_affected > 0;
+END;
+$$;
+
+-- ===========================================
 -- MIGRATION SCRIPT (for existing data)
 -- Run this separately if you have existing data
 -- ===========================================

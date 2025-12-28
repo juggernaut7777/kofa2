@@ -1,23 +1,187 @@
 /**
- * KOFA Onboarding Setup - Business Setup Wizard
+ * KOFA Account Type Selection - Choose Sales or Logistics
  */
 import React, { useState } from 'react';
 import {
     View,
     Text,
-    TextInput,
     TouchableOpacity,
     StyleSheet,
     ScrollView,
     Alert,
-    ActivityIndicator,
-    KeyboardAvoidingView,
-    Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useAuth } from '@/context/AuthContext';
+
+const ACCOUNT_TYPES = [
+    {
+        id: 'sales',
+        title: 'Sales & Retail',
+        subtitle: 'For shops, stores, and online sellers',
+        icon: 'storefront',
+        iconType: 'ionicons',
+        color: '#2BAFF2',
+        features: [
+            '📦 Inventory Management',
+            '🤖 AI Sales Chatbot',
+            '💰 Revenue Tracking',
+            '📱 Customer Orders',
+        ],
+        description: 'Perfect for fashion stores, electronics shops, beauty products, and online retailers.'
+    },
+    {
+        id: 'logistics',
+        title: 'Logistics & Delivery',
+        subtitle: 'For delivery companies and couriers',
+        icon: 'truck-delivery',
+        iconType: 'material',
+        color: '#22C55E',
+        features: [
+            '🚚 Fleet Management',
+            '📍 Route Optimization',
+            '⏰ Delivery Tracking',
+            '💳 Payment Collection',
+        ],
+        description: 'Ideal for delivery services, logistics companies, and last-mile delivery providers.'
+    }
+];
+
+export default function AccountTypeSelection() {
+    const [selectedType, setSelectedType] = useState(null);
+
+    const handleContinue = () => {
+        if (!selectedType) {
+            Alert.alert('Account Type Required', 'Please select your account type to continue.');
+            return;
+        }
+
+        // Store selected account type (will be used in business setup)
+        // For now, just navigate to setup
+        router.push({
+            pathname: '/(onboarding)/business-setup',
+            params: { accountType: selectedType }
+        });
+    };
+
+    const renderAccountType = (type) => (
+        <TouchableOpacity
+            key={type.id}
+            style={[
+                styles.accountTypeCard,
+                selectedType === type.id && styles.accountTypeCardSelected
+            ]}
+            onPress={() => setSelectedType(type.id)}
+        >
+            <LinearGradient
+                colors={selectedType === type.id ?
+                    [type.color, type.color + 'CC'] :
+                    ['rgba(255,255,255,0.05)', 'rgba(255,255,255,0.02)']
+                }
+                style={styles.accountTypeGradient}
+            >
+                {/* Icon */}
+                <View style={[styles.iconContainer, { backgroundColor: `${type.color}20` }]}>
+                    {type.iconType === 'ionicons' ? (
+                        <Ionicons name={type.icon} size={32} color={type.color} />
+                    ) : (
+                        <MaterialCommunityIcons name={type.icon} size={32} color={type.color} />
+                    )}
+                </View>
+
+                {/* Content */}
+                <View style={styles.accountTypeContent}>
+                    <Text style={styles.accountTypeTitle}>{type.title}</Text>
+                    <Text style={styles.accountTypeSubtitle}>{type.subtitle}</Text>
+
+                    <Text style={styles.accountTypeDescription}>{type.description}</Text>
+
+                    {/* Features */}
+                    <View style={styles.featuresContainer}>
+                        {type.features.map((feature, index) => (
+                            <Text key={index} style={styles.featureText}>{feature}</Text>
+                        ))}
+                    </View>
+                </View>
+
+                {/* Selection Indicator */}
+                {selectedType === type.id && (
+                    <View style={styles.selectionIndicator}>
+                        <Ionicons name="checkmark-circle" size={24} color={type.color} />
+                    </View>
+                )}
+            </LinearGradient>
+        </TouchableOpacity>
+    );
+
+    return (
+        <View style={styles.container}>
+            <LinearGradient
+                colors={['#05090E', '#0D1117', '#05090E']}
+                style={StyleSheet.absoluteFillObject}
+            />
+
+            <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.scrollContent}
+            >
+                {/* Header */}
+                <View style={styles.header}>
+                    <LinearGradient
+                        colors={['#2BAFF2', '#1F57F5']}
+                        style={styles.headerIconBadge}
+                    >
+                        <Ionicons name="business" size={32} color="#FFF" />
+                    </LinearGradient>
+                    <Text style={styles.title}>Choose Your Account Type</Text>
+                    <Text style={styles.subtitle}>
+                        Select whether you're a seller/retailer or a logistics/delivery company
+                    </Text>
+                </View>
+
+                {/* Account Type Selection */}
+                <View style={styles.accountTypesContainer}>
+                    {ACCOUNT_TYPES.map(renderAccountType)}
+                </View>
+
+                {/* Important Notice */}
+                <View style={styles.noticeContainer}>
+                    <Ionicons name="information-circle" size={20} color="#F59E0B" />
+                    <Text style={styles.noticeText}>
+                        <Text style={styles.noticeBold}>Important:</Text> You can create separate accounts for both sales and logistics operations, but you cannot switch account types within a single account.
+                    </Text>
+                </View>
+
+                {/* Continue Button */}
+                <TouchableOpacity
+                    style={[
+                        styles.continueButton,
+                        !selectedType && styles.continueButtonDisabled
+                    ]}
+                    onPress={handleContinue}
+                    disabled={!selectedType}
+                >
+                    <LinearGradient
+                        colors={selectedType ? ['#2BAFF2', '#1F57F5'] : ['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']}
+                        style={styles.continueButtonGradient}
+                    >
+                        <Text style={[
+                            styles.continueButtonText,
+                            !selectedType && styles.continueButtonTextDisabled
+                        ]}>
+                            Continue
+                        </Text>
+                        <Ionicons
+                            name="arrow-forward"
+                            size={20}
+                            color={selectedType ? "#FFF" : "rgba(255,255,255,0.3)"}
+                        />
+                    </LinearGradient>
+                </TouchableOpacity>
+            </ScrollView>
+        </View>
+    );
+}
 
 export default function OnboardingSetup() {
     const [businessName, setBusinessName] = useState('');

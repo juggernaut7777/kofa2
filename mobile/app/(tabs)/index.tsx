@@ -2,12 +2,13 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, RefreshControl, Modal, TextInput, ScrollView, Alert, KeyboardAvoidingView, Platform, Image, FlatList } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown, FadeInUp, FadeIn } from 'react-native-reanimated';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors, shadows, borderRadius, spacing } from '@/constants';
 import { fetchProducts, formatNaira, Product, createProduct, NewProduct, updateProduct, restockProduct, uploadProductImage } from '@/lib/api';
 import * as ImagePicker from 'expo-image-picker';
 import VoiceSearch from '@/components/VoiceSearch';
 import { compressForProduct } from '@/lib/imageUtils';
+import { useAuth } from '@/context/AuthContext';
 
 const AnimatedView = Animated.createAnimatedComponent(View);
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
@@ -25,7 +26,19 @@ function getStockStatus(level: number): { color: string; label: string; bgColor:
 
 const CATEGORIES = ['Footwear', 'Clothing', 'Accessories', 'Electronics', 'Food', 'Other'];
 
-export default function InventoryScreen() {
+export default function MainScreen() {
+  const { accountType } = useAuth();
+
+  // If logistics account, show fleet screen
+  if (accountType === 'logistics') {
+    return <FleetScreen />;
+  }
+
+  // Default to inventory screen for sales accounts
+  return <InventoryScreen />;
+}
+
+function InventoryScreen() {
   const [products, setProducts] = React.useState<Product[]>([]);
   const [searchQuery, setSearchQuery] = React.useState('');
   const [refreshing, setRefreshing] = React.useState(false);
@@ -779,4 +792,187 @@ const styles = StyleSheet.create({
   removeImageButton: { alignSelf: 'center', paddingVertical: 8, paddingHorizontal: 16 },
   removeImageText: { color: '#EF4444', fontSize: 13, fontWeight: '600' },
   productImagePlaceholder: { width: 56, height: 56, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' },
+  ...fleetStyles,
+});
+
+// Fleet Management Screen for Logistics Companies
+function FleetScreen() {
+  const [vehicles, setVehicles] = React.useState([]);
+  const [drivers, setDrivers] = React.useState([]);
+  const [refreshing, setRefreshing] = React.useState(false);
+  const [showAddVehicle, setShowAddVehicle] = React.useState(false);
+
+  const loadFleetData = async () => {
+    try {
+      setRefreshing(true);
+      // TODO: Load fleet data from API
+      // Mock data for now
+      setVehicles([
+        { id: '1', name: 'Toyota Hiace', plate: 'ABC-123-XY', status: 'active', driver: 'John Doe' },
+        { id: '2', name: 'Honda CRV', plate: 'DEF-456-ZW', status: 'maintenance', driver: 'Jane Smith' },
+      ]);
+      setDrivers([
+        { id: '1', name: 'John Doe', phone: '+2348012345678', status: 'active' },
+        { id: '2', name: 'Jane Smith', phone: '+2348012345679', status: 'offline' },
+      ]);
+    } catch (error) {
+      console.error('Failed to load fleet data:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  React.useEffect(() => {
+    loadFleetData();
+  }, []);
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'active': return '#22C55E';
+      case 'maintenance': return '#F59E0B';
+      case 'offline': return '#EF4444';
+      default: return '#6B7280';
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      <LinearGradient
+        colors={['#05090E', '#0D1117', '#05090E']}
+        style={StyleSheet.absoluteFillObject}
+      />
+
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.headerContent}>
+          <MaterialCommunityIcons name="truck-delivery" size={28} color="#2BAFF2" />
+          <Text style={styles.headerTitle}>Fleet Management</Text>
+          <Text style={styles.headerSubtitle}>Manage your delivery vehicles and drivers</Text>
+        </View>
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={() => setShowAddVehicle(true)}
+        >
+          <LinearGradient
+            colors={['#2BAFF2', '#1F57F5']}
+            style={styles.addButtonGradient}
+          >
+            <Ionicons name="add" size={20} color="#FFF" />
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView
+        style={styles.content}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={loadFleetData}
+            tintColor="#2BAFF2"
+          />
+        }
+      >
+        {/* Fleet Stats */}
+        <View style={styles.statsContainer}>
+          <View style={styles.statCard}>
+            <MaterialCommunityIcons name="truck-delivery" size={24} color="#22C55E" />
+            <Text style={styles.statNumber}>{vehicles.filter(v => v.status === 'active').length}</Text>
+            <Text style={styles.statLabel}>Active Vehicles</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Ionicons name="people" size={24} color="#2BAFF2" />
+            <Text style={styles.statNumber}>{drivers.filter(d => d.status === 'active').length}</Text>
+            <Text style={styles.statLabel}>Active Drivers</Text>
+          </View>
+          <View style={styles.statCard}>
+            <MaterialCommunityIcons name="routes" size={24} color="#F59E0B" />
+            <Text style={styles.statNumber}>12</Text>
+            <Text style={styles.statLabel}>Routes Today</Text>
+          </View>
+        </View>
+
+        {/* Vehicles Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>🚛 Vehicles</Text>
+          {vehicles.map((vehicle) => (
+            <AnimatedView
+              key={vehicle.id}
+              entering={FadeInDown.delay(vehicle.id * 100)}
+              style={styles.card}
+            >
+              <View style={styles.cardHeader}>
+                <View style={styles.cardIcon}>
+                  <MaterialCommunityIcons name="truck" size={20} color="#2BAFF2" />
+                </View>
+                <View style={styles.cardInfo}>
+                  <Text style={styles.cardTitle}>{vehicle.name}</Text>
+                  <Text style={styles.cardSubtitle}>{vehicle.plate}</Text>
+                </View>
+                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(vehicle.status) + '20' }]}>
+                  <Text style={[styles.statusText, { color: getStatusColor(vehicle.status) }]}>
+                    {vehicle.status}
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.cardDetail}>Driver: {vehicle.driver}</Text>
+            </AnimatedView>
+          ))}
+        </View>
+
+        {/* Drivers Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>👥 Drivers</Text>
+          {drivers.map((driver) => (
+            <AnimatedView
+              key={driver.id}
+              entering={FadeInDown.delay(driver.id * 100)}
+              style={styles.card}
+            >
+              <View style={styles.cardHeader}>
+                <View style={styles.cardIcon}>
+                  <Ionicons name="person" size={20} color="#22C55E" />
+                </View>
+                <View style={styles.cardInfo}>
+                  <Text style={styles.cardTitle}>{driver.name}</Text>
+                  <Text style={styles.cardSubtitle}>{driver.phone}</Text>
+                </View>
+                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(driver.status) + '20' }]}>
+                  <Text style={[styles.statusText, { color: getStatusColor(driver.status) }]}>
+                    {driver.status}
+                  </Text>
+                </View>
+              </View>
+            </AnimatedView>
+          ))}
+        </View>
+      </ScrollView>
+    </View>
+  );
+}
+
+// Fleet screen styles (added to existing styles)
+const fleetStyles = StyleSheet.create({
+  container: { flex: 1 },
+  header: { paddingTop: 60, paddingHorizontal: 20, paddingBottom: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  headerContent: { flex: 1 },
+  headerTitle: { fontSize: 24, fontWeight: '700', color: '#FFFFFF', marginBottom: 4 },
+  headerSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.6)' },
+  addButton: { width: 44, height: 44, borderRadius: 12, overflow: 'hidden' },
+  addButtonGradient: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  content: { flex: 1, paddingHorizontal: 20 },
+  statsContainer: { flexDirection: 'row', gap: 12, marginBottom: 24 },
+  statCard: { flex: 1, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 12, padding: 16, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  statNumber: { fontSize: 24, fontWeight: '700', color: '#FFFFFF', marginTop: 8 },
+  statLabel: { fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 4 },
+  section: { marginBottom: 24 },
+  sectionTitle: { fontSize: 18, fontWeight: '600', color: '#FFFFFF', marginBottom: 12 },
+  card: { backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 12, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  cardIcon: { width: 40, height: 40, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  cardInfo: { flex: 1 },
+  cardTitle: { fontSize: 16, fontWeight: '600', color: '#FFFFFF' },
+  cardSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
+  cardDetail: { fontSize: 14, color: 'rgba(255,255,255,0.5)' },
+  statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  statusText: { fontSize: 12, fontWeight: '600' },
 });

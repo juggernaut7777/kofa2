@@ -7,6 +7,9 @@ from .database import SessionLocal
 from .models import Product as ProductModel, User as UserModel
 import uuid
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Default vendor/user ID for single-vendor mode
 # In production, this should come from authentication context
@@ -285,26 +288,62 @@ class InventoryManager:
 
     def decrement_stock(self, product_id: str, quantity: int) -> bool:
         """
-        Decrement stock for a product. Returns True if successful, False if insufficient stock.
+        Atomically decrement stock for a product. Returns True if successful, False if insufficient stock.
+        Uses Supabase RPC function for atomic operations to prevent race conditions.
+        """
+        try:
+            # Use Supabase RPC for atomic stock decrement
+            # This is more secure and prevents SQL injection
+            result = self.supabase.rpc(
+                'decrement_product_stock',
+                {
+                    'p_product_id': product_id,
+                    'p_vendor_id': self.user_id,
+                    'p_quantity': quantity
+                }
+            ).execute()
+
+            # RPC returns boolean indicating success
+            return result.data if result.data is not None else False
+
+        except Exception as e:
+            # Fallback to atomic SQL update if RPC fails
+            logger.warning(f"RPC decrement_stock failed for product {product_id}, falling back to SQL update: {e}")
+            return self._decrement_stock_fallback(product_id, quantity)
+
+    def _decrement_stock_fallback(self, product_id: str, quantity: int) -> bool:
+        """
+        Fallback method using atomic SQL update if RPC is not available.
         """
         db = self._get_db()
         try:
-            product = db.query(ProductModel).filter(
-                ProductModel.id == product_id,
-                ProductModel.user_id == self.user_id
-            ).first()
+            # Use atomic SQL update to prevent race conditions
+            # This checks stock availability AND decrements in a single statement
+            result = db.execute(
+                """
+                UPDATE products
+                SET stock_level = stock_level - :quantity,
+                    updated_at = NOW()
+                WHERE id = :product_id
+                  AND vendor_id = :vendor_id
+                  AND stock_level >= :quantity
+                """,
+                {
+                    "product_id": product_id,
+                    "vendor_id": self.user_id,
+                    "quantity": quantity
+                }
+            )
 
-            if not product:
-                return False
-
-            if product.stock_level < quantity:
-                return False
-
-            product.stock_level -= quantity
             db.commit()
-            return True
+
+            # Check if the update affected any rows
+            # If stock_level < quantity, no rows will be updated
+            return result.rowcount > 0
+
         except Exception as e:
             db.rollback()
+            logger.error(f"Error in decrement_stock fallback for product {product_id}: {e}")
             return False
         finally:
             self._close_db()
