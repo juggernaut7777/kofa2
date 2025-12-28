@@ -4,7 +4,7 @@ const Layout = ({ children }) => {
   const location = useLocation()
   
   const navItems = [
-    { path: '/', label: 'Dashboard', icon: '📊' },
+    { path: '/dashboard', label: 'Dashboard', icon: '📊' },
     { path: '/products', label: 'Products', icon: '📦' },
     { path: '/orders', label: 'Orders', icon: '🛒' },
     { path: '/subscription', label: 'Plans', icon: '💎' },
@@ -18,11 +18,20 @@ const Layout = ({ children }) => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
-              <h1 className="text-xl font-bold text-gray-900">KOFA</h1>
-              <span className="ml-2 text-xs text-gray-500 hidden sm:inline">Commerce Engine</span>
+              <Link to="/" className="flex items-center hover:opacity-80 transition-opacity">
+                <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-2 rounded-lg">
+                  <span className="text-white font-bold text-lg">KOFA</span>
+                </div>
+                <span className="ml-3 text-sm font-medium text-gray-600 hidden sm:block">Commerce Engine</span>
+              </Link>
             </div>
-            <div className="text-sm text-gray-600 hidden sm:block">
-              AI-Powered Vendor Platform
+            <div className="flex items-center space-x-4">
+              <div className="hidden sm:flex items-center space-x-2 bg-green-100 px-3 py-1 rounded-full">
+                <span className="text-green-800 text-xs font-medium">🤖 Active</span>
+              </div>
+              <Link to="/subscription" className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 text-sm font-medium">
+                Upgrade
+              </Link>
             </div>
           </div>
         </div>
