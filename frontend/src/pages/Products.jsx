@@ -1,23 +1,80 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { apiCall, API_ENDPOINTS } from '../config/api'
 import { useProducts } from '../hooks/useProducts'
+import { useImageUpload } from '../hooks/useImageUpload'
+import { useAuth } from '../context/AuthContext'
 
 const Products = () => {
+  const { user } = useAuth()
   const { products, loading, error, createProduct, loadProducts } = useProducts()
+  const { uploadImage, uploading, error: uploadError, clearError } = useImageUpload()
   const [showAddForm, setShowAddForm] = useState(false)
   const [creating, setCreating] = useState(false)
+  const [imagePreview, setImagePreview] = useState(null)
+  const [imageFile, setImageFile] = useState(null)
+  const fileInputRef = useRef(null)
   const [formData, setFormData] = useState({
     name: '',
     price_ngn: '',
     stock_level: '',
     description: '',
     category: '',
+    image_url: ''
   })
+
+  // Check free tier limit (50 products)
+  const FREE_TIER_LIMIT = 50
+  const isAtLimit = user?.plan === 'free' && products.length >= FREE_TIER_LIMIT
+
+  const handleImageSelect = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validate
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+    if (!validTypes.includes(file.type)) {
+      alert('Please upload a valid image (JPEG, PNG, WebP, or GIF)')
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image must be less than 5MB')
+      return
+    }
+
+    setImageFile(file)
+
+    // Create preview
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      setImagePreview(e.target.result)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const removeImage = () => {
+    setImageFile(null)
+    setImagePreview(null)
+    setFormData({ ...formData, image_url: '' })
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
       setCreating(true)
+
+      let imageUrl = formData.image_url
+
+      // Upload image if selected
+      if (imageFile) {
+        const result = await uploadImage(imageFile)
+        if (result?.url) {
+          imageUrl = result.url
+        }
+      }
 
       // Prepare product data for API
       const productData = {
@@ -26,14 +83,17 @@ const Products = () => {
         stock_level: parseInt(formData.stock_level),
         description: formData.description || '',
         category: formData.category || '',
-        voice_tags: formData.name.toLowerCase().split(' '), // Auto-generate voice tags from name
+        image_url: imageUrl,
+        voice_tags: formData.name.toLowerCase().split(' '),
       }
 
       await createProduct(productData)
 
       // Reset form and close
       setShowAddForm(false)
-      setFormData({ name: '', price_ngn: '', stock_level: '', description: '', category: '' })
+      setFormData({ name: '', price_ngn: '', stock_level: '', description: '', category: '', image_url: '' })
+      setImageFile(null)
+      setImagePreview(null)
 
     } catch (error) {
       console.error('Failed to create product:', error)
@@ -55,14 +115,17 @@ const Products = () => {
               </h1>
               <p className="text-gray-600 mt-1 flex items-center">
                 <span className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
-                Live inventory management system
+                {products.length} products • {user?.plan === 'free' ? `${FREE_TIER_LIMIT - products.length} slots remaining` : 'Unlimited'}
               </p>
             </div>
             <button
               onClick={() => setShowAddForm(!showAddForm)}
-              className="group relative bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-3 rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
+              disabled={isAtLimit && !showAddForm}
+              className={`group relative text-white px-6 py-3 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl ${isAtLimit
+                  ? 'bg-gray-400 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700'
+                }`}
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-indigo-400 rounded-xl opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
               <span className="relative flex items-center">
                 {showAddForm ? (
                   <>
@@ -82,6 +145,22 @@ const Products = () => {
               </span>
             </button>
           </div>
+
+          {/* Free Tier Limit Warning */}
+          {isAtLimit && (
+            <div className="mt-4 bg-amber-50 border border-amber-200 rounded-xl p-4">
+              <div className="flex items-center">
+                <span className="text-2xl mr-3">⚠️</span>
+                <div>
+                  <p className="text-amber-800 font-medium">Product limit reached</p>
+                  <p className="text-amber-700 text-sm">You've reached the {FREE_TIER_LIMIT} product limit on the free plan. Upgrade to add more products.</p>
+                </div>
+                <a href="/subscription" className="ml-auto bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:from-blue-700 hover:to-indigo-700">
+                  Upgrade Now
+                </a>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Add Product Form - Glassmorphism Design */}
@@ -102,22 +181,78 @@ const Products = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Image Upload Section */}
+              <div className="relative">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Product Image
+                </label>
+                <div className="flex items-start space-x-4">
+                  {/* Image Preview / Upload Area */}
+                  <div className="relative">
+                    {imagePreview ? (
+                      <div className="relative w-32 h-32 rounded-xl overflow-hidden border-2 border-blue-200 shadow-lg">
+                        <img
+                          src={imagePreview}
+                          alt="Preview"
+                          className="w-full h-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={removeImage}
+                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 shadow-lg"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ) : (
+                      <div
+                        onClick={() => fileInputRef.current?.click()}
+                        className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-all"
+                      >
+                        <svg className="w-8 h-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <span className="text-xs text-gray-500">Click to upload</span>
+                      </div>
+                    )}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      onChange={handleImageSelect}
+                      className="hidden"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm text-gray-500 mb-2">
+                      Upload a product image (JPEG, PNG, WebP, or GIF). Max 5MB.
+                    </p>
+                    {uploading && (
+                      <div className="flex items-center text-blue-600 text-sm">
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent mr-2"></div>
+                        Uploading image...
+                      </div>
+                    )}
+                    {uploadError && (
+                      <p className="text-red-500 text-sm">{uploadError}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="relative">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Product Name <span className="text-red-500">*</span>
                   </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      required
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="w-full px-4 py-3 bg-white/50 backdrop-blur-sm border border-gray-200/50 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 outline-none"
-                      placeholder="e.g., Samsung Galaxy S21"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-indigo-500/5 rounded-xl pointer-events-none"></div>
-                  </div>
+                  <input
+                    type="text"
+                    required
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="w-full px-4 py-3 bg-white/50 backdrop-blur-sm border border-gray-200/50 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 outline-none"
+                    placeholder="e.g., Samsung Galaxy S21"
+                  />
                 </div>
 
                 <div className="relative">
@@ -145,42 +280,28 @@ const Products = () => {
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Stock Level <span className="text-red-500">*</span>
                   </label>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      required
-                      min="0"
-                      value={formData.stock_level}
-                      onChange={(e) => setFormData({ ...formData, stock_level: e.target.value })}
-                      className="w-full px-4 py-3 bg-white/50 backdrop-blur-sm border border-gray-200/50 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 outline-none"
-                      placeholder="10"
-                    />
-                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                      </svg>
-                    </div>
-                  </div>
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    value={formData.stock_level}
+                    onChange={(e) => setFormData({ ...formData, stock_level: e.target.value })}
+                    className="w-full px-4 py-3 bg-white/50 backdrop-blur-sm border border-gray-200/50 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 outline-none"
+                    placeholder="10"
+                  />
                 </div>
 
                 <div className="relative">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Category
                   </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={formData.category}
-                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                      className="w-full px-4 py-3 bg-white/50 backdrop-blur-sm border border-gray-200/50 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 outline-none"
-                      placeholder="Electronics, Clothing, etc."
-                    />
-                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                      </svg>
-                    </div>
-                  </div>
+                  <input
+                    type="text"
+                    value={formData.category}
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    className="w-full px-4 py-3 bg-white/50 backdrop-blur-sm border border-gray-200/50 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 outline-none"
+                    placeholder="Electronics, Clothing, etc."
+                  />
                 </div>
               </div>
 
@@ -200,16 +321,15 @@ const Products = () => {
               <div className="flex justify-end pt-4">
                 <button
                   type="submit"
-                  disabled={creating}
+                  disabled={creating || uploading}
                   className="group relative bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-4 rounded-xl hover:from-blue-700 hover:to-indigo-700 disabled:from-blue-400 disabled:to-indigo-400 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl font-semibold text-lg flex items-center"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-indigo-400 rounded-xl opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
-                  {creating && (
+                  {(creating || uploading) && (
                     <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-3"></div>
                   )}
                   <span className="relative flex items-center">
-                    {creating ? 'Creating Product...' : 'Create Product'}
-                    {!creating && (
+                    {creating ? 'Creating Product...' : uploading ? 'Uploading Image...' : 'Create Product'}
+                    {!creating && !uploading && (
                       <svg className="w-5 h-5 ml-2 transition-transform duration-300 group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                       </svg>
@@ -225,11 +345,9 @@ const Products = () => {
         {error && (
           <div className="backdrop-blur-lg bg-red-50/80 border border-red-200/50 rounded-xl p-4 mb-6 shadow-lg">
             <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <svg className="w-8 h-8 text-red-500 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                </svg>
-              </div>
+              <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
               <div className="ml-3">
                 <p className="text-red-800 font-semibold">Connection Error</p>
                 <p className="text-red-600 text-sm mt-1">{error}</p>
@@ -241,21 +359,33 @@ const Products = () => {
         {/* Products List */}
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20">
-            <div className="relative">
-              <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-600"></div>
-              <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-indigo-600 animate-spin" style={{animationDirection: 'reverse', animationDuration: '1.5s'}}></div>
-            </div>
+            <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-600"></div>
             <p className="text-gray-600 mt-6 text-lg font-medium">Loading your products...</p>
-            <p className="text-gray-500 mt-2">Connecting to inventory system</p>
           </div>
         ) : products.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {products.map((product, index) => (
               <div
                 key={product.id || index}
-                className="group backdrop-blur-lg bg-white/70 rounded-2xl shadow-xl hover:shadow-2xl border border-white/20 transition-all duration-500 transform hover:scale-105 hover:-translate-y-2"
-                style={{animationDelay: `${index * 100}ms`}}
+                className="group backdrop-blur-lg bg-white/70 rounded-2xl shadow-xl hover:shadow-2xl border border-white/20 transition-all duration-500 transform hover:scale-105 hover:-translate-y-2 overflow-hidden"
               >
+                {/* Product Image */}
+                {product.image_url ? (
+                  <div className="h-40 overflow-hidden">
+                    <img
+                      src={product.image_url}
+                      alt={product.name}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    />
+                  </div>
+                ) : (
+                  <div className="h-40 bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center">
+                    <svg className="w-16 h-16 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                    </svg>
+                  </div>
+                )}
+
                 <div className="p-6">
                   {/* Product Header */}
                   <div className="flex items-start justify-between mb-4">
@@ -267,13 +397,6 @@ const Products = () => {
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-800 border border-blue-200">
                           {product.category || 'Uncategorized'}
                         </span>
-                      </div>
-                    </div>
-                    <div className="ml-4">
-                      <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center shadow-lg">
-                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                        </svg>
                       </div>
                     </div>
                   </div>
@@ -296,37 +419,26 @@ const Products = () => {
                         {product.stock_level || 0} in stock
                       </span>
                     </div>
-                    <div className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                      (product.stock_level || 0) > 10
+                    <div className={`px-3 py-1 rounded-full text-xs font-semibold ${(product.stock_level || 0) > 10
                         ? 'bg-green-100 text-green-800 border border-green-200'
                         : (product.stock_level || 0) > 0
-                        ? 'bg-yellow-100 text-yellow-800 border border-yellow-200'
-                        : 'bg-red-100 text-red-800 border border-red-200'
-                    }`}>
+                          ? 'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                          : 'bg-red-100 text-red-800 border border-red-200'
+                      }`}>
                       {(product.stock_level || 0) > 10 ? 'Well Stocked' :
-                       (product.stock_level || 0) > 0 ? 'Low Stock' : 'Out of Stock'}
+                        (product.stock_level || 0) > 0 ? 'Low Stock' : 'Out of Stock'}
                     </div>
                   </div>
-
-                  {/* Hover Effect Overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-indigo-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
                 </div>
               </div>
             ))}
           </div>
         ) : (
           <div className="backdrop-blur-lg bg-white/70 rounded-2xl shadow-xl border border-white/20 p-16 text-center">
-            <div className="relative">
-              <div className="w-24 h-24 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                <svg className="w-12 h-12 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                </svg>
-              </div>
-              <div className="absolute -top-2 -right-2 w-8 h-8 bg-gradient-to-r from-green-400 to-blue-500 rounded-full flex items-center justify-center">
-                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-              </div>
+            <div className="w-24 h-24 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
+              <svg className="w-12 h-12 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              </svg>
             </div>
             <h3 className="text-2xl font-bold text-gray-900 mb-3">Your inventory is empty</h3>
             <p className="text-gray-600 mb-8 max-w-md mx-auto">
@@ -334,9 +446,8 @@ const Products = () => {
             </p>
             <button
               onClick={() => setShowAddForm(true)}
-              className="group relative bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-4 rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl font-semibold text-lg inline-flex items-center"
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-4 rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 transform hover:scale-105 shadow-lg font-semibold text-lg inline-flex items-center"
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-indigo-400 rounded-xl opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
               <svg className="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
@@ -350,4 +461,3 @@ const Products = () => {
 }
 
 export default Products
-
