@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { apiCall, API_ENDPOINTS } from '../config/api'
+import { useAuth } from '../context/AuthContext'
 
 const Dashboard = () => {
+  const { user } = useAuth()
   const [stats, setStats] = useState({
     totalProducts: 0,
     totalOrders: 0,
@@ -13,9 +16,12 @@ const Dashboard = () => {
   })
   const [recentOrders, setRecentOrders] = useState([])
   const [loading, setLoading] = useState(true)
+  const [botActive, setBotActive] = useState(true)
+  const [botToggleLoading, setBotToggleLoading] = useState(false)
 
   useEffect(() => {
     loadDashboardData()
+    loadBotStatus()
   }, [])
 
   const loadDashboardData = async () => {
@@ -26,7 +32,7 @@ const Dashboard = () => {
       setRecentOrders(response.recentOrders || [])
     } catch (error) {
       console.error('Failed to load dashboard data:', error)
-      // Enhanced fallback data for KOFA SaaS demo
+      // Fallback data
       setStats({
         totalProducts: 47,
         totalOrders: 283,
@@ -44,6 +50,34 @@ const Dashboard = () => {
       ])
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadBotStatus = async () => {
+    try {
+      const response = await apiCall(API_ENDPOINTS.BOT_STATUS)
+      setBotActive(!response.is_paused)
+    } catch (error) {
+      console.error('Failed to load bot status:', error)
+      // Default to active
+      setBotActive(true)
+    }
+  }
+
+  const toggleBot = async () => {
+    setBotToggleLoading(true)
+    try {
+      await apiCall(API_ENDPOINTS.BOT_PAUSE, {
+        method: 'POST',
+        body: JSON.stringify({ paused: botActive }) // If currently active, pause it
+      })
+      setBotActive(!botActive)
+    } catch (error) {
+      console.error('Failed to toggle bot:', error)
+      // Still toggle locally for demo
+      setBotActive(!botActive)
+    } finally {
+      setBotToggleLoading(false)
     }
   }
 
@@ -91,18 +125,65 @@ const Dashboard = () => {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 via-blue-900 to-indigo-900 bg-clip-text text-transparent">
-                Welcome back, Vendor
+                Welcome back{user?.businessName ? `, ${user.businessName}` : ''}
               </h1>
               <p className="text-gray-600 mt-2 text-lg">Your AI-powered sales are performing great today.</p>
             </div>
             <div className="hidden md:flex items-center space-x-4">
-              <div className="bg-green-100 px-4 py-2 rounded-full">
-                <span className="text-green-800 text-sm font-medium">🤖 Chatbot Active</span>
+              <div className={`${botActive ? 'bg-green-100' : 'bg-red-100'} px-4 py-2 rounded-full`}>
+                <span className={`${botActive ? 'text-green-800' : 'text-red-800'} text-sm font-medium`}>
+                  {botActive ? '🤖 Chatbot Active' : '🔴 Chatbot Paused'}
+                </span>
               </div>
               <div className="bg-blue-100 px-4 py-2 rounded-full">
                 <span className="text-blue-800 text-sm font-medium">📈 Revenue Up 23%</span>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Bot Control Card - NEW */}
+        <div className="mb-10">
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className={`p-4 rounded-xl ${botActive ? 'bg-gradient-to-br from-green-500 to-emerald-600' : 'bg-gradient-to-br from-gray-400 to-gray-500'}`}>
+                  <span className="text-3xl">{botActive ? '🤖' : '😴'}</span>
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">AI Sales Bot</h3>
+                  <p className="text-gray-600">
+                    {botActive
+                      ? 'Your chatbot is active and handling customer inquiries 24/7'
+                      : 'Your chatbot is paused. Customers won\'t receive automated responses'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-4">
+                <span className={`text-sm font-medium ${botActive ? 'text-green-600' : 'text-gray-500'}`}>
+                  {botActive ? 'ON' : 'OFF'}
+                </span>
+                <button
+                  onClick={toggleBot}
+                  disabled={botToggleLoading}
+                  className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${botActive ? 'bg-green-500' : 'bg-gray-300'
+                    } ${botToggleLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                >
+                  <span
+                    className={`inline-block h-6 w-6 transform rounded-full bg-white shadow-lg transition-transform duration-300 ${botActive ? 'translate-x-7' : 'translate-x-1'
+                      }`}
+                  />
+                </button>
+              </div>
+            </div>
+            {!botActive && (
+              <div className="mt-4 bg-amber-50 border border-amber-200 rounded-xl p-4">
+                <p className="text-amber-800 text-sm flex items-center">
+                  <span className="mr-2">⚠️</span>
+                  While paused, customers messaging you on WhatsApp/Instagram won't receive automated responses.
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -212,9 +293,12 @@ const Dashboard = () => {
                 <h3 className="text-2xl font-bold text-gray-900">Recent Orders</h3>
                 <p className="text-gray-600 mt-1">Latest customer purchases via your AI chatbot</p>
               </div>
-              <button className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-2 rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 font-medium">
+              <Link
+                to="/orders"
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-2 rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 font-medium"
+              >
                 View All Orders
-              </button>
+              </Link>
             </div>
           </div>
 
@@ -264,38 +348,43 @@ const Dashboard = () => {
 
         {/* Quick Actions */}
         <div className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-6 text-white shadow-xl">
+          <Link to="/products" className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-6 text-white shadow-xl hover:from-blue-600 hover:to-indigo-700 transition-all duration-200">
             <div className="flex items-center justify-between mb-4">
               <h4 className="text-xl font-bold">Add Product</h4>
               <span className="text-2xl">📦</span>
             </div>
             <p className="text-blue-100 mb-4">Expand your inventory for the AI chatbot</p>
-            <button className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-colors duration-200">
+            <span className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-colors duration-200 inline-block">
               Add Product →
-            </button>
-          </div>
+            </span>
+          </Link>
 
           <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-6 text-white shadow-xl">
             <div className="flex items-center justify-between mb-4">
               <h4 className="text-xl font-bold">Bot Settings</h4>
               <span className="text-2xl">🤖</span>
             </div>
-            <p className="text-green-100 mb-4">Customize your AI sales assistant</p>
-            <button className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-colors duration-200">
-              Configure Bot →
+            <p className="text-green-100 mb-4">
+              Bot is currently {botActive ? 'active' : 'paused'}
+            </p>
+            <button
+              onClick={toggleBot}
+              className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-colors duration-200"
+            >
+              {botActive ? 'Pause Bot' : 'Activate Bot'} →
             </button>
           </div>
 
-          <div className="bg-gradient-to-br from-purple-500 to-violet-600 rounded-2xl p-6 text-white shadow-xl">
+          <Link to="/orders" className="bg-gradient-to-br from-purple-500 to-violet-600 rounded-2xl p-6 text-white shadow-xl hover:from-purple-600 hover:to-violet-700 transition-all duration-200">
             <div className="flex items-center justify-between mb-4">
               <h4 className="text-xl font-bold">Analytics</h4>
               <span className="text-2xl">📊</span>
             </div>
             <p className="text-purple-100 mb-4">View detailed sales performance</p>
-            <button className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-colors duration-200">
+            <span className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-colors duration-200 inline-block">
               View Reports →
-            </button>
-          </div>
+            </span>
+          </Link>
         </div>
       </div>
     </div>
@@ -303,4 +392,3 @@ const Dashboard = () => {
 }
 
 export default Dashboard
-

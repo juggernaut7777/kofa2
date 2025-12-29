@@ -17,7 +17,10 @@ const Landing = () => {
               <a href="#features" className="text-gray-600 hover:text-blue-600 transition-colors">Features</a>
               <a href="#pricing" className="text-gray-600 hover:text-blue-600 transition-colors">Pricing</a>
               <a href="#about" className="text-gray-600 hover:text-blue-600 transition-colors">About</a>
-              <Link to="/subscription" className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-2 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 font-medium">
+              <Link to="/login" className="text-gray-700 hover:text-blue-600 transition-colors font-medium">
+                Login
+              </Link>
+              <Link to="/signup" className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-2 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 font-medium">
                 Start Free Trial
               </Link>
             </div>
@@ -42,7 +45,7 @@ const Landing = () => {
               Smart inventory tracking prevents overselling while you focus on growing your business.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/subscription" className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-4 rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 font-semibold text-lg shadow-lg">
+              <Link to="/signup" className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-4 rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 font-semibold text-lg shadow-lg">
                 Start Free Trial - No Card Required
               </Link>
               <button className="border-2 border-gray-300 text-gray-700 px-8 py-4 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all duration-200 font-semibold text-lg">
@@ -264,7 +267,7 @@ const Landing = () => {
                   <span>Basic analytics</span>
                 </li>
               </ul>
-              <Link to="/subscription" className="w-full bg-gray-900 text-white py-3 px-6 rounded-xl hover:bg-gray-800 transition-colors font-semibold block text-center">
+              <Link to="/signup" className="w-full bg-gray-900 text-white py-3 px-6 rounded-xl hover:bg-gray-800 transition-colors font-semibold block text-center">
                 Get Started Free
               </Link>
             </div>
@@ -303,7 +306,7 @@ const Landing = () => {
                   <span>Priority support</span>
                 </li>
               </ul>
-              <Link to="/subscription" className="w-full bg-white text-blue-600 py-3 px-6 rounded-xl hover:bg-gray-100 transition-colors font-semibold block text-center">
+              <Link to="/signup" className="w-full bg-white text-blue-600 py-3 px-6 rounded-xl hover:bg-gray-100 transition-colors font-semibold block text-center">
                 Start Free Trial
               </Link>
             </div>
@@ -337,7 +340,7 @@ const Landing = () => {
                   <span>White-label option</span>
                 </li>
               </ul>
-              <Link to="/subscription" className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 px-6 rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-colors font-semibold block text-center">
+              <Link to="/signup" className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 px-6 rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-colors font-semibold block text-center">
                 Start Free Trial
               </Link>
             </div>
@@ -355,7 +358,7 @@ const Landing = () => {
             Join hundreds of Nigerian vendors already using KOFA to automate their sales and grow their businesses.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/subscription" className="bg-white text-blue-600 px-8 py-4 rounded-xl hover:bg-gray-100 transition-all duration-200 font-semibold text-lg shadow-lg">
+            <Link to="/signup" className="bg-white text-blue-600 px-8 py-4 rounded-xl hover:bg-gray-100 transition-all duration-200 font-semibold text-lg shadow-lg">
               Start Your Free Trial Now
             </Link>
             <button className="border-2 border-white text-white px-8 py-4 rounded-xl hover:bg-white hover:text-blue-600 transition-all duration-200 font-semibold text-lg">
