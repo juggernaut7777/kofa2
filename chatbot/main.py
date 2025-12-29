@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException, APIRouter, UploadFile, File, Request
 from fastapi.responses import PlainTextResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, validator
-from typing import Optional, List
+from typing import Optional, List, Dict
 import uuid
 from datetime import datetime
 import logging
