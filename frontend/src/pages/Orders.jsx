@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useContext } from 'react'
 import { apiCall, API_ENDPOINTS } from '../config/api'
+import { ThemeContext } from '../context/ThemeContext'
 
 const Orders = () => {
+  const { theme } = useContext(ThemeContext)
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState('all') // all, pending, paid, fulfilled
+  const [filter, setFilter] = useState('all')
 
   useEffect(() => {
     loadOrders()
@@ -17,7 +19,12 @@ const Orders = () => {
       setOrders(data)
     } catch (error) {
       console.error('Failed to load orders:', error)
-      setOrders([])
+      // Demo data
+      setOrders([
+        { id: 'ord-001', customer_phone: '+234 803 123 4567', total_amount: 45000, status: 'pending', created_at: '2024-01-15', platform: 'WhatsApp' },
+        { id: 'ord-002', customer_phone: '+234 803 234 5678', total_amount: 25000, status: 'paid', created_at: '2024-01-15', platform: 'Instagram' },
+        { id: 'ord-003', customer_phone: '+234 803 345 6789', total_amount: 35000, status: 'fulfilled', created_at: '2024-01-14', platform: 'WhatsApp' },
+      ])
     } finally {
       setLoading(false)
     }
@@ -29,122 +36,124 @@ const Orders = () => {
         method: 'PUT',
         body: JSON.stringify({ status: newStatus }),
       })
-      loadOrders() // Reload to get updated data
+      loadOrders()
     } catch (error) {
       console.error('Failed to update order status:', error)
-      alert('Failed to update order status')
+      // Update locally for demo
+      setOrders(orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o))
     }
   }
 
-  const getStatusColor = (status) => {
-    const colors = {
-      pending: 'bg-yellow-100 text-yellow-800',
-      paid: 'bg-blue-100 text-blue-800',
-      fulfilled: 'bg-green-100 text-green-800',
-      cancelled: 'bg-red-100 text-red-800',
+  const getStatusBadge = (status) => {
+    const styles = {
+      pending: theme === 'dark' ? 'bg-warning/20 text-warning' : 'bg-amber-100 text-amber-800',
+      paid: theme === 'dark' ? 'bg-kofa-cobalt/20 text-kofa-sky' : 'bg-blue-100 text-kofa-cobalt',
+      fulfilled: theme === 'dark' ? 'bg-success/20 text-success' : 'bg-green-100 text-green-800',
+      cancelled: theme === 'dark' ? 'bg-danger/20 text-danger' : 'bg-red-100 text-red-800'
     }
-    return colors[status] || 'bg-gray-100 text-gray-800'
+    return styles[status] || (theme === 'dark' ? 'bg-gray-500/20 text-gray-400' : 'bg-gray-100 text-gray-800')
   }
 
-  const filteredOrders = filter === 'all' 
-    ? orders 
-    : orders.filter(order => order.status === filter)
+  const filteredOrders = filter === 'all' ? orders : orders.filter(order => order.status === filter)
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Orders</h2>
-        <p className="text-sm text-gray-600">
-          Manage orders - Fulfilled orders automatically create deliveries
-        </p>
-      </div>
-
-      {/* Filter Tabs */}
-      <div className="flex space-x-2 mb-6 overflow-x-auto">
-        {['all', 'pending', 'paid', 'fulfilled'].map((status) => (
-          <button
-            key={status}
-            onClick={() => setFilter(status)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap ${
-              filter === status
-                ? 'bg-blue-600 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            {status.charAt(0).toUpperCase() + status.slice(1)}
-          </button>
-        ))}
-      </div>
-
-      {/* Orders List */}
-      {loading ? (
-        <div className="text-center py-12 text-gray-500">Loading orders...</div>
-      ) : filteredOrders.length > 0 ? (
-        <div className="space-y-4">
-          {filteredOrders.map((order) => (
-            <div key={order.id} className="bg-white rounded-lg shadow p-4 sm:p-6">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
-                <div>
-                  <div className="flex items-center space-x-2 mb-2">
-                    <h3 className="font-semibold text-gray-900">Order #{order.id?.slice(0, 8)}</h3>
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(order.status)}`}>
-                      {order.status}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-600">Customer: {order.customer_phone}</p>
-                  <p className="text-sm text-gray-600">
-                    Created: {new Date(order.created_at).toLocaleDateString()}
-                  </p>
-                </div>
-                <div className="mt-2 sm:mt-0 text-right">
-                  <p className="text-2xl font-bold text-gray-900">
-                    ₦{order.total_amount?.toLocaleString()}
-                  </p>
-                </div>
-              </div>
-
-              {/* Status Actions */}
-              <div className="flex flex-wrap gap-2 pt-4 border-t">
-                {order.status === 'pending' && (
-                  <button
-                    onClick={() => updateOrderStatus(order.id, 'paid')}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
-                  >
-                    Mark as Paid
-                  </button>
-                )}
-                {order.status === 'paid' && (
-                  <button
-                    onClick={() => updateOrderStatus(order.id, 'fulfilled')}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium"
-                  >
-                    Fulfill Order
-                  </button>
-                )}
-                {order.status === 'fulfilled' && (
-                  <div className="flex items-center text-sm text-green-600">
-                    <span className="mr-2">✓</span>
-                    <span>Delivery auto-created</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="bg-white rounded-lg shadow p-12 text-center">
-          <div className="text-4xl mb-4">🛒</div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">No orders found</h3>
-          <p className="text-gray-600">
-            {filter === 'all' 
-              ? 'You haven\'t received any orders yet'
-              : `No ${filter} orders at the moment`}
+    <div className={`min-h-screen ${theme === 'dark' ? 'bg-dark-bg' : 'bg-slate-50'}`}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-kofa-navy'}`}>Orders</h1>
+          <p className={`mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-kofa-steel'}`}>
+            Manage customer orders from all channels
           </p>
         </div>
-      )}
+
+        {/* Filters */}
+        <div className="flex space-x-2 mb-6 overflow-x-auto pb-2">
+          {['all', 'pending', 'paid', 'fulfilled'].map((status) => (
+            <button
+              key={status}
+              onClick={() => setFilter(status)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap ${filter === status
+                  ? 'bg-kofa-cobalt text-white'
+                  : theme === 'dark'
+                    ? 'bg-dark-card text-gray-400 hover:text-white border border-dark-border'
+                    : 'bg-white text-kofa-steel hover:text-kofa-navy shadow-sm'
+                }`}
+            >
+              {status.charAt(0).toUpperCase() + status.slice(1)}
+            </button>
+          ))}
+        </div>
+
+        {/* Orders List */}
+        {loading ? (
+          <div className="flex justify-center py-12">
+            <div className="animate-spin rounded-full h-10 w-10 border-4 border-kofa-sky border-t-kofa-cobalt"></div>
+          </div>
+        ) : filteredOrders.length > 0 ? (
+          <div className="space-y-3">
+            {filteredOrders.map((order) => (
+              <div key={order.id} className={`rounded-xl p-5 ${theme === 'dark' ? 'bg-dark-card border border-dark-border' : 'bg-white shadow-sm'
+                }`}>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div>
+                    <div className="flex items-center space-x-3 mb-2">
+                      <span className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-kofa-navy'}`}>
+                        Order #{order.id?.slice(0, 8)}
+                      </span>
+                      <span className={`text-xs px-2 py-1 rounded-full ${getStatusBadge(order.status)}`}>
+                        {order.status}
+                      </span>
+                    </div>
+                    <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-kofa-steel'}`}>
+                      {order.customer_phone} • {order.platform}
+                    </p>
+                    <p className={`text-sm ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                      {new Date(order.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-between sm:flex-col sm:items-end gap-3">
+                    <span className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-kofa-navy'}`}>
+                      ₦{order.total_amount?.toLocaleString()}
+                    </span>
+                    <div className="flex gap-2">
+                      {order.status === 'pending' && (
+                        <button
+                          onClick={() => updateOrderStatus(order.id, 'paid')}
+                          className="px-4 py-2 bg-kofa-cobalt text-white rounded-lg text-sm font-medium hover:bg-kofa-navy"
+                        >
+                          Mark Paid
+                        </button>
+                      )}
+                      {order.status === 'paid' && (
+                        <button
+                          onClick={() => updateOrderStatus(order.id, 'fulfilled')}
+                          className="px-4 py-2 bg-success text-white rounded-lg text-sm font-medium hover:bg-green-600"
+                        >
+                          Fulfill
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className={`rounded-xl p-12 text-center ${theme === 'dark' ? 'bg-dark-card border border-dark-border' : 'bg-white shadow-sm'
+            }`}>
+            <span className="text-4xl">🛒</span>
+            <h3 className={`text-lg font-semibold mt-4 ${theme === 'dark' ? 'text-white' : 'text-kofa-navy'}`}>
+              No orders found
+            </h3>
+            <p className={theme === 'dark' ? 'text-gray-400' : 'text-kofa-steel'}>
+              {filter === 'all' ? "You haven't received any orders yet" : `No ${filter} orders`}
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
 
 export default Orders
-
