@@ -10,7 +10,7 @@ import Products from './pages/Products'
 import Orders from './pages/Orders'
 import Expenses from './pages/Expenses'
 import Subscription from './pages/Subscription'
-import Support from './pages/Support'
+import Settings from './pages/Settings'
 
 function App() {
   return (
@@ -48,9 +48,9 @@ function App() {
               <Layout><Subscription /></Layout>
             </PrivateRoute>
           } />
-          <Route path="/support" element={
+          <Route path="/settings" element={
             <PrivateRoute>
-              <Layout><Support /></Layout>
+              <Layout><Settings /></Layout>
             </PrivateRoute>
           } />
         </Routes>
