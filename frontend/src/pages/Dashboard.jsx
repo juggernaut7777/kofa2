@@ -17,6 +17,7 @@ const Dashboard = () => {
   })
   const [recentOrders, setRecentOrders] = useState([])
   const [lowStockProducts, setLowStockProducts] = useState([])
+  const [inStockCount, setInStockCount] = useState(0)
   const [loading, setLoading] = useState(true)
 
   const LOW_STOCK_THRESHOLD = 5 // Products with stock <= 5 are "low"
@@ -67,6 +68,10 @@ const Dashboard = () => {
       // Identify low stock products
       const lowStock = products.filter(p => p.stock_level <= LOW_STOCK_THRESHOLD && p.stock_level >= 0)
       setLowStockProducts(lowStock.slice(0, 5)) // Show top 5
+
+      // Count in-stock products
+      const inStock = products.filter(p => p.stock_level > LOW_STOCK_THRESHOLD).length
+      setInStockCount(inStock)
 
     } catch (error) {
       console.error('Failed to load dashboard data:', error)
@@ -224,8 +229,8 @@ const Dashboard = () => {
                     </div>
                   </div>
                   <span className={`text-sm font-bold px-2 py-1 rounded-lg ${product.stock_level === 0
-                      ? 'bg-red-500 text-white'
-                      : 'bg-yellow-500/20 text-yellow-600'
+                    ? 'bg-red-500 text-white'
+                    : 'bg-yellow-500/20 text-yellow-600'
                     }`}>
                     {product.stock_level === 0 ? 'OUT' : `${product.stock_level} left`}
                   </span>
@@ -265,11 +270,11 @@ const Dashboard = () => {
               </div>
               <div className="flex justify-between">
                 <span className={theme === 'dark' ? 'text-gray-400' : 'text-kofa-steel'}>In Stock</span>
-                <span className="font-semibold text-success">44</span>
+                <span className="font-semibold text-success">{inStockCount}</span>
               </div>
               <div className="flex justify-between">
                 <span className={theme === 'dark' ? 'text-gray-400' : 'text-kofa-steel'}>Low Stock</span>
-                <span className="font-semibold text-warning">3</span>
+                <span className={`font-semibold ${lowStockProducts.length > 0 ? 'text-warning' : 'text-success'}`}>{lowStockProducts.length}</span>
               </div>
             </div>
             <Link to="/products" className="block mt-4 text-kofa-cobalt hover:underline text-sm font-medium">
