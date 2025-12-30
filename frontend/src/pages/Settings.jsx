@@ -131,14 +131,14 @@ const Settings = () => {
         setTestLoading(true)
 
         try {
-            // Call the chat endpoint
-            const response = await fetch(`${API_BASE_URL}/chat`, {
+            // Call the message endpoint
+            const response = await fetch(`${API_BASE_URL}/message`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    message: userMessage,
-                    sender_phone: 'test_user',
-                    channel: 'whatsapp'
+                    text: userMessage,
+                    sender_phone: '+234test',
+                    sender_name: 'Test User'
                 })
             })
 
@@ -295,8 +295,8 @@ const Settings = () => {
                                 {testMessages.map((msg, idx) => (
                                     <div key={idx} className={`mb-3 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
                                         <div className={`inline-block max-w-[80%] px-4 py-2 rounded-2xl ${msg.role === 'user'
-                                                ? 'bg-kofa-cobalt text-white'
-                                                : theme === 'dark' ? 'bg-dark-border text-white' : 'bg-gray-200 text-gray-900'
+                                            ? 'bg-kofa-cobalt text-white'
+                                            : theme === 'dark' ? 'bg-dark-border text-white' : 'bg-gray-200 text-gray-900'
                                             }`}>
                                             {msg.text}
                                         </div>
