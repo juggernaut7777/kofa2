@@ -16,7 +16,10 @@ const Dashboard = () => {
     conversionRate: 0
   })
   const [recentOrders, setRecentOrders] = useState([])
+  const [lowStockProducts, setLowStockProducts] = useState([])
   const [loading, setLoading] = useState(true)
+
+  const LOW_STOCK_THRESHOLD = 5 // Products with stock <= 5 are "low"
 
   useEffect(() => {
     loadDashboardData()
@@ -60,6 +63,10 @@ const Dashboard = () => {
         date: order.created_at?.split('T')[0] || 'N/A',
         platform: order.platform || 'WhatsApp'
       })))
+
+      // Identify low stock products
+      const lowStock = products.filter(p => p.stock_level <= LOW_STOCK_THRESHOLD && p.stock_level >= 0)
+      setLowStockProducts(lowStock.slice(0, 5)) // Show top 5
 
     } catch (error) {
       console.error('Failed to load dashboard data:', error)
@@ -171,6 +178,62 @@ const Dashboard = () => {
           </div>
         </div>
 
+        {/* Low Stock Alerts */}
+        {lowStockProducts.length > 0 && (
+          <div className={`rounded-xl p-6 mb-8 border-2 ${theme === 'dark' ? 'bg-red-500/10 border-red-500/30' : 'bg-red-50 border-red-200'}`}>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">⚠️</span>
+                <div>
+                  <h3 className={`font-bold ${theme === 'dark' ? 'text-white' : 'text-red-800'}`}>
+                    Low Stock Alert
+                  </h3>
+                  <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-red-600'}`}>
+                    {lowStockProducts.length} product{lowStockProducts.length > 1 ? 's' : ''} running low
+                  </p>
+                </div>
+              </div>
+              <Link
+                to="/products"
+                className={`text-sm font-medium ${theme === 'dark' ? 'text-kofa-sky hover:text-white' : 'text-kofa-cobalt hover:text-kofa-navy'}`}
+              >
+                Manage Stock →
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {lowStockProducts.map((product) => (
+                <div
+                  key={product.id}
+                  className={`flex items-center justify-between p-3 rounded-xl ${theme === 'dark' ? 'bg-dark-card' : 'bg-white'}`}
+                >
+                  <div className="flex items-center gap-3">
+                    {product.image_url ? (
+                      <img src={product.image_url} alt={product.name} className="w-10 h-10 rounded-lg object-cover" />
+                    ) : (
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${theme === 'dark' ? 'bg-dark-border' : 'bg-gray-100'}`}>
+                        <span className="text-lg">📦</span>
+                      </div>
+                    )}
+                    <div>
+                      <p className={`font-medium text-sm truncate max-w-[120px] ${theme === 'dark' ? 'text-white' : 'text-kofa-navy'}`}>
+                        {product.name}
+                      </p>
+                      <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                        ₦{product.price_ngn?.toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                  <span className={`text-sm font-bold px-2 py-1 rounded-lg ${product.stock_level === 0
+                      ? 'bg-red-500 text-white'
+                      : 'bg-yellow-500/20 text-yellow-600'
+                    }`}>
+                    {product.stock_level === 0 ? 'OUT' : `${product.stock_level} left`}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         {/* Analytics Summary */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           {/* Revenue Card */}
