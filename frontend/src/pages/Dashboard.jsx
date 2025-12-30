@@ -25,25 +25,54 @@ const Dashboard = () => {
   const loadDashboardData = async () => {
     try {
       setLoading(true)
-      const response = await apiCall(API_ENDPOINTS.DASHBOARD_SUMMARY)
-      setStats(response.stats || stats)
-      setRecentOrders(response.recentOrders || [])
+
+      // Fetch real data from multiple endpoints
+      const [productsData, ordersData] = await Promise.all([
+        apiCall(API_ENDPOINTS.PRODUCTS).catch(() => []),
+        apiCall(API_ENDPOINTS.ORDERS).catch(() => [])
+      ])
+
+      // Calculate stats from real data
+      const products = Array.isArray(productsData) ? productsData : []
+      const orders = Array.isArray(ordersData) ? ordersData : []
+
+      const totalRevenue = orders.reduce((sum, order) => sum + (order.total_amount || 0), 0)
+      const today = new Date().toISOString().split('T')[0]
+      const todayOrders = orders.filter(o => o.created_at?.startsWith(today))
+      const todayRevenue = todayOrders.reduce((sum, order) => sum + (order.total_amount || 0), 0)
+
+      setStats({
+        totalProducts: products.length,
+        totalOrders: orders.length,
+        totalRevenue: totalRevenue,
+        todayRevenue: todayRevenue,
+        messagesHandled: Math.floor(orders.length * 2.5), // Estimate
+        conversionRate: orders.length > 0 ? Math.round((orders.filter(o => o.status === 'paid' || o.status === 'completed').length / orders.length) * 100) : 0
+      })
+
+      // Get recent orders (last 5)
+      setRecentOrders(orders.slice(0, 5).map(order => ({
+        id: order.id?.substring(0, 8) || 'ORD-XXX',
+        customer: order.customer_phone || 'Unknown',
+        product: 'Order',
+        amount: order.total_amount || 0,
+        status: order.status || 'pending',
+        date: order.created_at?.split('T')[0] || 'N/A',
+        platform: order.platform || 'WhatsApp'
+      })))
+
     } catch (error) {
       console.error('Failed to load dashboard data:', error)
-      // Demo data
+      // Minimal fallback - show zeros instead of fake data
       setStats({
-        totalProducts: 47,
-        totalOrders: 283,
-        totalRevenue: 1245000,
-        todayRevenue: 85000,
-        messagesHandled: 156,
-        conversionRate: 68
+        totalProducts: 0,
+        totalOrders: 0,
+        totalRevenue: 0,
+        todayRevenue: 0,
+        messagesHandled: 0,
+        conversionRate: 0
       })
-      setRecentOrders([
-        { id: 'ORD-001', customer: 'Sarah Johnson', product: 'Designer Handbag', amount: 45000, status: 'completed', date: '2024-01-15', platform: 'WhatsApp' },
-        { id: 'ORD-002', customer: 'Mike Chen', product: 'Wireless Headphones', amount: 25000, status: 'processing', date: '2024-01-15', platform: 'Instagram' },
-        { id: 'ORD-003', customer: 'Grace Adebayo', product: 'Smart Watch', amount: 35000, status: 'completed', date: '2024-01-14', platform: 'WhatsApp' },
-      ])
+      setRecentOrders([])
     } finally {
       setLoading(false)
     }
