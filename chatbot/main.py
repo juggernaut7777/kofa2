@@ -755,6 +755,7 @@ class ProductCreate(BaseModel):
     description: Optional[str] = None
     category: Optional[str] = None
     voice_tags: Optional[List[str]] = None
+    image_url: Optional[str] = None
     
     @validator('name')
     def validate_name(cls, v):
@@ -823,7 +824,8 @@ async def create_product(product: ProductCreate):
         "stock_level": product.stock_level,
         "description": product.description or "",
         "category": product.category or "uncategorized",
-        "voice_tags": product.voice_tags or []
+        "voice_tags": product.voice_tags or [],
+        "image_url": product.image_url or ""
     }
     
     # Add to inventory (in production, this would insert to Supabase)
