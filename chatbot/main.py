@@ -925,6 +925,26 @@ async def restock_product(product_id: str, restock: RestockRequest):
     }
 
 
+@router.delete("/products/{product_id}")
+async def delete_product(product_id: str):
+    """Delete a product from inventory."""
+    # Find product first to verify it exists
+    product = inventory_manager.get_product_by_id(product_id)
+    
+    if not product:
+        raise HTTPException(status_code=404, detail=f"Product {product_id} not found")
+    
+    # Delete from database
+    success = inventory_manager.delete_product(product_id)
+    
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to delete product")
+    
+    return {
+        "status": "success",
+        "message": f"Product '{product.get('name', 'Unknown')}' deleted successfully"
+    }
+
 # ============== PRODUCT IMAGE UPLOAD ==============
 
 @router.post("/products/{product_id}/image")

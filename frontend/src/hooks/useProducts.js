@@ -15,27 +15,7 @@ export const useProducts = () => {
     } catch (err) {
       setError(err.message)
       console.error('Failed to load products:', err)
-      // Fallback to mock data for development when API is not available
-      setProducts([
-        {
-          id: '1',
-          name: 'Nike Air Max Red',
-          price_ngn: 45000,
-          stock_level: 12,
-          category: 'Footwear',
-          description: 'Premium Nike Air Max running shoes in red',
-          voice_tags: ['red canvas', 'red sneakers', 'canvas', 'kicks']
-        },
-        {
-          id: '2',
-          name: 'Adidas White Sneakers',
-          price_ngn: 38000,
-          stock_level: 10,
-          category: 'Footwear',
-          description: 'Classic white Adidas sneakers',
-          voice_tags: ['white canvas', 'canvas', 'white sneakers']
-        }
-      ])
+      setProducts([])
     } finally {
       setLoading(false)
     }
@@ -47,12 +27,51 @@ export const useProducts = () => {
         method: 'POST',
         body: JSON.stringify(productData),
       })
-      // Backend returns {status, message, product} - extract the product
       const newProduct = response.product || response
-      setProducts([...products, newProduct])
-      // Reload to get fresh data from server
       await loadProducts()
       return newProduct
+    } catch (err) {
+      setError(err.message)
+      throw err
+    }
+  }
+
+  const updateProduct = async (productId, productData) => {
+    try {
+      const response = await apiCall(API_ENDPOINTS.UPDATE_PRODUCT(productId), {
+        method: 'PUT',
+        body: JSON.stringify(productData),
+      })
+      const updatedProduct = response.product || response
+      await loadProducts()
+      return updatedProduct
+    } catch (err) {
+      setError(err.message)
+      throw err
+    }
+  }
+
+  const deleteProduct = async (productId) => {
+    try {
+      await apiCall(API_ENDPOINTS.PRODUCT_BY_ID(productId), {
+        method: 'DELETE',
+      })
+      await loadProducts()
+      return true
+    } catch (err) {
+      setError(err.message)
+      throw err
+    }
+  }
+
+  const restockProduct = async (productId, quantity) => {
+    try {
+      await apiCall(API_ENDPOINTS.RESTOCK_PRODUCT(productId), {
+        method: 'POST',
+        body: JSON.stringify({ quantity }),
+      })
+      await loadProducts()
+      return true
     } catch (err) {
       setError(err.message)
       throw err
@@ -63,6 +82,14 @@ export const useProducts = () => {
     loadProducts()
   }, [])
 
-  return { products, loading, error, loadProducts, createProduct }
+  return {
+    products,
+    loading,
+    error,
+    loadProducts,
+    createProduct,
+    updateProduct,
+    deleteProduct,
+    restockProduct
+  }
 }
-
