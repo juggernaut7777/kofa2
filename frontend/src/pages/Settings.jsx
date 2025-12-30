@@ -29,6 +29,13 @@ const Settings = () => {
     const [saving, setSaving] = useState(false)
     const [activeSection, setActiveSection] = useState('bot')
 
+    // Test Bot Chat
+    const [testMessages, setTestMessages] = useState([
+        { role: 'bot', text: 'Hello! I am your KOFA AI Sales Bot. Ask me about any products or say something a customer might ask.' }
+    ])
+    const [testInput, setTestInput] = useState('')
+    const [testLoading, setTestLoading] = useState(false)
+
     useEffect(() => {
         loadSettings()
     }, [])
@@ -115,6 +122,40 @@ const Settings = () => {
         localStorage.setItem('kofa_connections', JSON.stringify(updated))
     }
 
+    const sendTestMessage = async () => {
+        if (!testInput.trim()) return
+
+        const userMessage = testInput.trim()
+        setTestMessages(prev => [...prev, { role: 'user', text: userMessage }])
+        setTestInput('')
+        setTestLoading(true)
+
+        try {
+            // Call the chat endpoint
+            const response = await fetch(`${API_BASE_URL}/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: userMessage,
+                    sender_phone: 'test_user',
+                    channel: 'whatsapp'
+                })
+            })
+
+            if (response.ok) {
+                const data = await response.json()
+                const botResponse = data.reply || data.response || data.message || 'Sorry, I could not process that request.'
+                setTestMessages(prev => [...prev, { role: 'bot', text: botResponse }])
+            } else {
+                setTestMessages(prev => [...prev, { role: 'bot', text: '⚠️ Error: Could not reach the bot. Check if Heroku is deployed.' }])
+            }
+        } catch {
+            setTestMessages(prev => [...prev, { role: 'bot', text: '⚠️ Connection failed. Make sure the backend is running.' }])
+        } finally {
+            setTestLoading(false)
+        }
+    }
+
     const sections = [
         { id: 'bot', label: 'AI Bot', icon: '🤖' },
         { id: 'payment', label: 'Payment', icon: '💳' },
@@ -142,12 +183,12 @@ const Settings = () => {
                             key={section.id}
                             onClick={() => setActiveSection(section.id)}
                             className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-all ${activeSection === section.id
-                                    ? theme === 'dark'
-                                        ? 'bg-kofa-cobalt text-white'
-                                        : 'bg-white text-kofa-navy shadow-sm'
-                                    : theme === 'dark'
-                                        ? 'text-gray-400 hover:text-white'
-                                        : 'text-gray-600 hover:text-gray-900'
+                                ? theme === 'dark'
+                                    ? 'bg-kofa-cobalt text-white'
+                                    : 'bg-white text-kofa-navy shadow-sm'
+                                : theme === 'dark'
+                                    ? 'text-gray-400 hover:text-white'
+                                    : 'text-gray-600 hover:text-gray-900'
                                 }`}
                         >
                             <span className="mr-2">{section.icon}</span>
@@ -199,8 +240,8 @@ const Settings = () => {
                                 <button
                                     onClick={() => saveBotStyle('professional')}
                                     className={`p-4 rounded-xl border-2 transition-all ${botStyle === 'professional'
-                                            ? 'border-kofa-cobalt bg-kofa-cobalt/10'
-                                            : theme === 'dark' ? 'border-dark-border hover:border-kofa-cobalt/50' : 'border-gray-200 hover:border-kofa-cobalt/50'
+                                        ? 'border-kofa-cobalt bg-kofa-cobalt/10'
+                                        : theme === 'dark' ? 'border-dark-border hover:border-kofa-cobalt/50' : 'border-gray-200 hover:border-kofa-cobalt/50'
                                         }`}
                                 >
                                     <div className="text-3xl mb-2">👔</div>
@@ -212,8 +253,8 @@ const Settings = () => {
                                 <button
                                     onClick={() => saveBotStyle('pidgin')}
                                     className={`p-4 rounded-xl border-2 transition-all ${botStyle === 'pidgin'
-                                            ? 'border-kofa-cobalt bg-kofa-cobalt/10'
-                                            : theme === 'dark' ? 'border-dark-border hover:border-kofa-cobalt/50' : 'border-gray-200 hover:border-kofa-cobalt/50'
+                                        ? 'border-kofa-cobalt bg-kofa-cobalt/10'
+                                        : theme === 'dark' ? 'border-dark-border hover:border-kofa-cobalt/50' : 'border-gray-200 hover:border-kofa-cobalt/50'
                                         }`}
                                 >
                                     <div className="text-3xl mb-2">🇳🇬</div>
@@ -237,6 +278,69 @@ const Settings = () => {
                                         : '"Hey! How far? Yes o, we get am for stock. Na ₦25,000. You wan make I send payment link?"'
                                     }
                                 </p>
+                            </div>
+                        </div>
+
+                        {/* Test Bot Chat */}
+                        <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-dark-card border border-dark-border' : 'bg-white shadow-sm'}`}>
+                            <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                                🧪 Test Your Bot
+                            </h3>
+                            <p className={`mb-4 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                                Simulate customer messages to see how your AI bot responds
+                            </p>
+
+                            {/* Chat Window */}
+                            <div className={`h-64 overflow-y-auto mb-4 p-4 rounded-xl ${theme === 'dark' ? 'bg-dark-bg' : 'bg-gray-50'}`}>
+                                {testMessages.map((msg, idx) => (
+                                    <div key={idx} className={`mb-3 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
+                                        <div className={`inline-block max-w-[80%] px-4 py-2 rounded-2xl ${msg.role === 'user'
+                                                ? 'bg-kofa-cobalt text-white'
+                                                : theme === 'dark' ? 'bg-dark-border text-white' : 'bg-gray-200 text-gray-900'
+                                            }`}>
+                                            {msg.text}
+                                        </div>
+                                    </div>
+                                ))}
+                                {testLoading && (
+                                    <div className="text-left mb-3">
+                                        <div className={`inline-block px-4 py-2 rounded-2xl ${theme === 'dark' ? 'bg-dark-border' : 'bg-gray-200'}`}>
+                                            <span className="animate-pulse">Typing...</span>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Input */}
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    value={testInput}
+                                    onChange={(e) => setTestInput(e.target.value)}
+                                    onKeyPress={(e) => e.key === 'Enter' && sendTestMessage()}
+                                    placeholder="Type a customer message... (e.g., 'Do you have sneakers?')"
+                                    className={`flex-1 px-4 py-3 rounded-xl border ${theme === 'dark' ? 'bg-dark-bg border-dark-border text-white placeholder-gray-500' : 'bg-white border-gray-300 text-gray-900'}`}
+                                />
+                                <button
+                                    onClick={sendTestMessage}
+                                    disabled={testLoading || !testInput.trim()}
+                                    className="px-6 py-3 bg-kofa-cobalt text-white rounded-xl font-medium hover:bg-kofa-navy disabled:opacity-50"
+                                >
+                                    Send
+                                </button>
+                            </div>
+
+                            {/* Quick test messages */}
+                            <div className="flex flex-wrap gap-2 mt-4">
+                                {['Do you have sneakers?', 'What shoes do you sell?', 'How much is the red one?', 'I want to buy'].map((msg) => (
+                                    <button
+                                        key={msg}
+                                        onClick={() => { setTestInput(msg); }}
+                                        className={`text-xs px-3 py-1 rounded-full ${theme === 'dark' ? 'bg-dark-border text-gray-300 hover:bg-kofa-cobalt/30' : 'bg-gray-100 text-gray-600 hover:bg-kofa-cobalt/20'}`}
+                                    >
+                                        {msg}
+                                    </button>
+                                ))}
                             </div>
                         </div>
                     </div>
@@ -263,8 +367,8 @@ const Settings = () => {
                                     onChange={(e) => setAccountDetails({ ...accountDetails, bankName: e.target.value })}
                                     placeholder="e.g., GTBank, Access Bank"
                                     className={`w-full px-4 py-3 rounded-xl border ${theme === 'dark'
-                                            ? 'bg-dark-bg border-dark-border text-white placeholder-gray-500'
-                                            : 'bg-white border-gray-300 text-gray-900'
+                                        ? 'bg-dark-bg border-dark-border text-white placeholder-gray-500'
+                                        : 'bg-white border-gray-300 text-gray-900'
                                         }`}
                                 />
                             </div>
@@ -279,8 +383,8 @@ const Settings = () => {
                                     onChange={(e) => setAccountDetails({ ...accountDetails, accountNumber: e.target.value })}
                                     placeholder="0123456789"
                                     className={`w-full px-4 py-3 rounded-xl border ${theme === 'dark'
-                                            ? 'bg-dark-bg border-dark-border text-white placeholder-gray-500'
-                                            : 'bg-white border-gray-300 text-gray-900'
+                                        ? 'bg-dark-bg border-dark-border text-white placeholder-gray-500'
+                                        : 'bg-white border-gray-300 text-gray-900'
                                         }`}
                                 />
                             </div>
@@ -295,8 +399,8 @@ const Settings = () => {
                                     onChange={(e) => setAccountDetails({ ...accountDetails, accountName: e.target.value })}
                                     placeholder="Your business name"
                                     className={`w-full px-4 py-3 rounded-xl border ${theme === 'dark'
-                                            ? 'bg-dark-bg border-dark-border text-white placeholder-gray-500'
-                                            : 'bg-white border-gray-300 text-gray-900'
+                                        ? 'bg-dark-bg border-dark-border text-white placeholder-gray-500'
+                                        : 'bg-white border-gray-300 text-gray-900'
                                         }`}
                                 />
                             </div>
