@@ -327,12 +327,12 @@ class InventoryManager:
                 SET stock_level = stock_level - :quantity,
                     updated_at = GETDATE()
                 WHERE id = :product_id
-                  AND vendor_id = :vendor_id
+                  AND user_id = :user_id
                   AND stock_level >= :quantity
                 """,
                 {
                     "product_id": product_id,
-                    "vendor_id": self.user_id,
+                    "user_id": self.user_id,
                     "quantity": quantity
                 }
             )
