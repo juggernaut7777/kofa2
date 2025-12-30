@@ -43,11 +43,15 @@ export const useProducts = () => {
 
   const createProduct = async (productData) => {
     try {
-      const newProduct = await apiCall(API_ENDPOINTS.PRODUCTS, {
+      const response = await apiCall(API_ENDPOINTS.PRODUCTS, {
         method: 'POST',
         body: JSON.stringify(productData),
       })
+      // Backend returns {status, message, product} - extract the product
+      const newProduct = response.product || response
       setProducts([...products, newProduct])
+      // Reload to get fresh data from server
+      await loadProducts()
       return newProduct
     } catch (err) {
       setError(err.message)
