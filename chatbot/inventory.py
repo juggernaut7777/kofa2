@@ -464,6 +464,28 @@ class InventoryManager:
         finally:
             self._close_db()
 
+    def delete_product(self, product_id: str) -> bool:
+        """Delete a product from inventory."""
+        db = self._get_db()
+        try:
+            product = db.query(ProductModel).filter(
+                ProductModel.id == product_id,
+                ProductModel.user_id == self.user_id
+            ).first()
+
+            if not product:
+                return False
+
+            db.delete(product)
+            db.commit()
+            return True
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Error deleting product {product_id}: {e}")
+            return False
+        finally:
+            self._close_db()
+
     def list_products(self) -> List[dict]:
         """List all products."""
         db = self._get_db()
