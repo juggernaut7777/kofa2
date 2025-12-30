@@ -136,9 +136,8 @@ const Settings = () => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    text: userMessage,
-                    sender_phone: '+234test',
-                    sender_name: 'Test User'
+                    message_text: userMessage,
+                    user_id: '+234test'
                 })
             })
 
