@@ -321,18 +321,17 @@ class InventoryManager:
         try:
             # Use atomic SQL update to prevent race conditions
             # This checks stock availability AND decrements in a single statement
+            # Note: In single-vendor mode, we don't filter by user_id
             result = db.execute(
                 """
                 UPDATE products
                 SET stock_level = stock_level - :quantity,
                     updated_at = GETDATE()
                 WHERE id = :product_id
-                  AND user_id = :user_id
                   AND stock_level >= :quantity
                 """,
                 {
                     "product_id": product_id,
-                    "user_id": self.user_id,
                     "quantity": quantity
                 }
             )
