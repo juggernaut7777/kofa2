@@ -319,46 +319,40 @@ class InventoryManager:
 
         db = self._get_db()
         try:
-            # Use atomic SQL update to prevent race conditions
-            # This checks stock availability AND decrements in a single statement
-            # Note: In single-vendor mode, we don't filter by user_id
-            result = db.execute(
-                """
-                UPDATE products
-                SET stock_level = stock_level - :quantity,
-                    updated_at = GETDATE()
-                WHERE id = :product_id
-                  AND stock_level >= :quantity
-                """,
-                {
+            # Use SQLAlchemy ORM to find and update the product
+            from .models import Product as ProductModel
+            
+            product = db.query(ProductModel).filter(
+                ProductModel.id == product_id,
+                ProductModel.stock_level >= quantity
+            ).first()
+            
+            if not product:
+                # Either product doesn't exist or insufficient stock
+                self._log_debug("decrement_stock failed - no matching product", {
                     "product_id": product_id,
                     "quantity": quantity
-                }
-            )
-
+                })
+                return False
+            
+            # Decrement stock
+            product.stock_level = product.stock_level - quantity
             db.commit()
-
-            # #region agent log - decrement_stock result
-            success = result.rowcount > 0
+            
             self._log_debug("decrement_stock completed", {
                 "product_id": product_id,
-                "success": success,
-                "rows_affected": result.rowcount
+                "success": True,
+                "new_stock": product.stock_level
             })
-            # #endregion
-
-            # Check if the update affected any rows
-            # If stock_level < quantity, no rows will be updated
-            return success
+            
+            return True
 
         except Exception as e:
             db.rollback()
-            # #region agent log - decrement_stock error
             self._log_debug("decrement_stock error", {
                 "product_id": product_id,
                 "error": str(e)
             })
-            # #endregion
             logger.error(f"Error in decrement_stock for product {product_id}: {e}")
             return False
         finally:
