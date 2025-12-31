@@ -49,10 +49,24 @@ const Settings = () => {
             console.error('Failed to load settings:', error)
         }
 
-        // Load saved account details from localStorage
-        const savedAccount = localStorage.getItem('kofa_account_details')
-        if (savedAccount) {
-            setAccountDetails(JSON.parse(savedAccount))
+        // Load account details from backend API
+        try {
+            const paymentData = await apiCall(API_ENDPOINTS.VENDOR_PAYMENT_ACCOUNT)
+            if (paymentData && paymentData.payment_account) {
+                const account = paymentData.payment_account
+                setAccountDetails({
+                    bankName: account.bank_name || '',
+                    accountNumber: account.account_number || '',
+                    accountName: account.account_name || ''
+                })
+            }
+        } catch (error) {
+            console.error('Failed to load payment account:', error)
+            // Fallback to localStorage
+            const savedAccount = localStorage.getItem('kofa_account_details')
+            if (savedAccount) {
+                setAccountDetails(JSON.parse(savedAccount))
+            }
         }
 
         const savedConnections = localStorage.getItem('kofa_connections')
@@ -90,13 +104,28 @@ const Settings = () => {
         }
     }
 
-    const saveAccountDetails = () => {
+    const saveAccountDetails = async () => {
         setSaving(true)
-        localStorage.setItem('kofa_account_details', JSON.stringify(accountDetails))
-        setTimeout(() => {
+        try {
+            // Save to backend API so bot can access bank details
+            await apiCall(API_ENDPOINTS.VENDOR_PAYMENT_ACCOUNT, {
+                method: 'PUT',
+                body: JSON.stringify({
+                    bank_name: accountDetails.bankName,
+                    account_number: accountDetails.accountNumber,
+                    account_name: accountDetails.accountName
+                })
+            })
+
+            // Also save to localStorage for quick loading
+            localStorage.setItem('kofa_account_details', JSON.stringify(accountDetails))
+            alert('Bank details saved! Bot will now show these details to customers.')
+        } catch (error) {
+            console.error('Failed to save account details:', error)
+            alert('Failed to save. Please try again.')
+        } finally {
             setSaving(false)
-            alert('Account details saved!')
-        }, 500)
+        }
     }
 
     const connectSocial = (platform) => {
