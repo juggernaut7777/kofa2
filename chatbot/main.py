@@ -319,52 +319,67 @@ async def create_order(request: OrderRequest):
 async def get_orders(status: Optional[str] = None):
     """
     Get all orders for merchant dashboard.
-    Returns chatbot-created orders from ORDERS_STORE + mock demo orders.
+    Fetches from database, falling back to ORDERS_STORE + mock demo orders.
     """
     from datetime import timedelta
     
-    # Get real orders from ORDERS_STORE (created by chatbot)
     all_orders = []
-    for order_id, order in ORDERS_STORE.items():
-        all_orders.append({
-            "id": order.get("id", order_id),
-            "customer_phone": order.get("customer_phone", "Unknown"),
-            "items": order.get("items", []),
-            "total_amount": order.get("total_amount", 0),
-            "status": order.get("status", "pending"),
-            "payment_ref": order.get("payment_ref"),
-            "created_at": order.get("created_at", datetime.now().isoformat()),
-            "source": "chatbot"
-        })
     
-    # Add mock orders for demo if no real orders
-    if not all_orders:
-        now = datetime.now()
-        mock_orders = [
-            {
-                "id": "demo-001",
-                "customer_phone": "+2348012345678",
-                "items": [{"product_id": "1", "product_name": "Nike Air Max Red", "quantity": 1, "price": 45000}],
-                "total_amount": 45000,
-                "status": "pending",
-                "created_at": (now - timedelta(minutes=30)).isoformat(),
-                "source": "demo"
-            },
-            {
-                "id": "demo-002",
-                "customer_phone": "+2349087654321",
-                "items": [{"product_id": "3", "product_name": "Men Formal Shirt White", "quantity": 2, "price": 15000}],
-                "total_amount": 30000,
-                "status": "paid",
-                "payment_ref": "PAY-ABC123",
-                "created_at": (now - timedelta(hours=2)).isoformat(),
-                "source": "demo"
-            }
-        ]
-        all_orders = mock_orders
+    # Try to fetch from database first
+    try:
+        from .database import SessionLocal
+        from .models import Order as OrderModel, OrderItem as OrderItemModel
+        
+        db = SessionLocal()
+        try:
+            # Query orders with their items
+            query = db.query(OrderModel)
+            if status:
+                query = query.filter(OrderModel.status == status.lower())
+            
+            db_orders = query.order_by(OrderModel.created_at.desc()).all()
+            
+            for order in db_orders:
+                # Get order items
+                items = []
+                for item in order.order_items:
+                    items.append({
+                        "product_id": str(item.product_id),
+                        "product_name": item.product_name,
+                        "quantity": item.quantity,
+                        "price": item.price,
+                        "total": item.total
+                    })
+                
+                all_orders.append({
+                    "id": str(order.id),
+                    "customer_phone": order.customer_phone,
+                    "items": items,
+                    "total_amount": order.total_amount,
+                    "status": order.status,
+                    "payment_ref": order.payment_ref,
+                    "created_at": order.created_at.isoformat() if order.created_at else None,
+                    "source": "database"
+                })
+        finally:
+            db.close()
+    except Exception as db_error:
+        logger.warning(f"Database query failed, using memory store: {db_error}")
+        # Fallback to ORDERS_STORE
+        for order_id, order in ORDERS_STORE.items():
+            all_orders.append({
+                "id": order.get("id", order_id),
+                "customer_phone": order.get("customer_phone", "Unknown"),
+                "items": order.get("items", []),
+                "total_amount": order.get("total_amount", 0),
+                "status": order.get("status", "pending"),
+                "payment_ref": order.get("payment_ref"),
+                "created_at": order.get("created_at", datetime.now().isoformat()),
+                "source": "memory"
+            })
     
-    # Filter by status if provided
-    if status:
+    # Filter by status if needed (for database fallback case)
+    if status and all_orders:
         all_orders = [o for o in all_orders if o.get("status", "").lower() == status.lower()]
     
     # Sort by created_at descending
@@ -455,7 +470,7 @@ After payment, reply "I paid" to confirm your order! ✅"""
         "total": total_amount
     }]
 
-    # Store order in ORDERS_STORE
+    # Store order in ORDERS_STORE (in-memory for quick access)
     ORDERS_STORE[order_id] = {
         "id": order_id,
         "customer_phone": user_id,
@@ -466,6 +481,45 @@ After payment, reply "I paid" to confirm your order! ✅"""
         "created_at": datetime.now().isoformat(),
         "source": "chatbot"
     }
+    
+    # Persist order to database
+    try:
+        from .database import SessionLocal
+        from .models import Order as OrderModel, OrderItem as OrderItemModel
+        
+        db = SessionLocal()
+        try:
+            # Create order record
+            db_order = OrderModel(
+                id=order_id,
+                user_id=inventory_manager.user_id,  # Vendor/owner ID
+                customer_phone=user_id,
+                total_amount=total_amount,
+                status="pending",
+                notes=f"Chatbot order for {product_name}"
+            )
+            db.add(db_order)
+            
+            # Create order item record
+            db_order_item = OrderItemModel(
+                order_id=order_id,
+                product_id=product_id,
+                product_name=product_name,
+                quantity=quantity,
+                price=price,
+                total=total_amount
+            )
+            db.add(db_order_item)
+            
+            db.commit()
+        except Exception as db_error:
+            db.rollback()
+            logger.error(f"Failed to persist order to database: {db_error}")
+            # Continue anyway - order is in memory
+        finally:
+            db.close()
+    except Exception as import_error:
+        logger.error(f"Database import error: {import_error}")
 
     # Update customer history
     if user_id not in CUSTOMER_HISTORY:
