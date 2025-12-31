@@ -375,9 +375,9 @@ async def get_orders(status: Optional[str] = None):
 def create_chatbot_order(user_id: str, product: dict, quantity: int = 1) -> tuple[str, str]:
     """
     Create an order for chatbot purchase - validates stock, decrements inventory,
-    creates order record, and generates payment link.
+    creates order record, and returns payment instructions with bank details.
 
-    Returns: (order_id, payment_link) or raises HTTPException
+    Returns: (order_id, payment_info) or raises HTTPException
     """
     product_id = str(product.get("id", ""))
     product_name = product.get("name", "Unknown Product")
@@ -404,8 +404,8 @@ def create_chatbot_order(user_id: str, product: dict, quantity: int = 1) -> tupl
     # Calculate total
     total_amount = price * quantity
 
-    # Generate order ID
-    order_id = str(uuid.uuid4())
+    # Generate order ID (shorter format for easy reference)
+    order_id = str(uuid.uuid4())[:8].upper()
 
     # Decrement stock first
     success = inventory_manager.decrement_stock(product_id, quantity)
@@ -415,18 +415,36 @@ def create_chatbot_order(user_id: str, product: dict, quantity: int = 1) -> tupl
             detail=f"Failed to reserve stock for {product_name}. Please try again."
         )
 
-    # Generate payment link
-    payment_link = payment_manager.generate_payment_link(
-        order_id=order_id,
-        amount_ngn=int(round(total_amount)),
-        customer_phone=user_id,
-        description=f"Purchase {product_name}" + (f" (x{quantity})" if quantity > 1 else "")
-    )
+    # Get vendor payment account details
+    payment_account = VENDOR_SETTINGS.get("payment_account", {})
+    bank_name = payment_account.get("bank_name", "")
+    account_number = payment_account.get("account_number", "")
+    account_name = payment_account.get("account_name", "")
+    
+    # Format payment instructions
+    if bank_name and account_number:
+        payment_info = f"""💳 *Payment Details*
 
-    if not payment_link:
-        # Rollback stock decrement if payment link generation fails
-        inventory_manager.update_stock(product_id, quantity)  # Restore stock
-        raise HTTPException(status_code=500, detail="Failed to generate payment link")
+🏦 Bank: {bank_name}
+🔢 Account Number: {account_number}
+👤 Account Name: {account_name}
+
+💰 Amount: ₦{int(total_amount):,}
+🧾 Order ID: #{order_id}
+
+📝 Please use Order ID #{order_id} as payment reference.
+
+After payment, reply "I paid" to confirm your order! ✅"""
+    else:
+        # Fallback if no bank details set
+        payment_info = f"""💳 *Payment Instructions*
+
+💰 Amount to pay: ₦{int(total_amount):,}
+🧾 Order ID: #{order_id}
+
+⚠️ Contact the vendor for payment details.
+
+After payment, reply "I paid" to confirm your order! ✅"""
 
     # Create order item details
     order_items = [{
@@ -446,7 +464,7 @@ def create_chatbot_order(user_id: str, product: dict, quantity: int = 1) -> tupl
         "status": "pending",
         "payment_ref": None,
         "created_at": datetime.now().isoformat(),
-        "source": "chatbot"  # Track that this came from chatbot
+        "source": "chatbot"
     }
 
     # Update customer history
@@ -461,7 +479,7 @@ def create_chatbot_order(user_id: str, product: dict, quantity: int = 1) -> tupl
     })
     CUSTOMER_HISTORY[user_id]["total_spent"] += total_amount
 
-    return order_id, payment_link
+    return order_id, payment_info
 
 @router.post("/message")
 async def process_message(request: MessageRequest):
@@ -574,12 +592,9 @@ async def process_message(request: MessageRequest):
 
         if product["stock_level"] > 0:
             try:
-                # Create order, decrement stock, and generate payment link
-                order_id, link = create_chatbot_order(user_id, product, quantity=1)
-                payment_link = link
-                response_text = response_formatter.format_payment_link(
-                    product['name'], link, price_fmt, 15
-                )
+                # Create order, decrement stock, and get payment instructions
+                order_id, payment_info = create_chatbot_order(user_id, product, quantity=1)
+                response_text = f"✅ Order #{order_id} created!\n\n{payment_info}"
             except HTTPException as e:
                 response_text = f"❌ Sorry, I couldn't process your order: {e.detail}"
         else:
@@ -631,12 +646,9 @@ async def process_message(request: MessageRequest):
 
                     if product["stock_level"] > 0:
                         try:
-                            # Create order, decrement stock, and generate payment link
-                            order_id, link = create_chatbot_order(user_id, product, quantity=1)
-                            payment_link = link
-                            response_text = response_formatter.format_payment_link(
-                                product['name'], link, price_fmt, 15
-                            )
+                            # Create order, decrement stock, and get payment instructions
+                            order_id, payment_info = create_chatbot_order(user_id, product, quantity=1)
+                            response_text = f"✅ Order #{order_id} created!\n\n{payment_info}"
                         except HTTPException as e:
                             response_text = f"❌ Sorry, I couldn't process your order: {e.detail}"
                     else:
@@ -663,12 +675,9 @@ async def process_message(request: MessageRequest):
                 if intent == Intent.PURCHASE:
                     if product["stock_level"] > 0:
                         try:
-                            # Create order, decrement stock, and generate payment link
-                            order_id, link = create_chatbot_order(user_id, product, quantity=1)
-                            payment_link = link
-                            response_text = response_formatter.format_payment_link(
-                                product['name'], link, price_fmt, 15
-                            )
+                            # Create order, decrement stock, and get payment instructions
+                            order_id, payment_info = create_chatbot_order(user_id, product, quantity=1)
+                            response_text = f"✅ Order #{order_id} created!\n\n{payment_info}"
                         except HTTPException as e:
                             response_text = f"❌ Sorry, I couldn't process your order: {e.detail}"
                     else:
