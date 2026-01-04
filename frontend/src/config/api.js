@@ -50,6 +50,10 @@ export const API_ENDPOINTS = {
   // Subscription & Payments
   SUBSCRIPTION_PLANS: '/subscription/plans',
   PURCHASE_SUBSCRIPTION: '/subscription/purchase',
+  SUBSCRIPTION_UPGRADE: '/subscription/upgrade',
+
+  // Usage Stats (Freemium)
+  USAGE_STATS: '/usage',
 
   // Receipts & Invoices
   GENERATE_RECEIPT: '/receipts/generate',
@@ -81,7 +85,7 @@ export const apiCall = async (endpoint, options = {}) => {
       data: { endpoint, method: options.method || 'GET', url },
       timestamp: Date.now()
     })
-  }).catch(() => {});
+  }).catch(() => { });
   // #endregion
 
   const config = {
@@ -113,7 +117,7 @@ export const apiCall = async (endpoint, options = {}) => {
         data: { status: response.status, statusText: response.statusText, url },
         timestamp: Date.now()
       })
-    }).catch(() => {});
+    }).catch(() => { });
     // #endregion
 
     if (!response.ok) {
@@ -136,7 +140,7 @@ export const apiCall = async (endpoint, options = {}) => {
         data: { error: error.message, url, endpoint },
         timestamp: Date.now()
       })
-    }).catch(() => {});
+    }).catch(() => { });
     // #endregion
 
     if (error.name === 'AbortError') {
