@@ -103,7 +103,75 @@ VENDOR_SETTINGS: dict = {
         "address": "",
     },
     "payment_method": "bank_transfer",  # "bank_transfer", "paystack", "flutterwave"
+    "subscription_tier": "free",  # "free" or "pro"
 }
+
+# ============== FREEMIUM LIMITS ==============
+FREEMIUM_LIMITS = {
+    "free": {
+        "max_products": 5,
+        "max_orders_per_month": 30,
+        "max_bot_conversations_per_month": 50,
+        "max_image_uploads": 3,
+    },
+    "pro": {
+        "max_products": 999999,  # Unlimited
+        "max_orders_per_month": 999999,
+        "max_bot_conversations_per_month": 999999,
+        "max_image_uploads": 999999,
+    }
+}
+
+# Usage tracking (resets monthly)
+USAGE_TRACKING: dict = {
+    "orders_this_month": 0,
+    "bot_conversations_this_month": 0,
+    "month_started": datetime.now().strftime("%Y-%m"),
+}
+
+def get_subscription_tier() -> str:
+    """Get current subscription tier."""
+    return VENDOR_SETTINGS.get("subscription_tier", "free")
+
+def check_limit(limit_type: str) -> dict:
+    """
+    Check if user has hit a freemium limit.
+    Returns: {"allowed": bool, "current": int, "max": int, "upgrade_needed": bool}
+    """
+    tier = get_subscription_tier()
+    limits = FREEMIUM_LIMITS.get(tier, FREEMIUM_LIMITS["free"])
+    
+    # Reset monthly counters if new month
+    current_month = datetime.now().strftime("%Y-%m")
+    if USAGE_TRACKING.get("month_started") != current_month:
+        USAGE_TRACKING["orders_this_month"] = 0
+        USAGE_TRACKING["bot_conversations_this_month"] = 0
+        USAGE_TRACKING["month_started"] = current_month
+    
+    if limit_type == "products":
+        current = len(inventory_manager.list_products())
+        max_allowed = limits["max_products"]
+    elif limit_type == "orders":
+        current = USAGE_TRACKING.get("orders_this_month", 0)
+        max_allowed = limits["max_orders_per_month"]
+    elif limit_type == "bot_conversations":
+        current = USAGE_TRACKING.get("bot_conversations_this_month", 0)
+        max_allowed = limits["max_bot_conversations_per_month"]
+    elif limit_type == "image_uploads":
+        # Count products with images
+        products = inventory_manager.list_products()
+        current = sum(1 for p in products if p.get("image_url"))
+        max_allowed = limits["max_image_uploads"]
+    else:
+        return {"allowed": True, "current": 0, "max": 999999, "upgrade_needed": False}
+    
+    allowed = current < max_allowed
+    return {
+        "allowed": allowed,
+        "current": current,
+        "max": max_allowed,
+        "upgrade_needed": not allowed and tier == "free"
+    }
 
 def safe_order_id(user_id: str, prod_id: str) -> str:
     """Generate a safe order ID from user and product IDs."""
@@ -407,6 +475,14 @@ def create_chatbot_order(user_id: str, product: dict, quantity: int = 1) -> tupl
 
     if quantity <= 0:
         raise HTTPException(status_code=400, detail="Quantity must be greater than 0")
+    
+    # Check freemium order limit
+    order_limit = check_limit("orders")
+    if not order_limit["allowed"]:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Monthly order limit reached ({order_limit['max']} orders). Upgrade to Pro for unlimited orders!"
+        )
 
     # Check stock availability
     current_stock = product.get("stock_level", 0)
@@ -482,6 +558,9 @@ After payment, reply "I paid" to confirm your order! ✅"""
         "source": "chatbot"
     }
     
+    # Increment order usage counter for freemium tracking
+    USAGE_TRACKING["orders_this_month"] = USAGE_TRACKING.get("orders_this_month", 0) + 1
+    
     # Persist order to database
     try:
         from .database import SessionLocal
@@ -548,6 +627,19 @@ async def process_message(request: MessageRequest):
     
     user_id = request.user_id
     text = request.message_text
+    
+    # Check freemium bot conversation limit
+    bot_limit = check_limit("bot_conversations")
+    if not bot_limit["allowed"]:
+        return MessageResponse(
+            response=f"⚠️ Monthly conversation limit reached ({bot_limit['max']} messages). The vendor needs to upgrade to Pro for unlimited bot conversations!",
+            intent="limit_reached",
+            product=None,
+            payment_link=None
+        )
+    
+    # Increment bot conversation counter
+    USAGE_TRACKING["bot_conversations_this_month"] = USAGE_TRACKING.get("bot_conversations_this_month", 0) + 1
     
     # Get conversation state for this user
     state = conversation_manager.get_state(user_id)
@@ -880,6 +972,20 @@ async def get_bot_style():
 @router.post("/products")
 async def create_product(product: ProductCreate):
     """Add a new product to inventory."""
+    # Check freemium limit
+    limit_check = check_limit("products")
+    if not limit_check["allowed"]:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error": "Product limit reached",
+                "message": f"Free plan allows {limit_check['max']} products. Upgrade to Pro for unlimited products!",
+                "current": limit_check["current"],
+                "max": limit_check["max"],
+                "upgrade_needed": True
+            }
+        )
+    
     new_product = {
         "id": str(uuid.uuid4()),
         "name": product.name,
@@ -894,10 +1000,17 @@ async def create_product(product: ProductCreate):
     # Add to inventory (in production, this would insert to Supabase)
     inventory_manager.add_product(new_product)
     
+    # Return with limit info
+    new_limit = check_limit("products")
     return {
         "status": "success",
         "message": f"Product '{product.name}' added successfully",
-        "product": new_product
+        "product": new_product,
+        "usage": {
+            "products_used": new_limit["current"],
+            "products_max": new_limit["max"],
+            "tier": get_subscription_tier()
+        }
     }
 
 
@@ -1222,6 +1335,60 @@ async def get_payment_account():
     return {
         "status": "success",
         "payment_account": account
+    }
+
+
+# ============== FREEMIUM USAGE & SUBSCRIPTION ==============
+
+@router.get("/usage")
+async def get_usage_stats():
+    """Get current usage stats for freemium tracking."""
+    tier = get_subscription_tier()
+    limits = FREEMIUM_LIMITS.get(tier, FREEMIUM_LIMITS["free"])
+    
+    # Get current usage
+    products_count = len(inventory_manager.list_products())
+    products_with_images = sum(1 for p in inventory_manager.list_products() if p.get("image_url"))
+    
+    return {
+        "tier": tier,
+        "usage": {
+            "products": {
+                "used": products_count,
+                "max": limits["max_products"],
+                "remaining": max(0, limits["max_products"] - products_count)
+            },
+            "orders_this_month": {
+                "used": USAGE_TRACKING.get("orders_this_month", 0),
+                "max": limits["max_orders_per_month"],
+                "remaining": max(0, limits["max_orders_per_month"] - USAGE_TRACKING.get("orders_this_month", 0))
+            },
+            "bot_conversations_this_month": {
+                "used": USAGE_TRACKING.get("bot_conversations_this_month", 0),
+                "max": limits["max_bot_conversations_per_month"],
+                "remaining": max(0, limits["max_bot_conversations_per_month"] - USAGE_TRACKING.get("bot_conversations_this_month", 0))
+            },
+            "image_uploads": {
+                "used": products_with_images,
+                "max": limits["max_image_uploads"],
+                "remaining": max(0, limits["max_image_uploads"] - products_with_images)
+            }
+        },
+        "month_started": USAGE_TRACKING.get("month_started", datetime.now().strftime("%Y-%m"))
+    }
+
+@router.post("/subscription/upgrade")
+async def upgrade_subscription(tier: str = "pro"):
+    """Upgrade subscription tier (for demo/testing - in production, integrate with payment)."""
+    if tier not in ["free", "pro"]:
+        raise HTTPException(status_code=400, detail="Invalid tier. Use 'free' or 'pro'")
+    
+    VENDOR_SETTINGS["subscription_tier"] = tier
+    return {
+        "status": "success",
+        "message": f"Subscription upgraded to {tier.upper()}!",
+        "tier": tier,
+        "limits": FREEMIUM_LIMITS[tier]
     }
 
 
