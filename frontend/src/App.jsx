@@ -11,6 +11,10 @@ import Orders from './pages/Orders'
 import Expenses from './pages/Expenses'
 import Subscription from './pages/Subscription'
 import Settings from './pages/Settings'
+import Support from './pages/Support'
+import Invoices from './pages/Invoices'
+import Analytics from './pages/Analytics'
+import Reports from './pages/Reports'
 
 function App() {
   return (
@@ -38,6 +42,21 @@ function App() {
               <Layout><Orders /></Layout>
             </PrivateRoute>
           } />
+          <Route path="/invoices" element={
+            <PrivateRoute>
+              <Layout><Invoices /></Layout>
+            </PrivateRoute>
+          } />
+          <Route path="/analytics" element={
+            <PrivateRoute>
+              <Layout><Analytics /></Layout>
+            </PrivateRoute>
+          } />
+          <Route path="/reports" element={
+            <PrivateRoute>
+              <Layout><Reports /></Layout>
+            </PrivateRoute>
+          } />
           <Route path="/expenses" element={
             <PrivateRoute>
               <Layout><Expenses /></Layout>
@@ -51,6 +70,11 @@ function App() {
           <Route path="/settings" element={
             <PrivateRoute>
               <Layout><Settings /></Layout>
+            </PrivateRoute>
+          } />
+          <Route path="/support" element={
+            <PrivateRoute>
+              <Layout><Support /></Layout>
             </PrivateRoute>
           } />
         </Routes>

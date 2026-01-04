@@ -13,6 +13,9 @@ const Layout = ({ children }) => {
     { path: '/dashboard', label: 'Dashboard', icon: '📊' },
     { path: '/products', label: 'Products', icon: '📦' },
     { path: '/orders', label: 'Orders', icon: '🛒' },
+    { path: '/invoices', label: 'Invoices', icon: '🧾' },
+    { path: '/analytics', label: 'Analytics', icon: '📈' },
+    { path: '/reports', label: 'Reports', icon: '📋' },
     { path: '/expenses', label: 'Expenses', icon: '💸' },
     { path: '/settings', label: 'Settings', icon: '⚙️' },
   ]
@@ -26,8 +29,8 @@ const Layout = ({ children }) => {
     <div className={`min-h-screen ${theme === 'dark' ? 'bg-dark-bg' : 'bg-slate-50'}`}>
       {/* Header */}
       <header className={`sticky top-0 z-50 ${theme === 'dark'
-          ? 'bg-dark-card/95 backdrop-blur-sm border-b border-dark-border'
-          : 'bg-white/95 backdrop-blur-sm shadow-sm'
+        ? 'bg-dark-card/95 backdrop-blur-sm border-b border-dark-border'
+        : 'bg-white/95 backdrop-blur-sm shadow-sm'
         }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
@@ -82,8 +85,8 @@ const Layout = ({ children }) => {
               key={item.path}
               to={item.path}
               className={`flex flex-col items-center py-2 ${location.pathname === item.path
-                  ? 'text-kofa-cobalt'
-                  : theme === 'dark' ? 'text-gray-400' : 'text-kofa-steel'
+                ? 'text-kofa-cobalt'
+                : theme === 'dark' ? 'text-gray-400' : 'text-kofa-steel'
                 }`}
             >
               <span className="text-xl">{item.icon}</span>
@@ -103,12 +106,12 @@ const Layout = ({ children }) => {
                 key={item.path}
                 to={item.path}
                 className={`flex items-center space-x-3 px-4 py-3 rounded-lg ${location.pathname === item.path
-                    ? theme === 'dark'
-                      ? 'bg-kofa-cobalt/20 text-kofa-sky'
-                      : 'bg-blue-50 text-kofa-cobalt'
-                    : theme === 'dark'
-                      ? 'text-gray-400 hover:bg-dark-border hover:text-white'
-                      : 'text-kofa-steel hover:bg-gray-50 hover:text-kofa-navy'
+                  ? theme === 'dark'
+                    ? 'bg-kofa-cobalt/20 text-kofa-sky'
+                    : 'bg-blue-50 text-kofa-cobalt'
+                  : theme === 'dark'
+                    ? 'text-gray-400 hover:bg-dark-border hover:text-white'
+                    : 'text-kofa-steel hover:bg-gray-50 hover:text-kofa-navy'
                   }`}
               >
                 <span className="text-xl">{item.icon}</span>
