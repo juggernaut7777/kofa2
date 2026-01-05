@@ -2,6 +2,7 @@ import { useState, useEffect, useContext } from 'react'
 import { apiCall, API_ENDPOINTS } from '../config/api'
 import { ThemeContext } from '../context/ThemeContext'
 import Invoices from './Invoices'
+import DeliveryTracking from './DeliveryTracking'
 
 const Orders = () => {
   const { theme } = useContext(ThemeContext)
@@ -59,53 +60,52 @@ const Orders = () => {
   const filteredOrders = filter === 'all' ? orders : orders.filter(order => order.status === filter)
   const isDark = theme === 'dark'
 
-  // If Invoices tab is active, render Invoices component
+  const getTabClass = (tab) => {
+    return activeTab === tab
+      ? 'bg-kofa-yellow text-black shadow-lg'
+      : isDark ? 'bg-gray-800 text-gray-300 hover:bg-gray-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+  }
+
+  // Tab Navigation Component (reused for all tabs)
+  const TabNav = () => (
+    <div className={`sticky top-16 z-40 px-4 py-3 ${isDark ? 'bg-dark-card border-b border-gray-800' : 'bg-white shadow-sm'}`}>
+      <div className="max-w-7xl mx-auto flex gap-2 overflow-x-auto">
+        <button onClick={() => setActiveTab('orders')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium whitespace-nowrap transition-all ${getTabClass('orders')}`}>
+          🛒 Orders
+        </button>
+        <button onClick={() => setActiveTab('invoices')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium whitespace-nowrap transition-all ${getTabClass('invoices')}`}>
+          🧾 Invoices
+        </button>
+        <button onClick={() => setActiveTab('delivery')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium whitespace-nowrap transition-all ${getTabClass('delivery')}`}>
+          🚚 Delivery
+        </button>
+      </div>
+    </div>
+  )
+
+  // If Invoices tab is active
   if (activeTab === 'invoices') {
     return (
       <div className={`min-h-screen ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
-        {/* Tab Navigation */}
-        <div className={`sticky top-16 z-40 px-4 py-3 ${isDark ? 'bg-dark-card border-b border-gray-800' : 'bg-white shadow-sm'}`}>
-          <div className="max-w-7xl mx-auto flex gap-2">
-            <button
-              onClick={() => setActiveTab('orders')}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all ${isDark ? 'bg-gray-800 text-gray-300 hover:bg-gray-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-            >
-              🛒 Orders
-            </button>
-            <button
-              onClick={() => setActiveTab('invoices')}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium bg-kofa-yellow text-black shadow-lg"
-            >
-              🧾 Invoices
-            </button>
-          </div>
-        </div>
+        <TabNav />
         <Invoices />
+      </div>
+    )
+  }
+
+  // If Delivery tab is active
+  if (activeTab === 'delivery') {
+    return (
+      <div className={`min-h-screen ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
+        <TabNav />
+        <DeliveryTracking />
       </div>
     )
   }
 
   return (
     <div className={`min-h-screen ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
-      {/* Tab Navigation */}
-      <div className={`sticky top-16 z-40 px-4 py-3 ${isDark ? 'bg-dark-card border-b border-gray-800' : 'bg-white shadow-sm'}`}>
-        <div className="max-w-7xl mx-auto flex gap-2">
-          <button
-            onClick={() => setActiveTab('orders')}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium bg-kofa-yellow text-black shadow-lg"
-          >
-            🛒 Orders
-          </button>
-          <button
-            onClick={() => setActiveTab('invoices')}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all ${isDark ? 'bg-gray-800 text-gray-300 hover:bg-gray-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-          >
-            🧾 Invoices
-          </button>
-        </div>
-      </div>
+      <TabNav />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}

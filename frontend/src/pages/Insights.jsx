@@ -5,6 +5,7 @@ import { ThemeContext } from '../context/ThemeContext'
 import Analytics from './Analytics'
 import Reports from './Reports'
 import Expenses from './Expenses'
+import SalesChannels from './SalesChannels'
 
 const Insights = () => {
     const { theme } = useContext(ThemeContext)
@@ -15,6 +16,7 @@ const Insights = () => {
         { id: 'analytics', label: 'Analytics', icon: '📈' },
         { id: 'reports', label: 'Reports', icon: '📋' },
         { id: 'expenses', label: 'Expenses', icon: '💸' },
+        { id: 'channels', label: 'Channels', icon: '📊' },
     ]
 
     return (
@@ -28,10 +30,10 @@ const Insights = () => {
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
                                 className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium whitespace-nowrap transition-all ${activeTab === tab.id
-                                        ? 'bg-kofa-yellow text-black shadow-lg'
-                                        : isDark
-                                            ? 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                    ? 'bg-kofa-yellow text-black shadow-lg'
+                                    : isDark
+                                        ? 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                     }`}
                             >
                                 <span>{tab.icon}</span>
@@ -47,9 +49,11 @@ const Insights = () => {
                 {activeTab === 'analytics' && <Analytics />}
                 {activeTab === 'reports' && <Reports />}
                 {activeTab === 'expenses' && <Expenses />}
+                {activeTab === 'channels' && <SalesChannels />}
             </div>
         </div>
     )
 }
 
 export default Insights
+
