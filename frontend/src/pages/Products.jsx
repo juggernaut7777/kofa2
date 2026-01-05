@@ -3,6 +3,7 @@ import { useProducts } from '../hooks/useProducts'
 import { useImageUpload } from '../hooks/useImageUpload'
 import { useAuth } from '../context/AuthContext'
 import { ThemeContext } from '../context/ThemeContext'
+import ProductImport from '../components/ProductImport'
 
 const Products = () => {
   const { user } = useAuth()
@@ -13,6 +14,7 @@ const Products = () => {
   // Form states
   const [showAddForm, setShowAddForm] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
+  const [showImportModal, setShowImportModal] = useState(false)
   const [editingProduct, setEditingProduct] = useState(null)
   const [creating, setCreating] = useState(false)
   const [deleting, setDeleting] = useState(null)
@@ -163,16 +165,25 @@ const Products = () => {
                 {products.length} products • {user?.plan === 'free' ? `${FREE_TIER_LIMIT - products.length} slots left` : 'Unlimited'}
               </p>
             </div>
-            <button
-              onClick={() => setShowAddForm(!showAddForm)}
-              disabled={isAtLimit}
-              className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${isAtLimit
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowImportModal(true)}
+                className={`flex items-center gap-2 px-4 py-3 rounded-xl font-medium transition-all ${isDark ? 'bg-gray-800 text-white hover:bg-gray-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+              >
+                📥 Import
+              </button>
+              <button
+                onClick={() => setShowAddForm(!showAddForm)}
+                disabled={isAtLimit}
+                className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${isAtLimit
                   ? 'bg-gray-400 cursor-not-allowed'
                   : 'bg-kofa-cobalt text-white hover:bg-kofa-navy'
-                }`}
-            >
-              {showAddForm ? '✕ Cancel' : '+ Add Product'}
-            </button>
+                  }`}
+              >
+                {showAddForm ? '✕ Cancel' : '+ Add Product'}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -331,8 +342,8 @@ const Products = () => {
                     <button
                       onClick={() => handleEdit(product)}
                       className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${isDark
-                          ? 'bg-dark-border text-white hover:bg-kofa-cobalt'
-                          : 'bg-gray-100 text-kofa-navy hover:bg-kofa-cobalt hover:text-white'
+                        ? 'bg-dark-border text-white hover:bg-kofa-cobalt'
+                        : 'bg-gray-100 text-kofa-navy hover:bg-kofa-cobalt hover:text-white'
                         }`}
                     >
                       ✏️ Edit
@@ -341,8 +352,8 @@ const Products = () => {
                       onClick={() => handleDelete(product)}
                       disabled={deleting === product.id}
                       className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${deleting === product.id
-                          ? 'bg-gray-400 cursor-not-allowed'
-                          : 'bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white'
+                        ? 'bg-gray-400 cursor-not-allowed'
+                        : 'bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white'
                         }`}
                     >
                       {deleting === product.id ? '...' : '🗑️ Delete'}
@@ -473,6 +484,17 @@ const Products = () => {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Import Modal */}
+      {showImportModal && (
+        <ProductImport
+          onClose={() => setShowImportModal(false)}
+          onImportComplete={(count) => {
+            alert(`Successfully imported ${count} products!`)
+            window.location.reload()
+          }}
+        />
       )}
     </div>
   )

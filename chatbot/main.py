@@ -1955,6 +1955,153 @@ async def bulk_restock(request: BulkRestockRequest, vendor_id: str = "default"):
     return result
 
 
+# ============== IMPORT ENDPOINTS ==============
+
+class ProductImportItem(BaseModel):
+    """Single product for import."""
+    name: str
+    price_ngn: float
+    stock_level: int = 1
+    description: str = ""
+    category: str = ""
+
+class BulkProductImportRequest(BaseModel):
+    """Bulk product import from JSON."""
+    products: List[ProductImportItem]
+
+@router.post("/products/import")
+async def import_products_json(request: BulkProductImportRequest):
+    """Import multiple products from JSON array."""
+    imported = 0
+    errors = []
+    
+    for product in request.products:
+        try:
+            new_product = {
+                "id": str(uuid.uuid4()),
+                "name": product.name,
+                "price_ngn": product.price_ngn,
+                "stock_level": product.stock_level,
+                "description": product.description,
+                "category": product.category,
+                "voice_tags": [],
+                "image_url": ""
+            }
+            inventory_manager.add_product(new_product)
+            imported += 1
+        except Exception as e:
+            errors.append(f"{product.name}: {str(e)}")
+    
+    return {
+        "status": "success" if imported > 0 else "error",
+        "imported": imported,
+        "errors": len(errors),
+        "error_details": errors[:10]
+    }
+
+
+class GoogleSheetImportRequest(BaseModel):
+    """Google Sheets import request."""
+    sheet_url: str
+    sheet_id: str
+
+@router.post("/products/import-google-sheet")
+async def import_from_google_sheet(request: GoogleSheetImportRequest):
+    """Import products from a public Google Sheet."""
+    import httpx
+    
+    try:
+        # Construct CSV export URL
+        csv_url = f"https://docs.google.com/spreadsheets/d/{request.sheet_id}/export?format=csv"
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.get(csv_url, follow_redirects=True, timeout=30.0)
+            
+            if response.status_code != 200:
+                return {"status": "error", "message": "Could not access sheet. Make sure it's publicly viewable."}
+            
+            csv_content = response.text
+        
+        # Parse CSV
+        lines = csv_content.strip().split('\n')
+        if len(lines) < 2:
+            return {"status": "error", "message": "Sheet appears empty"}
+        
+        headers = [h.strip().lower() for h in lines[0].split(',')]
+        products = []
+        
+        for line in lines[1:]:
+            values = line.split(',')
+            product = {
+                "name": "",
+                "price_ngn": 0,
+                "stock_level": 1,
+                "description": "",
+                "category": ""
+            }
+            
+            for idx, header in enumerate(headers):
+                if idx >= len(values):
+                    break
+                value = values[idx].strip().strip('"')
+                
+                if 'name' in header or 'product' in header:
+                    product["name"] = value
+                elif 'price' in header:
+                    try:
+                        product["price_ngn"] = float(value.replace('₦', '').replace(',', '').replace('N', ''))
+                    except:
+                        pass
+                elif 'stock' in header or 'qty' in header or 'quantity' in header:
+                    try:
+                        product["stock_level"] = int(value.replace(',', ''))
+                    except:
+                        pass
+                elif 'desc' in header:
+                    product["description"] = value
+                elif 'cat' in header:
+                    product["category"] = value
+            
+            if product["name"] and product["price_ngn"] > 0:
+                products.append(product)
+        
+        return {
+            "status": "success",
+            "products": products,
+            "count": len(products)
+        }
+        
+    except Exception as e:
+        logger.error(f"Google Sheets import error: {e}")
+        return {"status": "error", "message": str(e)}
+
+
+@router.post("/products/scan-image")
+async def scan_product_image(image: UploadFile = File(...)):
+    """
+    OCR scan of product list image.
+    Parses handwritten or printed product lists.
+    """
+    try:
+        content = await image.read()
+        
+        # For now, return demo parsed data
+        # In production, integrate with Google Cloud Vision or Azure OCR
+        return {
+            "status": "success",
+            "text": "Nike Air Max - 45000 x 10\nPolo Shirt - 15000 x 25\nLeather Bag - 35000 x 5",
+            "products": [
+                {"name": "Nike Air Max", "price_ngn": 45000, "stock_level": 10, "description": "", "category": ""},
+                {"name": "Polo Shirt", "price_ngn": 15000, "stock_level": 25, "description": "", "category": ""},
+                {"name": "Leather Bag", "price_ngn": 35000, "stock_level": 5, "description": "", "category": ""}
+            ],
+            "message": "Demo mode: Real OCR requires Google Cloud Vision API setup"
+        }
+    except Exception as e:
+        logger.error(f"Image scan error: {e}")
+        return {"status": "error", "message": str(e)}
+
+
 # ============== WIDGET ENDPOINTS ==============
 
 @router.get("/widget/stats")
