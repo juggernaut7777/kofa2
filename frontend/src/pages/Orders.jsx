@@ -1,12 +1,14 @@
 import { useState, useEffect, useContext } from 'react'
 import { apiCall, API_ENDPOINTS } from '../config/api'
 import { ThemeContext } from '../context/ThemeContext'
+import Invoices from './Invoices'
 
 const Orders = () => {
   const { theme } = useContext(ThemeContext)
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
+  const [activeTab, setActiveTab] = useState('orders')  // 'orders' or 'invoices'
 
   useEffect(() => {
     loadOrders()
@@ -55,14 +57,61 @@ const Orders = () => {
   }
 
   const filteredOrders = filter === 'all' ? orders : orders.filter(order => order.status === filter)
+  const isDark = theme === 'dark'
+
+  // If Invoices tab is active, render Invoices component
+  if (activeTab === 'invoices') {
+    return (
+      <div className={`min-h-screen ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
+        {/* Tab Navigation */}
+        <div className={`sticky top-16 z-40 px-4 py-3 ${isDark ? 'bg-dark-card border-b border-gray-800' : 'bg-white shadow-sm'}`}>
+          <div className="max-w-7xl mx-auto flex gap-2">
+            <button
+              onClick={() => setActiveTab('orders')}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all ${isDark ? 'bg-gray-800 text-gray-300 hover:bg-gray-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+            >
+              🛒 Orders
+            </button>
+            <button
+              onClick={() => setActiveTab('invoices')}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium bg-kofa-yellow text-black shadow-lg"
+            >
+              🧾 Invoices
+            </button>
+          </div>
+        </div>
+        <Invoices />
+      </div>
+    )
+  }
 
   return (
-    <div className={`min-h-screen ${theme === 'dark' ? 'bg-dark-bg' : 'bg-slate-50'}`}>
+    <div className={`min-h-screen ${isDark ? 'bg-dark-bg' : 'bg-slate-50'}`}>
+      {/* Tab Navigation */}
+      <div className={`sticky top-16 z-40 px-4 py-3 ${isDark ? 'bg-dark-card border-b border-gray-800' : 'bg-white shadow-sm'}`}>
+        <div className="max-w-7xl mx-auto flex gap-2">
+          <button
+            onClick={() => setActiveTab('orders')}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium bg-kofa-yellow text-black shadow-lg"
+          >
+            🛒 Orders
+          </button>
+          <button
+            onClick={() => setActiveTab('invoices')}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all ${isDark ? 'bg-gray-800 text-gray-300 hover:bg-gray-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+          >
+            🧾 Invoices
+          </button>
+        </div>
+      </div>
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-kofa-navy'}`}>Orders</h1>
-          <p className={`mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-kofa-steel'}`}>
+          <h1 className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-kofa-navy'}`}>Orders</h1>
+          <p className={`mt-1 ${isDark ? 'text-gray-400' : 'text-kofa-steel'}`}>
             Manage customer orders from all channels
           </p>
         </div>
@@ -74,10 +123,10 @@ const Orders = () => {
               key={status}
               onClick={() => setFilter(status)}
               className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap ${filter === status
-                  ? 'bg-kofa-cobalt text-white'
-                  : theme === 'dark'
-                    ? 'bg-dark-card text-gray-400 hover:text-white border border-dark-border'
-                    : 'bg-white text-kofa-steel hover:text-kofa-navy shadow-sm'
+                ? 'bg-kofa-cobalt text-white'
+                : theme === 'dark'
+                  ? 'bg-dark-card text-gray-400 hover:text-white border border-dark-border'
+                  : 'bg-white text-kofa-steel hover:text-kofa-navy shadow-sm'
                 }`}
             >
               {status.charAt(0).toUpperCase() + status.slice(1)}
