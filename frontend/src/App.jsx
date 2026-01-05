@@ -15,6 +15,7 @@ import Support from './pages/Support'
 import Invoices from './pages/Invoices'
 import Analytics from './pages/Analytics'
 import Reports from './pages/Reports'
+import Insights from './pages/Insights'
 
 function App() {
   return (
@@ -26,7 +27,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
 
-          {/* Protected Routes */}
+          {/* Protected Routes - Main navigation (5 items) */}
           <Route path="/dashboard" element={
             <PrivateRoute>
               <Layout><Dashboard /></Layout>
@@ -42,6 +43,18 @@ function App() {
               <Layout><Orders /></Layout>
             </PrivateRoute>
           } />
+          <Route path="/insights" element={
+            <PrivateRoute>
+              <Layout><Insights /></Layout>
+            </PrivateRoute>
+          } />
+          <Route path="/settings" element={
+            <PrivateRoute>
+              <Layout><Settings /></Layout>
+            </PrivateRoute>
+          } />
+
+          {/* Legacy routes (redirect to combined pages or keep for direct access) */}
           <Route path="/invoices" element={
             <PrivateRoute>
               <Layout><Invoices /></Layout>
@@ -65,11 +78,6 @@ function App() {
           <Route path="/subscription" element={
             <PrivateRoute>
               <Layout><Subscription /></Layout>
-            </PrivateRoute>
-          } />
-          <Route path="/settings" element={
-            <PrivateRoute>
-              <Layout><Settings /></Layout>
             </PrivateRoute>
           } />
           <Route path="/support" element={
