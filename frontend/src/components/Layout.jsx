@@ -9,14 +9,12 @@ const Layout = ({ children }) => {
   const { user, logout } = useAuth()
   const { theme, toggleTheme } = useContext(ThemeContext)
 
+  // Streamlined navigation for mobile UX (5 items instead of 8)
   const navItems = [
     { path: '/dashboard', label: 'Dashboard', icon: '📊' },
     { path: '/products', label: 'Products', icon: '📦' },
-    { path: '/orders', label: 'Orders', icon: '🛒' },
-    { path: '/invoices', label: 'Invoices', icon: '🧾' },
-    { path: '/analytics', label: 'Analytics', icon: '📈' },
-    { path: '/reports', label: 'Reports', icon: '📋' },
-    { path: '/expenses', label: 'Expenses', icon: '💸' },
+    { path: '/orders', label: 'Orders', icon: '🛒' },      // Includes Invoices tab
+    { path: '/insights', label: 'Insights', icon: '📈' },  // Analytics + Reports + Expenses
     { path: '/settings', label: 'Settings', icon: '⚙️' },
   ]
 
