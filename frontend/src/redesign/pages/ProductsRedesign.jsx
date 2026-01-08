@@ -50,7 +50,14 @@ const ProductsRedesign = () => {
         setLoading(true)
         try {
             const data = await apiCall(API_ENDPOINTS.PRODUCTS)
-            setProducts(Array.isArray(data) ? data : [])
+            // Normalize product data - API might use different field names
+            const normalized = (Array.isArray(data) ? data : []).map(p => ({
+                ...p,
+                price: p.price || p.selling_price || p.unit_price || p.amount || 0,
+                stock: p.stock ?? p.quantity ?? p.inventory ?? 0,
+                category: p.category || p.type || 'General'
+            }))
+            setProducts(normalized)
         } catch (e) {
             setProducts([
                 { id: 1, name: 'Ankara Fabric Pattern Royal Blue', price: 12000, stock: 24, category: 'Textiles', image_url: 'https://images.unsplash.com/photo-1594032194509-0f8f7ad0b6a7?w=400' },
@@ -64,6 +71,7 @@ const ProductsRedesign = () => {
     }
 
     const formatCurrency = (n) => {
+        if (n == null || isNaN(n)) return '₦0'
         if (n >= 1000000) return `₦${(n / 1000000).toFixed(1)}M`
         if (n >= 1000) return `₦${Math.round(n / 1000)}K`
         return `₦${n}`
@@ -258,8 +266,8 @@ const ProductsRedesign = () => {
                                 <div
                                     onClick={() => imageInputRef.current?.click()}
                                     className={`relative aspect-video rounded-2xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden ${imagePreview
-                                            ? 'border-transparent'
-                                            : isDark ? 'border-white/20 hover:border-white/40 bg-white/5' : 'border-black/20 hover:border-black/40 bg-black/5'
+                                        ? 'border-transparent'
+                                        : isDark ? 'border-white/20 hover:border-white/40 bg-white/5' : 'border-black/20 hover:border-black/40 bg-black/5'
                                         }`}
                                 >
                                     {imagePreview ? (
