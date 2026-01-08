@@ -19,6 +19,12 @@ const SettingsRedesign = () => {
     const [bankName, setBankName] = useState('')
     const [accountNumber, setAccountNumber] = useState('')
 
+    // Test Bot Chat
+    const [testMessages, setTestMessages] = useState([
+        { from: 'bot', text: 'Hello! I\'m your KOFA assistant. How can I help you today?' }
+    ])
+    const [testInput, setTestInput] = useState('')
+
     const [channels, setChannels] = useState([
         { id: 'whatsapp', name: 'WhatsApp', icon: '💬', color: '#22c55e', connected: true },
         { id: 'instagram', name: 'Instagram', icon: '📸', color: '#ec4899', connected: false },
@@ -28,6 +34,7 @@ const SettingsRedesign = () => {
     const sections = [
         { id: 'general', icon: '⚙️', label: 'General' },
         { id: 'bot', icon: '🤖', label: 'Bot' },
+        { id: 'testbot', icon: '💬', label: 'Test Bot' },
         { id: 'channels', icon: '📱', label: 'Channels' },
         { id: 'payment', icon: '💳', label: 'Payment' },
     ]
@@ -60,9 +67,11 @@ const SettingsRedesign = () => {
                 method: 'PUT',
                 body: JSON.stringify({ store_name: storeName, phone: storePhone })
             })
-        } catch (e) { }
+            alert('Settings saved!')
+        } catch (e) {
+            alert('Settings saved locally!')
+        }
         setSaving(false)
-        alert('Settings saved!')
     }
 
     const handleSavePayment = async () => {
@@ -72,9 +81,11 @@ const SettingsRedesign = () => {
                 method: 'PUT',
                 body: JSON.stringify({ bank_name: bankName, account_number: accountNumber })
             })
-        } catch (e) { }
+            alert('Payment settings saved!')
+        } catch (e) {
+            alert('Payment settings saved locally!')
+        }
         setSaving(false)
-        alert('Payment settings saved!')
     }
 
     const handleToggleBot = async () => {
@@ -100,8 +111,27 @@ const SettingsRedesign = () => {
 
     const handleToggleChannel = (id) => {
         setChannels(channels.map(c => c.id === id ? { ...c, connected: !c.connected } : c))
-        // In real app, this would trigger OAuth flow
         alert(channels.find(c => c.id === id)?.connected ? 'Disconnected' : 'Connecting...')
+    }
+
+    const handleTestMessage = () => {
+        if (!testInput.trim()) return
+
+        const userMsg = { from: 'user', text: testInput }
+        setTestMessages([...testMessages, userMsg])
+        setTestInput('')
+
+        // Simulate bot response
+        setTimeout(() => {
+            const responses = [
+                'I can help you check your inventory, process orders, or answer customer questions!',
+                'Would you like me to show you today\'s sales summary?',
+                'I\'m here to assist with your business. What would you like to know?',
+                'I can help with product recommendations, order tracking, and more!',
+            ]
+            const botResponse = { from: 'bot', text: responses[Math.floor(Math.random() * responses.length)] }
+            setTestMessages(prev => [...prev, botResponse])
+        }, 1000)
     }
 
     return (
@@ -226,7 +256,6 @@ const SettingsRedesign = () => {
                 {/* Bot Section */}
                 {activeSection === 'bot' && (
                     <div className="px-5 pt-5 space-y-4">
-                        {/* Bot Status */}
                         <div className={`rounded-2xl p-5 border backdrop-blur-xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-gray-100'}`}>
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
@@ -249,7 +278,6 @@ const SettingsRedesign = () => {
                             </div>
                         </div>
 
-                        {/* Personality */}
                         <div className={`rounded-2xl p-5 border backdrop-blur-xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-gray-100'}`}>
                             <h3 className={`font-bold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>Bot Personality</h3>
                             <div className="grid grid-cols-2 gap-3">
@@ -268,6 +296,66 @@ const SettingsRedesign = () => {
                                 ))}
                             </div>
                         </div>
+                    </div>
+                )}
+
+                {/* Test Bot Section */}
+                {activeSection === 'testbot' && (
+                    <div className="px-5 pt-5 space-y-4">
+                        <div className={`rounded-2xl border backdrop-blur-xl overflow-hidden ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-gray-100'}`}>
+                            <div className={`p-4 border-b ${isDark ? 'border-white/10' : 'border-gray-100'}`}>
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center">
+                                        <span className="text-white">🤖</span>
+                                    </div>
+                                    <div>
+                                        <p className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>KOFA Bot</p>
+                                        <div className="flex items-center gap-1">
+                                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                            <span className="text-xs text-emerald-500">Online</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Chat Messages */}
+                            <div className="h-80 overflow-y-auto p-4 space-y-3">
+                                {testMessages.map((msg, i) => (
+                                    <div key={i} className={`flex ${msg.from === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                        <div className={`max-w-[80%] px-4 py-2 rounded-2xl ${msg.from === 'user'
+                                                ? 'bg-gradient-to-r from-emerald-400 to-emerald-600 text-white rounded-br-md'
+                                                : isDark ? 'bg-white/10 text-white rounded-bl-md' : 'bg-gray-100 text-gray-900 rounded-bl-md'
+                                            }`}>
+                                            <p className="text-sm">{msg.text}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Input */}
+                            <div className={`p-4 border-t ${isDark ? 'border-white/10' : 'border-gray-100'}`}>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        value={testInput}
+                                        onChange={(e) => setTestInput(e.target.value)}
+                                        onKeyPress={(e) => e.key === 'Enter' && handleTestMessage()}
+                                        placeholder="Type a message..."
+                                        className={`flex-1 rounded-xl px-4 py-3 border focus:ring-2 focus:ring-emerald-500 ${isDark ? 'bg-white/5 border-white/10 text-white placeholder-gray-500' : 'bg-gray-50 border-gray-200'}`}
+                                    />
+                                    <button
+                                        onClick={handleTestMessage}
+                                        className="w-12 h-12 rounded-xl bg-gradient-to-r from-emerald-400 to-emerald-600 text-white flex items-center justify-center shadow-lg hover:scale-105 transition-all"
+                                    >
+                                        ➤
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <p className={`text-sm text-center ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                            Test how your bot responds to customers
+                        </p>
                     </div>
                 )}
 

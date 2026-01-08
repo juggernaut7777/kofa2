@@ -193,9 +193,9 @@ const DashboardRedesign = () => {
                     <div className="grid grid-cols-4 gap-3">
                         {[
                             { icon: '➕', label: 'Add', action: () => navigate('/products') },
+                            { icon: '💸', label: 'Expenses', action: () => navigate('/insights', { state: { tab: 'expenses' } }) },
+                            { icon: '📦', label: 'Orders', action: () => navigate('/orders') },
                             { icon: '📊', label: 'Analytics', action: () => navigate('/insights') },
-                            { icon: '🧾', label: 'Invoices', action: () => navigate('/orders') },
-                            { icon: '⚙️', label: 'Settings', action: () => navigate('/settings') },
                         ].map((item, i) => (
                             <button
                                 key={i}
