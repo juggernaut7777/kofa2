@@ -7,6 +7,7 @@ export const API_ENDPOINTS = {
   PRODUCT_BY_ID: (id) => `/products/${id}`,
   CREATE_PRODUCT: '/products',
   UPDATE_PRODUCT: (id) => `/products/${id}`,
+  DELETE_PRODUCT: (id) => `/products/${id}`,
   RESTOCK_PRODUCT: (id) => `/products/${id}/restock`,
   UPLOAD_PRODUCT_IMAGE: (id) => `/products/${id}/image`,
   DELETE_PRODUCT_IMAGE: (id) => `/products/${id}/image`,
@@ -30,6 +31,24 @@ export const API_ENDPOINTS = {
   DASHBOARD_SUMMARY: '/dashboard/summary',
 
   // Delivery
+  DELIVERY_ZONES: '/delivery/zones',
+  DELIVERY_ESTIMATE: '/delivery/estimate',
+  CREATE_SHIPMENT: '/delivery/create',
+  TRACK_SHIPMENT: (trackingId) => `/delivery/track/${trackingId}`,
+  UPDATE_SHIPMENT: (trackingId) => `/delivery/track/${trackingId}/update`,
+
+  // Expenses
+  LOG_EXPENSE: '/expenses/log',
+  EXPENSE_SUMMARY: '/expenses/summary',
+  LIST_EXPENSES: '/expenses/list',
+
+  // Profit & Loss
+  PROFIT_TODAY: '/profit/today',
+  PROFIT_SUMMARY: '/profit/summary',
+  PROFIT_REPORT: '/profit/report',
+  PROFIT_WEEK: '/profit/week',
+  PROFIT_MONTH: '/profit/month',
+  PROFIT_CHANNELS: '/profit/channels',
 
   // Analytics
   ANALYTICS: '/analytics',
@@ -59,6 +78,9 @@ export const API_ENDPOINTS = {
   GENERATE_RECEIPT: '/receipts/generate',
   GENERATE_INVOICE: '/invoices/generate',
 
+  // Sales Channels
+  CHANNELS_SUMMARY: '/channels/summary',
+
   // Support & Troubleshooting
   SUBMIT_SUPPORT_TICKET: '/support/ticket',
   TROUBLESHOOTING_GUIDES: '/support/troubleshooting',
@@ -67,6 +89,7 @@ export const API_ENDPOINTS = {
   // Health check
   HEALTH: '/health'
 };
+
 
 // Helper function to make API calls
 export const apiCall = async (endpoint, options = {}) => {

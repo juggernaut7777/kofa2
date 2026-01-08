@@ -44,26 +44,22 @@ const InsightsRedesign = () => {
     const loadData = async () => {
         setLoading(true)
         try {
-            const data = await apiCall(API_ENDPOINTS.ANALYTICS)
-            setAnalytics(data || {})
-
-            // Try to load products for top products
-            try {
-                const products = await apiCall(API_ENDPOINTS.PRODUCTS)
-                if (Array.isArray(products)) {
-                    setTopProducts(products.slice(0, 5).map(p => ({
-                        name: p.name,
-                        sales: p.total_sold || Math.floor(Math.random() * 100) + 10,
-                        stock: p.stock,
-                        revenue: (p.price || 0) * (p.total_sold || 10),
-                        change: Math.floor(Math.random() * 20) - 5,
-                        image: p.image_url
-                    })))
-                }
-            } catch (e) {
-                console.log('Using demo top products')
+            // Load profit/loss data
+            const profitData = await apiCall(API_ENDPOINTS.PROFIT_SUMMARY)
+            if (profitData) {
+                setAnalytics({
+                    total_revenue: profitData.revenue_ngn || 0,
+                    revenue_change: 15,
+                    total_orders: profitData.order_count || 0,
+                    delivered_percent: 70,
+                    pending_percent: 20,
+                    new_customers: 65,
+                    returning_customers: 35,
+                    new_signups: 12
+                })
             }
         } catch (error) {
+            // Fallback demo data
             setAnalytics({
                 total_revenue: 1450000,
                 revenue_change: 15,
@@ -74,6 +70,22 @@ const InsightsRedesign = () => {
                 returning_customers: 35,
                 new_signups: 12
             })
+        }
+
+        // Load top products
+        try {
+            const products = await apiCall(API_ENDPOINTS.PRODUCTS)
+            if (Array.isArray(products)) {
+                setTopProducts(products.slice(0, 5).map(p => ({
+                    name: p.name,
+                    sales: p.total_sold || Math.floor(Math.random() * 100) + 10,
+                    stock: p.stock,
+                    revenue: (p.price || 0) * (p.total_sold || 10),
+                    change: Math.floor(Math.random() * 20) - 5,
+                    image: p.image_url
+                })))
+            }
+        } catch (e) {
             setTopProducts([
                 { name: 'Nike Air Max 90', sales: 124, stock: 12, revenue: 1850000, change: 8, image: null },
                 { name: 'Adidas Superstar', sales: 98, stock: 45, revenue: 950000, change: 12, image: null },
@@ -81,21 +93,54 @@ const InsightsRedesign = () => {
             ])
         }
 
-        setChannels([
-            { name: 'WhatsApp', icon: '💬', color: '#22c55e', revenue: 850000, percent: 58 },
-            { name: 'Instagram', icon: '📸', color: '#ec4899', revenue: 420000, percent: 32 },
-            { name: 'Web Store', icon: '🌐', color: '#3b82f6', revenue: 180000, percent: 10 },
-        ])
+        // Load expenses
+        try {
+            const expenseList = await apiCall(API_ENDPOINTS.LIST_EXPENSES)
+            if (Array.isArray(expenseList)) {
+                const categoryIcons = { inventory: '📦', delivery: '🚚', marketing: '📣', utilities: '💡', salaries: '👥', rent: '🏢', other: '📝' }
+                setExpenses(expenseList.map(exp => ({
+                    id: exp.id,
+                    category: exp.category,
+                    amount: exp.amount,
+                    icon: categoryIcons[exp.category?.toLowerCase()] || '📝',
+                    date: exp.date ? new Date(exp.date).toLocaleDateString() : 'Recently'
+                })))
+            }
+        } catch (e) {
+            setExpenses([
+                { id: 1, category: 'Inventory', amount: 450000, icon: '📦', date: 'Today' },
+                { id: 2, category: 'Delivery', amount: 85000, icon: '🚚', date: 'Yesterday' },
+                { id: 3, category: 'Marketing', amount: 120000, icon: '📣', date: '2 days ago' },
+                { id: 4, category: 'Utilities', amount: 35000, icon: '💡', date: '3 days ago' },
+            ])
+        }
 
-        setExpenses([
-            { id: 1, category: 'Inventory', amount: 450000, icon: '📦', date: 'Today' },
-            { id: 2, category: 'Delivery', amount: 85000, icon: '🚚', date: 'Yesterday' },
-            { id: 3, category: 'Marketing', amount: 120000, icon: '📣', date: '2 days ago' },
-            { id: 4, category: 'Utilities', amount: 35000, icon: '💡', date: '3 days ago' },
-        ])
+        // Load channel profitability
+        try {
+            const channelData = await apiCall(API_ENDPOINTS.PROFIT_CHANNELS)
+            if (channelData?.channels) {
+                const colors = { WhatsApp: '#22c55e', Instagram: '#ec4899', Web: '#3b82f6', 'Walk-in': '#f59e0b' }
+                const icons = { WhatsApp: '💬', Instagram: '📸', Web: '🌐', 'Walk-in': '🏪' }
+                const total = channelData.channels.reduce((s, c) => s + (c.revenue_ngn || 0), 0)
+                setChannels(channelData.channels.map(c => ({
+                    name: c.name,
+                    icon: icons[c.name] || '📊',
+                    color: colors[c.name] || '#6b7280',
+                    revenue: c.revenue_ngn || 0,
+                    percent: total > 0 ? Math.round((c.revenue_ngn / total) * 100) : 0
+                })))
+            }
+        } catch (e) {
+            setChannels([
+                { name: 'WhatsApp', icon: '💬', color: '#22c55e', revenue: 850000, percent: 58 },
+                { name: 'Instagram', icon: '📸', color: '#ec4899', revenue: 420000, percent: 32 },
+                { name: 'Web Store', icon: '🌐', color: '#3b82f6', revenue: 180000, percent: 10 },
+            ])
+        }
 
         setLoading(false)
     }
+
 
     const formatCurrency = (amount) => {
         if (!amount) return '₦0'
@@ -136,26 +181,51 @@ const InsightsRedesign = () => {
         alert('Report exported successfully!')
     }
 
-    const handleAddExpense = () => {
+    const handleAddExpense = async () => {
         if (!newExpense.category || !newExpense.amount) {
             alert('Please fill in category and amount')
             return
         }
 
         const category = expenseCategories.find(c => c.id === newExpense.category)
-        const expense = {
-            id: Date.now(),
-            category: category?.label || newExpense.category,
+        const expenseData = {
             amount: parseFloat(newExpense.amount),
-            icon: category?.icon || '📝',
-            date: 'Just now',
-            description: newExpense.description
+            description: newExpense.description || `${category?.label} expense`,
+            category: newExpense.category,
+            expense_type: 'BUSINESS'
         }
 
-        setExpenses([expense, ...expenses])
+        try {
+            const result = await apiCall(API_ENDPOINTS.LOG_EXPENSE, {
+                method: 'POST',
+                body: JSON.stringify(expenseData)
+            })
+
+            const expense = {
+                id: result?.id || Date.now(),
+                category: category?.label || newExpense.category,
+                amount: parseFloat(newExpense.amount),
+                icon: category?.icon || '📝',
+                date: 'Just now'
+            }
+
+            setExpenses([expense, ...expenses])
+            alert(`Expense logged: ${category?.label} - ${formatCurrency(expense.amount)}`)
+        } catch (error) {
+            // Fallback - add locally
+            const expense = {
+                id: Date.now(),
+                category: category?.label || newExpense.category,
+                amount: parseFloat(newExpense.amount),
+                icon: category?.icon || '📝',
+                date: 'Just now'
+            }
+            setExpenses([expense, ...expenses])
+            alert(`Expense logged locally: ${category?.label}`)
+        }
+
         setNewExpense({ category: '', amount: '', description: '' })
         setShowExpenseModal(false)
-        alert(`Expense logged: ${category?.label} - ₦${formatCurrency(expense.amount)}`)
     }
 
     const handleDeleteExpense = (id) => {
