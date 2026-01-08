@@ -1,14 +1,17 @@
 import { useState, useEffect, useContext } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { apiCall, API_ENDPOINTS } from '../../config/api'
 import { ThemeContext } from '../../context/ThemeContext'
 
 const InsightsRedesign = () => {
     const navigate = useNavigate()
+    const location = useLocation()
     const { theme } = useContext(ThemeContext)
     const isDark = theme === 'dark'
 
-    const [activeTab, setActiveTab] = useState('overview')
+    // Check if navigated with a specific tab state
+    const initialTab = location.state?.tab || 'overview'
+    const [activeTab, setActiveTab] = useState(initialTab)
     const [period, setPeriod] = useState('7')
     const [loading, setLoading] = useState(true)
     const [stats, setStats] = useState({})
@@ -208,8 +211,8 @@ const InsightsRedesign = () => {
                                 key={p.id}
                                 onClick={() => setPeriod(p.id)}
                                 className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-all ${period === p.id
-                                        ? 'bg-gradient-to-r from-emerald-400 to-emerald-600 text-white shadow-lg'
-                                        : isDark ? 'bg-white/5 text-gray-400' : 'bg-gray-100 text-gray-600'
+                                    ? 'bg-gradient-to-r from-emerald-400 to-emerald-600 text-white shadow-lg'
+                                    : isDark ? 'bg-white/5 text-gray-400' : 'bg-gray-100 text-gray-600'
                                     }`}
                             >
                                 {p.label}
@@ -225,8 +228,8 @@ const InsightsRedesign = () => {
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
                             className={`flex items-center gap-2 px-4 h-10 rounded-xl whitespace-nowrap transition-all hover:scale-105 ${activeTab === tab.id
-                                    ? 'bg-gradient-to-r from-emerald-400 to-emerald-600 text-white font-semibold shadow-lg'
-                                    : isDark ? 'bg-white/5 text-gray-400 border border-white/10' : 'bg-white text-gray-600 border border-gray-200'
+                                ? 'bg-gradient-to-r from-emerald-400 to-emerald-600 text-white font-semibold shadow-lg'
+                                : isDark ? 'bg-white/5 text-gray-400 border border-white/10' : 'bg-white text-gray-600 border border-gray-200'
                                 }`}
                         >
                             <span>{tab.icon}</span>
@@ -345,7 +348,19 @@ const InsightsRedesign = () => {
                                     <p className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>{expense.category}</p>
                                     <p className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{expense.date}</p>
                                 </div>
-                                <p className="font-bold text-red-400">-{formatCurrency(expense.amount)}</p>
+                                <div className="flex items-center gap-2">
+                                    <p className="font-bold text-red-400">-{formatCurrency(expense.amount)}</p>
+                                    <button
+                                        onClick={() => {
+                                            if (confirm('Delete this expense?')) {
+                                                setExpenses(expenses.filter(e => e.id !== expense.id))
+                                            }
+                                        }}
+                                        className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm hover:scale-110 transition-all ${isDark ? 'bg-red-500/20 text-red-400' : 'bg-red-100 text-red-600'}`}
+                                    >
+                                        🗑️
+                                    </button>
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -400,8 +415,8 @@ const InsightsRedesign = () => {
                                             key={cat.id}
                                             onClick={() => setNewExpense({ ...newExpense, category: cat.id })}
                                             className={`flex flex-col items-center gap-1 p-3 rounded-xl transition-all hover:scale-105 ${newExpense.category === cat.id
-                                                    ? 'bg-gradient-to-br from-emerald-400 to-emerald-600 text-white'
-                                                    : isDark ? 'bg-white/5' : 'bg-gray-100'
+                                                ? 'bg-gradient-to-br from-emerald-400 to-emerald-600 text-white'
+                                                : isDark ? 'bg-white/5' : 'bg-gray-100'
                                                 }`}
                                         >
                                             <span className="text-xl">{cat.icon}</span>
