@@ -77,6 +77,9 @@ export const API_ENDPOINTS = {
   // Receipts & Invoices
   GENERATE_RECEIPT: '/receipts/generate',
   GENERATE_INVOICE: '/invoices/generate',
+  LIST_INVOICES: '/invoices',
+  GET_INVOICE: (id) => `/invoices/${id}`,
+  MARK_INVOICE_PAID: (id) => `/invoices/${id}/mark-paid`,
 
   // Sales Channels
   CHANNELS_SUMMARY: '/channels/summary',

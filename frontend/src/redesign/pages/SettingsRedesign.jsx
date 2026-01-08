@@ -21,15 +21,11 @@ const SettingsRedesign = () => {
     const [activeSection, setActiveSection] = useState('general')
     const [saving, setSaving] = useState(false)
     const [botActive, setBotActive] = useState(true)
-    const [botPersonality, setBotPersonality] = useState('friendly')
+    const [botPersonality, setBotPersonality] = useState('professional')
     const [storeName, setStoreName] = useState(user?.storeName || 'My Store')
     const [storePhone, setStorePhone] = useState(user?.phone || '')
     const [bankName, setBankName] = useState('')
     const [accountNumber, setAccountNumber] = useState('')
-
-    // Test Bot
-    const [testMessages, setTestMessages] = useState([{ from: 'bot', text: "Hello! I'm your KOFA assistant. How can I help you today?" }])
-    const [testInput, setTestInput] = useState('')
 
     const [channels, setChannels] = useState([
         { id: 'whatsapp', name: 'WhatsApp', color: '#22c55e', connected: true },
@@ -40,16 +36,13 @@ const SettingsRedesign = () => {
     const sections = [
         { id: 'general', label: 'General', icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg> },
         { id: 'bot', label: 'Bot', icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg> },
-        { id: 'testbot', label: 'Test', icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg> },
         { id: 'channels', label: 'Channels', icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0" /></svg> },
         { id: 'payment', label: 'Payment', icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg> },
     ]
 
     const personalities = [
-        { id: 'friendly', label: 'Friendly', icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> },
-        { id: 'professional', label: 'Professional', icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg> },
-        { id: 'casual', label: 'Casual', icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg> },
-        { id: 'formal', label: 'Formal', icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg> },
+        { id: 'professional', label: 'Professional', icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>, desc: 'Formal, business-like tone' },
+        { id: 'pidgin', label: 'Pidgin', icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" /></svg>, desc: 'Friendly Nigerian Pidgin' },
     ]
 
     const banks = ['GTBank', 'Access Bank', 'First Bank', 'Zenith Bank', 'UBA', 'Kuda', 'Opay', 'Moniepoint']
@@ -59,7 +52,10 @@ const SettingsRedesign = () => {
     const loadSettings = async () => {
         try {
             const botStatus = await apiCall(API_ENDPOINTS.BOT_STATUS).catch(() => null)
-            if (botStatus) { setBotActive(botStatus.active !== false); setBotPersonality(botStatus.style || 'friendly') }
+            if (botStatus) {
+                setBotActive(botStatus.active !== false)
+                setBotPersonality(botStatus.style || 'professional')
+            }
         } catch (e) { }
     }
 
@@ -95,16 +91,6 @@ const SettingsRedesign = () => {
     const handleToggleChannel = (id) => {
         setChannels(channels.map(c => c.id === id ? { ...c, connected: !c.connected } : c))
         alert(channels.find(c => c.id === id)?.connected ? 'Disconnected' : 'Connecting...')
-    }
-
-    const handleTestMessage = () => {
-        if (!testInput.trim()) return
-        setTestMessages([...testMessages, { from: 'user', text: testInput }])
-        setTestInput('')
-        setTimeout(() => {
-            const responses = ['I can help you check inventory, process orders, or answer customer questions!', "Would you like me to show you today's sales summary?", "I'm here to assist with your business. What would you like to know?"]
-            setTestMessages(prev => [...prev, { from: 'bot', text: responses[Math.floor(Math.random() * responses.length)] }])
-        }, 1000)
     }
 
     return (
@@ -194,7 +180,7 @@ const SettingsRedesign = () => {
                 {activeSection === 'bot' && (
                     <div className="px-6 pt-5 space-y-4">
                         <div className={`rounded-2xl p-5 ${isDark ? 'bg-white/[0.03] border border-white/[0.06]' : 'bg-white border border-black/[0.04]'}`}>
-                            <div className="flex items-center justify-between">
+                            <div className="flex items-center justify-between mb-5">
                                 <div className="flex items-center gap-3">
                                     <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${botActive ? 'bg-emerald-500/20' : isDark ? 'bg-white/[0.05]' : 'bg-black/[0.03]'}`}>
                                         <svg className={`w-5 h-5 ${botActive ? 'text-emerald-400' : isDark ? 'text-white/40' : 'text-black/40'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -210,61 +196,32 @@ const SettingsRedesign = () => {
                                     <div className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-transform ${botActive ? 'left-6' : 'left-1'}`}></div>
                                 </button>
                             </div>
-                        </div>
 
-                        <div className={`rounded-2xl p-5 ${isDark ? 'bg-white/[0.03] border border-white/[0.06]' : 'bg-white border border-black/[0.04]'}`}>
-                            <h3 className={`font-semibold mb-4 ${isDark ? 'text-white' : 'text-black'}`}>Bot Personality</h3>
-                            <div className="grid grid-cols-2 gap-3">
+                            <h3 className={`font-semibold mb-3 ${isDark ? 'text-white' : 'text-black'}`}>Bot Personality</h3>
+                            <div className="space-y-3">
                                 {personalities.map(p => (
-                                    <button key={p.id} onClick={() => handleSetPersonality(p.id)} className={`flex items-center gap-3 p-3 rounded-xl transition-all hover:scale-[1.02] ${botPersonality === p.id ? 'text-white' : isDark ? 'bg-white/[0.03]' : 'bg-black/[0.02]'}`} style={botPersonality === p.id ? { background: `linear-gradient(135deg, ${colors.violet}, ${colors.indigo})` } : { color: colors.violet }}>
-                                        {p.icon}
-                                        <span className="font-medium text-sm">{p.label}</span>
+                                    <button
+                                        key={p.id}
+                                        onClick={() => handleSetPersonality(p.id)}
+                                        className={`w-full flex items-start gap-3 p-4 rounded-xl transition-all hover:scale-[1.01] ${botPersonality === p.id ? 'text-white' : isDark ? 'bg-white/[0.03] border border-white/[0.06]' : 'bg-white border border-black/[0.04]'}`}
+                                        style={botPersonality === p.id ? { background: `linear-gradient(135deg, ${colors.violet}, ${colors.indigo})` } : {}}
+                                    >
+                                        <div className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center ${botPersonality === p.id ? 'bg-white/20' : isDark ? 'bg-white/[0.05]' : 'bg-black/[0.03]'}`}>
+                                            {p.icon}
+                                        </div>
+                                        <div className="flex-1 text-left">
+                                            <p className="font-medium mb-0.5">{p.label}</p>
+                                            <p className={`text-xs ${botPersonality === p.id ? 'text-white/70' : isDark ? 'text-white/40' : 'text-black/40'}`}>{p.desc}</p>
+                                        </div>
+                                        {botPersonality === p.id && (
+                                            <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                            </svg>
+                                        )}
                                     </button>
                                 ))}
                             </div>
                         </div>
-                    </div>
-                )}
-
-                {/* Test Bot Section */}
-                {activeSection === 'testbot' && (
-                    <div className="px-6 pt-5 space-y-4">
-                        <div className={`rounded-2xl overflow-hidden ${isDark ? 'bg-white/[0.03] border border-white/[0.06]' : 'bg-white border border-black/[0.04]'}`}>
-                            <div className={`p-4 border-b ${isDark ? 'border-white/[0.06]' : 'border-black/[0.04]'}`}>
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-white" style={{ background: `linear-gradient(135deg, ${colors.violet}, ${colors.indigo})` }}>
-                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-                                    </div>
-                                    <div>
-                                        <p className={`font-semibold ${isDark ? 'text-white' : 'text-black'}`}>KOFA Bot</p>
-                                        <div className="flex items-center gap-1.5">
-                                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                                            <span className="text-xs text-emerald-400">Online</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="h-64 overflow-y-auto p-4 space-y-3">
-                                {testMessages.map((msg, i) => (
-                                    <div key={i} className={`flex ${msg.from === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                        <div className={`max-w-[80%] px-4 py-2.5 rounded-2xl text-sm ${msg.from === 'user' ? 'text-white rounded-br-md' : `rounded-bl-md ${isDark ? 'bg-white/[0.05] text-white' : 'bg-black/[0.03] text-black'}`}`} style={msg.from === 'user' ? { background: `linear-gradient(135deg, ${colors.violet}, ${colors.indigo})` } : {}}>
-                                            {msg.text}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-
-                            <div className={`p-4 border-t ${isDark ? 'border-white/[0.06]' : 'border-black/[0.04]'}`}>
-                                <div className="flex gap-2">
-                                    <input type="text" value={testInput} onChange={(e) => setTestInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleTestMessage()} placeholder="Type a message..." className={`flex-1 rounded-xl px-4 py-3 border transition-all focus:outline-none ${isDark ? 'bg-white/[0.03] border-white/[0.06] text-white placeholder-white/30' : 'bg-black/[0.02] border-black/[0.04] text-black placeholder-black/30'}`} />
-                                    <button onClick={handleTestMessage} className="w-12 h-12 rounded-xl flex items-center justify-center text-white transition-all hover:scale-105" style={{ background: `linear-gradient(135deg, ${colors.violet}, ${colors.indigo})` }}>
-                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                        <p className={`text-xs text-center ${isDark ? 'text-white/30' : 'text-black/30'}`}>Test how your bot responds</p>
                     </div>
                 )}
 
