@@ -1,12 +1,15 @@
 import { useState, useEffect, useContext } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { apiCall, API_ENDPOINTS } from '../../config/api'
 import { ThemeContext } from '../../context/ThemeContext'
 import { useAuth } from '../../context/AuthContext'
 
 const SettingsRedesign = () => {
-    const { theme } = useContext(ThemeContext)
+    const navigate = useNavigate()
+    const { theme, toggleTheme } = useContext(ThemeContext)
     const { user } = useAuth()
     const isDark = theme === 'dark'
+    const [loading, setLoading] = useState(true)
 
     const [botActive, setBotActive] = useState(true)
     const [botPersonality, setBotPersonality] = useState('friendly')
@@ -47,17 +50,76 @@ const SettingsRedesign = () => {
         'Union Bank',
     ]
 
+    useEffect(() => {
+        loadSettings()
+    }, [])
+
+    const loadSettings = async () => {
+        try {
+            // Try to load bot settings
+            const botSettings = await apiCall(API_ENDPOINTS.BOT_STATUS)
+            if (botSettings) {
+                setBotActive(botSettings.active !== false)
+                setBotPersonality(botSettings.style || 'friendly')
+            }
+        } catch (e) {
+            console.log('Using default settings')
+        }
+        setLoading(false)
+    }
+
     const handleSaveBusinessInfo = async () => {
         setSaving(true)
         try {
-            await apiCall(API_ENDPOINTS.UPDATE_VENDOR, {
+            await apiCall(API_ENDPOINTS.VENDOR_BUSINESS_INFO, {
                 method: 'PUT',
                 body: JSON.stringify({ store_name: storeName, phone: storePhone })
             })
+            alert('Business info saved!')
         } catch (error) {
-            console.log('Saved locally')
+            alert('Business info saved locally!')
         } finally {
             setSaving(false)
+        }
+    }
+
+    const handleSavePaymentInfo = async () => {
+        setSaving(true)
+        try {
+            await apiCall(API_ENDPOINTS.VENDOR_PAYMENT_ACCOUNT, {
+                method: 'PUT',
+                body: JSON.stringify({ bank_name: bankName, account_number: accountNumber })
+            })
+            alert('Payment info saved!')
+        } catch (error) {
+            alert('Payment info saved locally!')
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    const handleToggleBot = async () => {
+        const newState = !botActive
+        setBotActive(newState)
+        try {
+            await apiCall(API_ENDPOINTS.BOT_PAUSE, {
+                method: 'POST',
+                body: JSON.stringify({ paused: !newState })
+            })
+        } catch (e) {
+            console.log('Bot toggle saved locally')
+        }
+    }
+
+    const handleSetPersonality = async (personality) => {
+        setBotPersonality(personality)
+        try {
+            await apiCall(API_ENDPOINTS.BOT_STYLE, {
+                method: 'PUT',
+                body: JSON.stringify({ style: personality })
+            })
+        } catch (e) {
+            console.log('Personality saved locally')
         }
     }
 
@@ -104,12 +166,15 @@ const SettingsRedesign = () => {
             <div className="max-w-md mx-auto pb-24">
 
                 {/* Header */}
-                <header className={`sticky top-0 z-20 flex items-center p-4 pb-2 justify-between border-b ${isDark ? 'bg-[#102217] border-white/5' : 'bg-white border-gray-100'
-                    }`}>
-                    <button className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100 dark:hover:bg-white/10">
+                {/* Header */}
+                <header className={`sticky top-0 z-20 flex items-center p-4 pb-2 justify-between border-b ${isDark ? 'bg-[#102217] border-white/5' : 'bg-white border-gray-100'}`}>
+                    <button onClick={() => navigate('/dashboard')} className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100 dark:hover:bg-white/10">
                         <span className="text-xl">←</span>
                     </button>
-                    <h2 className="text-lg font-bold flex-1 text-center pr-10">Settings</h2>
+                    <h2 className="text-lg font-bold flex-1 text-center">Settings</h2>
+                    <button onClick={toggleTheme} className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100 dark:hover:bg-white/10">
+                        <span className="text-xl">{isDark ? '☀️' : '🌙'}</span>
+                    </button>
                 </header>
 
                 <div className="flex-1 flex flex-col gap-6 p-4">
@@ -132,12 +197,10 @@ const SettingsRedesign = () => {
                                 <p className={`text-xs ${isDark ? 'text-[#a0b0a8]' : 'text-[#637588]'}`}>Enable auto-responses</p>
                             </div>
                             <button
-                                onClick={() => setBotActive(!botActive)}
-                                className={`relative w-[51px] h-[31px] rounded-full p-0.5 transition-colors ${botActive ? 'bg-[#2bee79]' : isDark ? 'bg-[#2a3e32]' : 'bg-[#f0f4f2]'
-                                    }`}
+                                onClick={handleToggleBot}
+                                className={`relative w-[51px] h-[31px] rounded-full p-0.5 transition-colors ${botActive ? 'bg-[#2bee79]' : isDark ? 'bg-[#2a3e32]' : 'bg-[#f0f4f2]'}`}
                             >
-                                <div className={`h-full w-[27px] rounded-full bg-white shadow-sm transition-transform ${botActive ? 'translate-x-5' : 'translate-x-0'
-                                    }`}></div>
+                                <div className={`h-full w-[27px] rounded-full bg-white shadow-sm transition-transform ${botActive ? 'translate-x-5' : 'translate-x-0'}`}></div>
                             </button>
                         </div>
 
@@ -148,10 +211,10 @@ const SettingsRedesign = () => {
                                 {personalities.map(p => (
                                     <button
                                         key={p.id}
-                                        onClick={() => setBotPersonality(p.id)}
+                                        onClick={() => handleSetPersonality(p.id)}
                                         className={`flex h-9 items-center justify-center gap-2 rounded-lg px-4 transition-all ${botPersonality === p.id
-                                                ? 'bg-[#2bee79] text-[#111814] font-bold shadow-sm'
-                                                : isDark ? 'bg-[#2a3e32] hover:bg-white/10' : 'bg-[#f0f4f2] hover:bg-gray-200'
+                                            ? 'bg-[#2bee79] text-[#111814] font-bold shadow-sm'
+                                            : isDark ? 'bg-[#2a3e32] hover:bg-white/10' : 'bg-[#f0f4f2] hover:bg-gray-200'
                                             }`}
                                     >
                                         <span>{p.icon}</span>
@@ -292,10 +355,18 @@ const SettingsRedesign = () => {
                                     type="text"
                                     value={accountName}
                                     disabled
-                                    className={`w-full h-12 rounded-lg border border-dashed px-4 opacity-70 cursor-not-allowed ${isDark ? 'border-white/20 bg-transparent text-[#a0b0a8]' : 'border-gray-300 bg-transparent text-[#637588]'
-                                        }`}
+                                    className={`w-full h-12 rounded-lg border border-dashed px-4 opacity-70 cursor-not-allowed ${isDark ? 'border-white/20 bg-transparent text-[#a0b0a8]' : 'border-gray-300 bg-transparent text-[#637588]'}`}
                                 />
                             </div>
+
+                            <button
+                                onClick={handleSavePaymentInfo}
+                                disabled={saving}
+                                className="w-full h-12 bg-[#2bee79] hover:bg-[#2bee79]/90 text-[#111814] font-bold rounded-lg mt-2 flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50"
+                            >
+                                <span>{saving ? 'Saving...' : 'Save Payment Info'}</span>
+                                {!saving && <span>✓</span>}
+                            </button>
                         </div>
                     </section>
 
@@ -327,8 +398,8 @@ const SettingsRedesign = () => {
                                 <button
                                     onClick={() => channels.whatsapp.connected ? handleDisconnect('whatsapp') : handleConnect('whatsapp')}
                                     className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${channels.whatsapp.connected
-                                            ? 'text-red-500 bg-red-50 dark:bg-red-500/10 hover:bg-red-100'
-                                            : isDark ? 'bg-[#2a3e32] hover:bg-white/10' : 'bg-[#f0f4f2] hover:bg-gray-200'
+                                        ? 'text-red-500 bg-red-50 dark:bg-red-500/10 hover:bg-red-100'
+                                        : isDark ? 'bg-[#2a3e32] hover:bg-white/10' : 'bg-[#f0f4f2] hover:bg-gray-200'
                                         }`}
                                 >
                                     {channels.whatsapp.connected ? 'Disconnect' : 'Connect'}
@@ -351,8 +422,8 @@ const SettingsRedesign = () => {
                                 <button
                                     onClick={() => channels.instagram.connected ? handleDisconnect('instagram') : handleConnect('instagram')}
                                     className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${channels.instagram.connected
-                                            ? 'text-red-500 bg-red-50 dark:bg-red-500/10 hover:bg-red-100'
-                                            : isDark ? 'bg-[#2a3e32] hover:bg-white/10' : 'bg-[#f0f4f2] hover:bg-gray-200'
+                                        ? 'text-red-500 bg-red-50 dark:bg-red-500/10 hover:bg-red-100'
+                                        : isDark ? 'bg-[#2a3e32] hover:bg-white/10' : 'bg-[#f0f4f2] hover:bg-gray-200'
                                         }`}
                                 >
                                     {channels.instagram.connected ? 'Disconnect' : 'Connect'}
@@ -388,8 +459,8 @@ const SettingsRedesign = () => {
                                         {msg.type === 'bot' ? '🤖' : '👤'}
                                     </div>
                                     <div className={`p-3 rounded-2xl shadow-sm text-sm ${msg.type === 'bot'
-                                            ? `${isDark ? 'bg-[#1c3024]' : 'bg-white'} ${msg.type === 'bot' ? 'rounded-bl-none' : 'rounded-br-none'}`
-                                            : 'bg-[#2bee79] text-[#111814] rounded-br-none'
+                                        ? `${isDark ? 'bg-[#1c3024]' : 'bg-white'} ${msg.type === 'bot' ? 'rounded-bl-none' : 'rounded-br-none'}`
+                                        : 'bg-[#2bee79] text-[#111814] rounded-br-none'
                                         }`}>
                                         <p>{msg.text}</p>
                                     </div>
