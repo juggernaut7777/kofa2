@@ -10,6 +10,7 @@ import {
   ProductsRedesign,
   OrdersRedesign,
   InsightsRedesign,
+  ExpensesRedesign,
   SettingsRedesign
 } from './redesign'
 
