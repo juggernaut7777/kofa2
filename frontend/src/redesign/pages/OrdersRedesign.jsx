@@ -1,6 +1,6 @@
 import { useState, useEffect, useContext } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { apiCall, API_ENDPOINTS, API_BASE_URL } from '../../config/api'
+import { apiCall, API_ENDPOINTS } from '../../config/api'
 import { ThemeContext } from '../../context/ThemeContext'
 
 const OrdersRedesign = () => {
@@ -13,688 +13,331 @@ const OrdersRedesign = () => {
     const [invoices, setInvoices] = useState([])
     const [shipments, setShipments] = useState([])
     const [loading, setLoading] = useState(true)
-    const [actionLoading, setActionLoading] = useState(null)
-    const [filter, setFilter] = useState('all')
-    const [searchQuery, setSearchQuery] = useState('')
-    const [showInvoiceModal, setShowInvoiceModal] = useState(false)
     const [selectedOrder, setSelectedOrder] = useState(null)
-    const [invoiceStats, setInvoiceStats] = useState({ revenue: 0, unpaid: 0, unpaidAmount: 0 })
-    const [showZoneModal, setShowZoneModal] = useState(false)
-    const [editingZone, setEditingZone] = useState(null)
-    const [deliveryZones, setDeliveryZones] = useState([
-        { id: 1, name: 'Lagos Island', time: '1-2 Days', fee: 2500 },
-        { id: 2, name: 'Mainland', time: '1-3 Days', fee: 1500 },
-        { id: 3, name: 'Abuja', time: '2-4 Days', fee: 3500 },
-        { id: 4, name: 'Other States', time: '3-5 Days', fee: 5000 },
-    ])
+    const [filter, setFilter] = useState('all')
 
-    useEffect(() => {
-        loadData()
-    }, [])
+    const tabs = [
+        { id: 'orders', icon: '📦', label: 'Orders' },
+        { id: 'invoices', icon: '🧾', label: 'Invoices' },
+        { id: 'delivery', icon: '🚚', label: 'Delivery' },
+    ]
+
+    const filters = ['all', 'pending', 'processing', 'shipped', 'delivered']
+
+    useEffect(() => { loadData() }, [])
 
     const loadData = async () => {
         setLoading(true)
         try {
-            const ordersData = await apiCall(API_ENDPOINTS.ORDERS)
-            setOrders(Array.isArray(ordersData) ? ordersData : [])
-
-            // Calculate invoice stats from orders
-            const paid = ordersData.filter(o => o.status === 'paid' || o.status === 'fulfilled')
-            const unpaid = ordersData.filter(o => o.status === 'pending')
-            setInvoiceStats({
-                revenue: paid.reduce((sum, o) => sum + (o.total_amount || 0), 0),
-                unpaid: unpaid.length,
-                unpaidAmount: unpaid.reduce((sum, o) => sum + (o.total_amount || 0), 0)
-            })
-
-            // Map orders to invoices
-            setInvoices(ordersData.map(o => ({
-                id: `INV-${o.id}`,
-                order_id: o.id,
-                customer: o.customer_name || 'Customer',
-                amount: o.total_amount,
-                status: o.status === 'pending' ? 'unpaid' : 'paid',
-                date: o.created_at
-            })))
-
-            // Map fulfilled orders to shipments
-            const fulfilledOrders = ordersData.filter(o => o.status === 'fulfilled')
-            setShipments(fulfilledOrders.map(o => ({
-                id: `TRK-${o.id}`,
-                order_id: o.id,
-                destination: o.delivery_address || 'Lagos',
-                carrier: 'GIG Logistics',
-                status: 'in_transit',
-                progress: 75
-            })))
-        } catch (error) {
-            console.log('Using demo data')
+            const data = await apiCall(API_ENDPOINTS.ORDERS)
+            setOrders(Array.isArray(data) ? data : [])
+        } catch (e) {
             setOrders([
-                { id: '2045', product_name: '2x Nike Air Max, 1x Socks', total_amount: 25000, status: 'pending', platform: 'WhatsApp', customer_phone: '0801 234 5678', customer_name: 'John Doe', created_at: 'Today, 10:30 AM', image_url: null },
-                { id: '2042', product_name: '1x Casio Vintage Watch', total_amount: 12500, status: 'paid', platform: 'Instagram', customer_phone: '0909 876 5432', customer_name: 'Jane Smith', created_at: 'Yesterday, 4:15 PM', image_url: null },
-                { id: '2040', product_name: '3x T-Shirts', total_amount: 15000, status: 'fulfilled', platform: 'WhatsApp', customer_phone: '0803 555 1234', customer_name: 'Chidi Okoro', created_at: '2 days ago', image_url: null },
+                { id: 'ORD-9847', customer_name: 'Amaka Johnson', customer_phone: '+234 801 234 5678', total_amount: 125000, status: 'pending', items: 3, created_at: '2 mins ago', product_name: 'Nike Air Max Collection' },
+                { id: 'ORD-9846', customer_name: 'Emeka Obi', customer_phone: '+234 802 345 6789', total_amount: 78000, status: 'processing', items: 2, created_at: '15 mins ago', product_name: 'Wireless Headphones Pro' },
+                { id: 'ORD-9845', customer_name: 'Fatima Hassan', customer_phone: '+234 803 456 7890', total_amount: 245000, status: 'shipped', items: 5, created_at: '1 hour ago', product_name: 'Designer Collection Bundle' },
+                { id: 'ORD-9844', customer_name: 'Chidi Nwosu', customer_phone: '+234 804 567 8901', total_amount: 56000, status: 'delivered', items: 1, created_at: '3 hours ago', product_name: 'Premium Watch Series' },
             ])
-            setInvoiceStats({ revenue: 450000, unpaid: 5, unpaidAmount: 85000 })
-        } finally {
-            setLoading(false)
         }
+
+        setInvoices([
+            { id: 'INV-001', order_id: 'ORD-9847', amount: 125000, status: 'paid', date: 'Today' },
+            { id: 'INV-002', order_id: 'ORD-9846', amount: 78000, status: 'pending', date: 'Yesterday' },
+        ])
+
+        setShipments([
+            { id: 'SHP-001', order_id: 'ORD-9845', destination: 'Abuja', status: 'in_transit', eta: '2 days' },
+        ])
+
+        setLoading(false)
     }
 
-    const formatCurrency = (amount) => {
-        if (!amount) return '₦0'
-        if (amount >= 1000000) return `₦${(amount / 1000000).toFixed(1)}m`
-        if (amount >= 1000) return `₦${(amount / 1000).toFixed(0)}k`
-        return new Intl.NumberFormat('en-NG', { minimumFractionDigits: 0 }).format(amount)
+    const formatCurrency = (n) => {
+        if (n >= 1000000) return `₦${(n / 1000000).toFixed(1)}M`
+        if (n >= 1000) return `₦${Math.round(n / 1000)}K`
+        return `₦${n}`
     }
 
-    const updateOrderStatus = async (orderId, newStatus) => {
-        setActionLoading(orderId)
+    const getStatusStyle = (status) => ({
+        pending: { bg: 'bg-amber-500/15', text: 'text-amber-400', border: 'border-amber-500/30', icon: '⏳' },
+        processing: { bg: 'bg-blue-500/15', text: 'text-blue-400', border: 'border-blue-500/30', icon: '⚙️' },
+        shipped: { bg: 'bg-purple-500/15', text: 'text-purple-400', border: 'border-purple-500/30', icon: '📦' },
+        delivered: { bg: 'bg-emerald-500/15', text: 'text-emerald-400', border: 'border-emerald-500/30', icon: '✅' },
+        paid: { bg: 'bg-emerald-500/15', text: 'text-emerald-400', border: 'border-emerald-500/30', icon: '✓' },
+        in_transit: { bg: 'bg-blue-500/15', text: 'text-blue-400', border: 'border-blue-500/30', icon: '🚚' },
+    })[status] || { bg: 'bg-gray-500/15', text: 'text-gray-400', border: 'border-gray-500/30', icon: '•' }
+
+    const handleUpdateStatus = async (orderId, newStatus) => {
         try {
             await apiCall(API_ENDPOINTS.UPDATE_ORDER_STATUS(orderId), {
                 method: 'PUT',
                 body: JSON.stringify({ status: newStatus })
             })
-            await loadData()
-            alert(`Order #${orderId} marked as ${newStatus}`)
-        } catch (error) {
-            // Update locally if API fails
             setOrders(orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o))
-            alert(`Order #${orderId} updated (offline mode)`)
-        } finally {
-            setActionLoading(null)
+            setSelectedOrder(null)
+        } catch (e) {
+            setOrders(orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o))
+            setSelectedOrder(null)
         }
     }
 
-    const generateInvoice = async (order) => {
-        setActionLoading('invoice')
-        try {
-            const result = await apiCall(API_ENDPOINTS.GENERATE_INVOICE, {
-                method: 'POST',
-                body: JSON.stringify({
-                    order_id: order.id,
-                    customer_name: order.customer_name || 'Customer',
-                    customer_phone: order.customer_phone,
-                    items: order.product_name,
-                    total_amount: order.total_amount
-                })
-            })
-            if (result.invoice_url) {
-                window.open(result.invoice_url, '_blank')
-            }
-            alert(`Invoice generated for Order #${order.id}`)
-            setShowInvoiceModal(false)
-            await loadData()
-        } catch (error) {
-            // Generate local invoice
-            const invoiceText = `
-INVOICE #INV-${order.id}
-------------------------
-Customer: ${order.customer_name || 'Customer'}
-Phone: ${order.customer_phone}
-Items: ${order.product_name}
-Total: ₦${formatCurrency(order.total_amount)}
-Date: ${new Date().toLocaleDateString()}
-      `.trim()
-
-            // Create and download
-            const blob = new Blob([invoiceText], { type: 'text/plain' })
-            const url = URL.createObjectURL(blob)
-            const a = document.createElement('a')
-            a.href = url
-            a.download = `invoice-${order.id}.txt`
-            a.click()
-            URL.revokeObjectURL(url)
-
-            alert(`Invoice downloaded for Order #${order.id}`)
-            setShowInvoiceModal(false)
-        } finally {
-            setActionLoading(null)
-        }
-    }
-
-    const downloadInvoice = (invoice) => {
-        const invoiceText = `
-INVOICE ${invoice.id}
-------------------------
-Customer: ${invoice.customer}
-Amount: ₦${formatCurrency(invoice.amount)}
-Status: ${invoice.status.toUpperCase()}
-Date: ${invoice.date}
-    `.trim()
-
-        const blob = new Blob([invoiceText], { type: 'text/plain' })
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `${invoice.id}.txt`
-        a.click()
-        URL.revokeObjectURL(url)
-    }
-
-    const printInvoice = (invoice) => {
-        const printWindow = window.open('', '_blank')
-        printWindow.document.write(`
-      <html>
-        <head><title>Invoice ${invoice.id}</title></head>
-        <body style="font-family: Arial, sans-serif; padding: 40px;">
-          <h1>Invoice ${invoice.id}</h1>
-          <hr/>
-          <p><strong>Customer:</strong> ${invoice.customer}</p>
-          <p><strong>Amount:</strong> ₦${formatCurrency(invoice.amount)}</p>
-          <p><strong>Status:</strong> ${invoice.status.toUpperCase()}</p>
-          <p><strong>Date:</strong> ${invoice.date}</p>
-          <hr/>
-          <p style="text-align: center; color: #888;">Thank you for your business!</p>
-        </body>
-      </html>
-    `)
-        printWindow.document.close()
-        printWindow.print()
-    }
-
-    const copyInvoiceLink = (invoice) => {
-        const link = `${window.location.origin}/invoice/${invoice.id}`
-        navigator.clipboard.writeText(link)
-        alert(`Invoice link copied: ${link}`)
-    }
-
-    const viewOrder = (order) => {
-        alert(`Order #${order.id}\n\nItems: ${order.product_name}\nAmount: ₦${formatCurrency(order.total_amount)}\nCustomer: ${order.customer_phone}\nStatus: ${order.status}`)
-    }
-
-    const shareOrder = (order) => {
-        const text = `Order #${order.id} - ${order.product_name} - ₦${formatCurrency(order.total_amount)}`
-        if (navigator.share) {
-            navigator.share({ title: `Order #${order.id}`, text })
-        } else {
-            navigator.clipboard.writeText(text)
-            alert('Order details copied to clipboard!')
-        }
-    }
-
-    const updateShipmentStatus = async (shipment) => {
-        const statuses = ['picked_up', 'in_transit', 'out_for_delivery', 'delivered']
-        const currentIdx = statuses.indexOf(shipment.status) || 1
-        const nextStatus = statuses[Math.min(currentIdx + 1, statuses.length - 1)]
-
-        setShipments(shipments.map(s =>
-            s.id === shipment.id
-                ? { ...s, status: nextStatus, progress: Math.min(s.progress + 25, 100) }
-                : s
-        ))
-        alert(`Shipment ${shipment.id} updated to: ${nextStatus.replace('_', ' ')}`)
-    }
-
-    const saveDeliveryZone = (zone) => {
-        if (zone.id) {
-            setDeliveryZones(deliveryZones.map(z => z.id === zone.id ? zone : z))
-        } else {
-            setDeliveryZones([...deliveryZones, { ...zone, id: Date.now() }])
-        }
-        setShowZoneModal(false)
-        setEditingZone(null)
-        alert('Delivery zone saved!')
-    }
-
-    const pendingCount = orders.filter(o => o.status === 'pending').length
-
-    const filters = [
-        { id: 'all', label: 'All' },
-        { id: 'pending', label: 'Pending', count: pendingCount },
-        { id: 'paid', label: 'Paid' },
-        { id: 'fulfilled', label: 'Fulfilled' }
-    ]
-
-    const filteredOrders = orders.filter(o => {
-        const matchesFilter = filter === 'all' || o.status === filter
-        const matchesSearch = !searchQuery ||
-            o.id?.toString().includes(searchQuery) ||
-            o.customer_phone?.includes(searchQuery) ||
-            o.customer_name?.toLowerCase().includes(searchQuery.toLowerCase())
-        return matchesFilter && matchesSearch
-    })
-
-    const getStatusBadge = (status) => {
-        const styles = {
-            pending: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400',
-            paid: 'bg-[#2bee79]/20 text-green-700 dark:text-green-400',
-            fulfilled: 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300',
-        }
-        return styles[status] || styles.pending
-    }
-
-    const getPlatformIcon = (platform) => {
-        if (platform === 'WhatsApp') return '💬'
-        if (platform === 'Instagram') return '📸'
-        if (platform === 'TikTok') return '🎵'
-        return '🌐'
-    }
+    const filteredOrders = orders.filter(o => filter === 'all' || o.status === filter)
 
     if (loading) {
         return (
-            <div className={`min-h-screen flex items-center justify-center ${isDark ? 'bg-[#102217]' : 'bg-[#f6f8f7]'}`}>
-                <div className="w-10 h-10 border-4 border-[#2bee79] border-t-transparent rounded-full animate-spin"></div>
+            <div className={`min-h-screen flex items-center justify-center ${isDark ? 'bg-[#030712]' : 'bg-gray-50'}`}>
+                <div className="flex flex-col items-center gap-4">
+                    <div className="w-12 h-12 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin"></div>
+                    <p className={`text-sm font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Loading orders...</p>
+                </div>
             </div>
         )
     }
 
     return (
-        <div className={`min-h-screen font-['Manrope'] ${isDark ? 'bg-[#102217] text-white' : 'bg-[#f6f8f7] text-[#111814]'}`}>
-            <div className="max-w-md mx-auto pb-24">
+        <div className={`min-h-screen font-['Inter',system-ui,sans-serif] ${isDark ? 'bg-[#030712]' : 'bg-gray-50'}`}>
+
+            {/* Ambient Background */}
+            <div className="fixed inset-0 overflow-hidden pointer-events-none">
+                <div className={`absolute -top-40 right-20 w-80 h-80 rounded-full blur-3xl ${isDark ? 'bg-blue-500/10' : 'bg-blue-500/5'}`}></div>
+                <div className={`absolute bottom-40 -left-20 w-60 h-60 rounded-full blur-3xl ${isDark ? 'bg-purple-500/10' : 'bg-purple-500/5'}`}></div>
+            </div>
+
+            <div className="relative max-w-md mx-auto pb-28">
 
                 {/* Header */}
-                <header className={`sticky top-0 z-50 backdrop-blur-sm border-b px-4 py-3 ${isDark ? 'bg-[#102217]/95 border-[#2a4034]' : 'bg-[#f6f8f7]/95 border-[#dbe6df]'}`}>
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <button onClick={() => navigate('/dashboard')} className="p-1 rounded-full hover:bg-black/5 dark:hover:bg-white/10">
-                                <span className="text-xl">←</span>
-                            </button>
-                            <h1 className="text-xl font-bold tracking-tight">Orders</h1>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <button onClick={loadData} className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10">
-                                <span className="text-xl">🔄</span>
-                            </button>
-                        </div>
+                <header className={`sticky top-0 z-30 px-5 pt-4 pb-3 ${isDark ? 'bg-[#030712]/80' : 'bg-gray-50/80'} backdrop-blur-2xl`}>
+                    <div className="flex items-center justify-between mb-4">
+                        <button onClick={() => navigate('/dashboard')} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all hover:scale-105 ${isDark ? 'bg-white/5' : 'bg-gray-100'}`}>
+                            <span className="text-lg">←</span>
+                        </button>
+                        <button onClick={loadData} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all hover:scale-105 ${isDark ? 'bg-white/5' : 'bg-gray-100'}`}>
+                            <span className="text-lg">🔄</span>
+                        </button>
                     </div>
-                </header>
 
-                {/* Tabs Navigation */}
-                <nav className={`px-4 pt-2 sticky top-[60px] z-40 ${isDark ? 'bg-[#102217]' : 'bg-[#f6f8f7]'}`}>
-                    <div className={`flex border-b w-full ${isDark ? 'border-[#2a4034]' : 'border-[#dbe6df]'}`}>
-                        {['orders', 'invoices', 'delivery'].map(tab => (
+                    <h1 className={`text-3xl font-black tracking-tight mb-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>Orders</h1>
+                    <p className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{orders.length} total orders</p>
+
+                    {/* Tab Navigation */}
+                    <div className={`flex mt-4 p-1 rounded-2xl ${isDark ? 'bg-white/5' : 'bg-gray-100'}`}>
+                        {tabs.map(tab => (
                             <button
-                                key={tab}
-                                onClick={() => setActiveTab(tab)}
-                                className={`flex-1 pb-3 text-center text-sm capitalize transition-colors ${activeTab === tab
-                                    ? 'border-b-[3px] border-[#2bee79] font-bold'
-                                    : `border-b-[3px] border-transparent ${isDark ? 'text-[#618971]' : 'text-[#618971]'} font-medium`
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id)}
+                                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all ${activeTab === tab.id
+                                        ? 'bg-gradient-to-r from-emerald-400 to-emerald-600 text-white shadow-lg'
+                                        : isDark ? 'text-gray-400' : 'text-gray-500'
                                     }`}
                             >
-                                {tab}
+                                <span>{tab.icon}</span>
+                                <span>{tab.label}</span>
                             </button>
                         ))}
                     </div>
-                </nav>
+                </header>
 
-                {/* ORDERS TAB */}
+                {/* Orders Tab */}
                 {activeTab === 'orders' && (
-                    <main className="flex flex-col gap-5 p-4">
-                        {/* Filters */}
-                        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                    <>
+                        {/* Status Filters */}
+                        <div className="flex gap-2 px-5 pt-4 overflow-x-auto no-scrollbar">
                             {filters.map(f => (
                                 <button
-                                    key={f.id}
-                                    onClick={() => setFilter(f.id)}
-                                    className={`flex h-9 shrink-0 items-center px-4 rounded-full text-sm font-medium whitespace-nowrap transition-all ${filter === f.id
-                                        ? 'bg-[#2bee79] text-[#052e16] font-bold shadow-sm'
-                                        : isDark
-                                            ? 'bg-[#1a2c22] border border-[#2a4034] text-[#618971]'
-                                            : 'bg-white border border-[#dbe6df] text-[#618971]'
+                                    key={f}
+                                    onClick={() => setFilter(f)}
+                                    className={`px-4 h-9 rounded-xl text-sm font-semibold capitalize whitespace-nowrap transition-all hover:scale-105 ${filter === f
+                                            ? 'bg-gradient-to-r from-emerald-400 to-emerald-600 text-white shadow-lg'
+                                            : isDark ? 'bg-white/5 text-gray-400 border border-white/10' : 'bg-white text-gray-600 border border-gray-200'
                                         }`}
                                 >
-                                    {f.label}
-                                    {f.count > 0 && (
-                                        <span className="ml-1.5 flex items-center justify-center bg-orange-100 text-orange-700 text-[10px] w-5 h-5 rounded-full">
-                                            {f.count}
-                                        </span>
-                                    )}
+                                    {f}
                                 </button>
                             ))}
                         </div>
 
-                        {/* Search */}
-                        <div className="relative">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <span className="text-[#618971]">🔍</span>
-                            </div>
-                            <input
-                                type="text"
-                                placeholder="Search order ID, phone or name..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className={`block w-full pl-10 pr-3 py-2.5 border-none rounded-xl shadow-sm text-sm focus:ring-2 focus:ring-[#2bee79] ${isDark ? 'bg-[#1a2c22] text-white placeholder-[#618971]' : 'bg-white text-[#111814] placeholder-[#618971]'}`}
-                            />
+                        {/* Order Cards */}
+                        <div className="space-y-3 p-5">
+                            {filteredOrders.length === 0 ? (
+                                <div className="flex flex-col items-center py-20">
+                                    <span className="text-5xl mb-4">📭</span>
+                                    <p className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>No orders found</p>
+                                    <p className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Try a different filter</p>
+                                </div>
+                            ) : (
+                                filteredOrders.map((order) => {
+                                    const style = getStatusStyle(order.status)
+                                    return (
+                                        <div
+                                            key={order.id}
+                                            onClick={() => setSelectedOrder(order)}
+                                            className={`rounded-2xl p-4 border backdrop-blur-xl cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-gray-100'}`}
+                                        >
+                                            <div className="flex items-start justify-between mb-3">
+                                                <div>
+                                                    <div className="flex items-center gap-2">
+                                                        <p className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{order.id}</p>
+                                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border ${style.bg} ${style.text} ${style.border}`}>
+                                                            {style.icon} {order.status}
+                                                        </span>
+                                                    </div>
+                                                    <p className={`text-sm mt-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{order.created_at}</p>
+                                                </div>
+                                                <p className="text-lg font-black text-emerald-500">{formatCurrency(order.total_amount)}</p>
+                                            </div>
+
+                                            <div className={`flex items-center gap-3 pt-3 border-t ${isDark ? 'border-white/10' : 'border-gray-100'}`}>
+                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isDark ? 'bg-white/5' : 'bg-gray-100'}`}>
+                                                    <span className="text-lg">👤</span>
+                                                </div>
+                                                <div className="flex-1">
+                                                    <p className={`font-semibold text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>{order.customer_name}</p>
+                                                    <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{order.items} item{order.items > 1 ? 's' : ''} • {order.product_name}</p>
+                                                </div>
+                                                <button className={`w-8 h-8 rounded-lg flex items-center justify-center ${isDark ? 'bg-white/5' : 'bg-gray-100'}`}>
+                                                    <span className="text-sm">→</span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )
+                                })
+                            )}
                         </div>
-
-                        {/* Order List */}
-                        {filteredOrders.length === 0 ? (
-                            <div className="text-center py-12">
-                                <span className="text-4xl">📦</span>
-                                <p className="mt-2 font-bold">No orders found</p>
-                            </div>
-                        ) : (
-                            <div className="flex flex-col gap-4">
-                                {filteredOrders.map(order => (
-                                    <article key={order.id} className={`rounded-2xl p-4 shadow-sm border flex flex-col gap-3 ${isDark ? 'bg-[#1a2c22] border-[#2a4034]' : 'bg-white border-[#dbe6df]'}`}>
-                                        <div className="flex justify-between items-start">
-                                            <div className="flex gap-2 items-center">
-                                                <span className={`text-xs font-bold px-2 py-1 rounded-md uppercase tracking-wider ${getStatusBadge(order.status)}`}>
-                                                    {order.status}
-                                                </span>
-                                                <span className={`text-xs ${isDark ? 'text-[#618971]' : 'text-[#618971]'}`}>{order.created_at}</span>
-                                            </div>
-                                            <button
-                                                onClick={() => { setSelectedOrder(order); setShowInvoiceModal(true) }}
-                                                className="text-[#618971] hover:text-[#2bee79] px-2"
-                                            >
-                                                📄
-                                            </button>
-                                        </div>
-
-                                        <div className="flex gap-3">
-                                            <div className={`w-16 h-16 rounded-lg shrink-0 overflow-hidden flex items-center justify-center ${isDark ? 'bg-gray-800' : 'bg-gray-100'}`}>
-                                                <span className="text-2xl">📦</span>
-                                            </div>
-                                            <div className="flex flex-col flex-1">
-                                                <div className="flex justify-between items-baseline">
-                                                    <h3 className="font-bold text-lg">Order #{order.id}</h3>
-                                                    <span className="font-bold text-lg">₦{formatCurrency(order.total_amount)}</span>
-                                                </div>
-                                                <p className={`text-sm line-clamp-1 ${isDark ? 'text-[#618971]' : 'text-[#618971]'}`}>{order.product_name}</p>
-                                                <div className="flex items-center gap-2 mt-1">
-                                                    <span>{getPlatformIcon(order.platform)}</span>
-                                                    <span className={`text-xs ${isDark ? 'text-[#618971]' : 'text-[#618971]'}`}>
-                                                        {order.platform} • {order.customer_phone}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className={`border-t my-1 ${isDark ? 'border-[#2a4034]' : 'border-[#dbe6df]'}`}></div>
-
-                                        <div className="flex gap-2">
-                                            {order.status === 'pending' && (
-                                                <button
-                                                    onClick={() => updateOrderStatus(order.id, 'paid')}
-                                                    disabled={actionLoading === order.id}
-                                                    className="flex-1 flex items-center justify-center gap-2 bg-[#2bee79] text-[#052e16] h-10 rounded-lg text-sm font-bold hover:opacity-90 disabled:opacity-50"
-                                                >
-                                                    {actionLoading === order.id ? '...' : '✓ Mark Paid'}
-                                                </button>
-                                            )}
-                                            {order.status === 'paid' && (
-                                                <button
-                                                    onClick={() => updateOrderStatus(order.id, 'fulfilled')}
-                                                    disabled={actionLoading === order.id}
-                                                    className={`flex-1 flex items-center justify-center gap-2 h-10 rounded-lg text-sm font-bold border ${isDark ? 'bg-[#102217] border-[#2a4034]' : 'bg-[#f6f8f7] border-[#dbe6df]'}`}
-                                                >
-                                                    {actionLoading === order.id ? '...' : '🚚 Ship Order'}
-                                                </button>
-                                            )}
-                                            {order.status === 'fulfilled' && (
-                                                <span className="flex-1 flex items-center justify-center gap-2 h-10 rounded-lg text-sm font-bold text-green-600">
-                                                    ✓ Completed
-                                                </span>
-                                            )}
-                                            <button
-                                                onClick={() => viewOrder(order)}
-                                                className={`w-10 h-10 rounded-lg flex items-center justify-center border ${isDark ? 'bg-[#102217] border-[#2a4034]' : 'bg-[#f6f8f7] border-[#dbe6df]'}`}
-                                            >
-                                                👁
-                                            </button>
-                                            <button
-                                                onClick={() => shareOrder(order)}
-                                                className={`w-10 h-10 rounded-lg flex items-center justify-center border ${isDark ? 'bg-[#102217] border-[#2a4034]' : 'bg-[#f6f8f7] border-[#dbe6df]'}`}
-                                            >
-                                                📤
-                                            </button>
-                                        </div>
-                                    </article>
-                                ))}
-                            </div>
-                        )}
-                    </main>
+                    </>
                 )}
 
-                {/* INVOICES TAB */}
+                {/* Invoices Tab */}
                 {activeTab === 'invoices' && (
-                    <section className="flex flex-col gap-5 p-4">
-                        {/* Stats */}
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className={`p-3 rounded-xl border shadow-sm ${isDark ? 'bg-[#1a2c22] border-[#2a4034]' : 'bg-white border-[#dbe6df]'}`}>
-                                <p className={`text-xs font-medium ${isDark ? 'text-[#618971]' : 'text-[#618971]'}`}>Total Revenue</p>
-                                <p className="text-xl font-bold mt-1">{formatCurrency(invoiceStats.revenue)}</p>
-                                <div className="flex items-center mt-1 text-xs text-green-600 font-bold">
-                                    📈 +12%
-                                </div>
-                            </div>
-                            <div className={`p-3 rounded-xl border shadow-sm ${isDark ? 'bg-[#1a2c22] border-[#2a4034]' : 'bg-white border-[#dbe6df]'}`}>
-                                <p className={`text-xs font-medium ${isDark ? 'text-[#618971]' : 'text-[#618971]'}`}>Unpaid Inv.</p>
-                                <p className="text-xl font-bold mt-1">{invoiceStats.unpaid}</p>
-                                <div className="flex items-center mt-1 text-xs text-orange-600 font-bold">
-                                    {formatCurrency(invoiceStats.unpaidAmount)} pending
-                                </div>
-                            </div>
+                    <div className="space-y-3 p-5">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>Recent Invoices</h3>
+                            <button className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-400 to-emerald-600 text-white text-sm font-bold shadow-lg hover:scale-105 transition-all">
+                                + Generate
+                            </button>
                         </div>
 
-                        {/* Generate Button */}
-                        <button
-                            onClick={() => {
-                                const pendingOrders = orders.filter(o => o.status === 'pending')
-                                if (pendingOrders.length > 0) {
-                                    setSelectedOrder(pendingOrders[0])
-                                    setShowInvoiceModal(true)
-                                } else {
-                                    alert('No pending orders to generate invoice for')
-                                }
-                            }}
-                            className="w-full bg-[#2bee79] text-[#052e16] h-12 rounded-xl text-base font-bold shadow-sm flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.98] transition-all"
-                        >
-                            ➕ Generate New Invoice
-                        </button>
-
-                        {/* Invoice List */}
-                        <div className="flex flex-col gap-3">
-                            <h3 className="text-sm font-bold px-1">Recent Invoices</h3>
-                            {invoices.length === 0 ? (
-                                <p className={`text-center py-8 ${isDark ? 'text-[#618971]' : 'text-[#618971]'}`}>No invoices yet</p>
-                            ) : (
-                                invoices.map(inv => (
-                                    <div key={inv.id} className={`rounded-xl p-4 shadow-sm border flex flex-col gap-3 ${isDark ? 'bg-[#1a2c22] border-[#2a4034]' : 'bg-white border-[#dbe6df]'}`}>
-                                        <div className="flex justify-between items-center">
-                                            <div>
-                                                <p className="text-sm font-bold">{inv.id}</p>
-                                                <p className={`text-xs ${isDark ? 'text-[#618971]' : 'text-[#618971]'}`}>{inv.customer} • {inv.date}</p>
-                                            </div>
-                                            <span className={`text-xs font-bold px-2 py-1 rounded-md uppercase ${inv.status === 'paid'
-                                                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                                                : 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400'
-                                                }`}>
-                                                {inv.status}
+                        {invoices.map((invoice) => {
+                            const style = getStatusStyle(invoice.status)
+                            return (
+                                <div key={invoice.id} className={`rounded-2xl p-4 border backdrop-blur-xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-gray-100'}`}>
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{invoice.id}</p>
+                                            <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{invoice.order_id} • {invoice.date}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="font-bold text-emerald-500">{formatCurrency(invoice.amount)}</p>
+                                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${style.bg} ${style.text}`}>
+                                                {invoice.status}
                                             </span>
                                         </div>
-                                        <div className={`flex items-center justify-between border-t pt-3 mt-1 ${isDark ? 'border-[#2a4034]' : 'border-[#dbe6df]'}`}>
-                                            <span className="font-bold text-lg">₦{formatCurrency(inv.amount)}</span>
-                                            <div className="flex gap-1">
-                                                <button
-                                                    onClick={() => downloadInvoice(inv)}
-                                                    className={`w-8 h-8 flex items-center justify-center rounded-lg hover:scale-110 transition-transform ${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}
-                                                >
-                                                    ⬇
-                                                </button>
-                                                <button
-                                                    onClick={() => printInvoice(inv)}
-                                                    className={`w-8 h-8 flex items-center justify-center rounded-lg hover:scale-110 transition-transform ${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}
-                                                >
-                                                    🖨
-                                                </button>
-                                                <button
-                                                    onClick={() => copyInvoiceLink(inv)}
-                                                    className={`w-8 h-8 flex items-center justify-center rounded-lg hover:scale-110 transition-transform ${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}
-                                                >
-                                                    📋
-                                                </button>
-                                            </div>
-                                        </div>
                                     </div>
-                                ))
-                            )}
-                        </div>
-                    </section>
+                                    <div className="flex gap-2 mt-3">
+                                        <button className={`flex-1 py-2 rounded-xl text-sm font-semibold ${isDark ? 'bg-white/5' : 'bg-gray-100'}`}>📥 Download</button>
+                                        <button className={`flex-1 py-2 rounded-xl text-sm font-semibold ${isDark ? 'bg-white/5' : 'bg-gray-100'}`}>🖨️ Print</button>
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    </div>
                 )}
 
-                {/* DELIVERY TAB */}
+                {/* Delivery Tab */}
                 {activeTab === 'delivery' && (
-                    <section className="flex flex-col gap-5 p-4">
-                        {/* Active Shipments */}
-                        <div className="flex flex-col gap-3">
-                            <h3 className="text-sm font-bold px-1">Active Shipments</h3>
-                            {shipments.length === 0 ? (
-                                <p className={`text-center py-8 ${isDark ? 'text-[#618971]' : 'text-[#618971]'}`}>No active shipments</p>
-                            ) : (
-                                shipments.map(ship => (
-                                    <div key={ship.id} className={`rounded-2xl overflow-hidden shadow-sm border ${isDark ? 'bg-[#1a2c22] border-[#2a4034]' : 'bg-white border-[#dbe6df]'}`}>
-                                        <div className={`h-32 w-full relative overflow-hidden ${isDark ? 'bg-gray-700' : 'bg-gray-200'}`}>
-                                            <div className="w-full h-full flex items-center justify-center text-4xl opacity-50">🗺️</div>
-                                            <div className={`absolute bottom-2 right-2 px-2 py-1 rounded text-[10px] font-bold shadow-sm ${isDark ? 'bg-[#1a2c22]' : 'bg-white'}`}>
-                                                {ship.status.replace('_', ' ').toUpperCase()}
-                                            </div>
-                                        </div>
-                                        <div className="p-4 flex flex-col gap-3">
-                                            <div className="flex justify-between items-start">
-                                                <div>
-                                                    <p className="text-sm font-bold">To: {ship.destination}</p>
-                                                    <p className={`text-xs ${isDark ? 'text-[#618971]' : 'text-[#618971]'}`}>
-                                                        Order #{ship.order_id} • {ship.carrier}
-                                                    </p>
-                                                </div>
-                                                <span className={`text-xs font-mono px-2 py-1 rounded ${isDark ? 'bg-gray-800' : 'bg-gray-100'}`}>
-                                                    {ship.id}
-                                                </span>
-                                            </div>
-                                            <div className={`w-full rounded-full h-1.5 mt-1 ${isDark ? 'bg-gray-800' : 'bg-gray-100'}`}>
-                                                <div className="bg-[#2bee79] h-1.5 rounded-full transition-all" style={{ width: `${ship.progress}%` }}></div>
-                                            </div>
-                                            <div className={`flex justify-between text-[10px] font-medium ${isDark ? 'text-[#618971]' : 'text-[#618971]'}`}>
-                                                <span className={ship.progress >= 25 ? 'text-[#2bee79]' : ''}>Picked Up</span>
-                                                <span className={ship.progress >= 50 ? 'text-[#2bee79]' : ''}>In Transit</span>
-                                                <span className={ship.progress >= 75 ? 'text-[#2bee79] font-bold' : ''}>Out for Delivery</span>
-                                                <span className={ship.progress >= 100 ? 'text-[#2bee79]' : ''}>Delivered</span>
-                                            </div>
-                                            <button
-                                                onClick={() => updateShipmentStatus(ship)}
-                                                className={`w-full mt-1 border rounded-lg py-2 text-sm font-bold transition-colors hover:bg-[#2bee79] hover:text-[#052e16] hover:border-[#2bee79] ${isDark ? 'border-[#2a4034]' : 'border-[#dbe6df]'}`}
-                                            >
-                                                Update Status →
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))
-                            )}
-                        </div>
+                    <div className="space-y-4 p-5">
+                        <h3 className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>Active Shipments</h3>
 
-                        {/* Delivery Zones */}
-                        <div className="flex flex-col gap-2">
-                            <div className="flex justify-between items-center px-1">
-                                <h3 className="text-sm font-bold">Delivery Zones</h3>
-                                <button
-                                    onClick={() => { setEditingZone({ name: '', time: '', fee: 0 }); setShowZoneModal(true) }}
-                                    className="text-[#2bee79] text-xs font-bold"
-                                >
-                                    + Add New
-                                </button>
+                        {shipments.length === 0 ? (
+                            <div className="flex flex-col items-center py-20">
+                                <span className="text-5xl mb-4">🚚</span>
+                                <p className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>No active shipments</p>
                             </div>
-                            <div className={`rounded-xl border divide-y ${isDark ? 'bg-[#1a2c22] border-[#2a4034] divide-[#2a4034]' : 'bg-white border-[#dbe6df] divide-[#dbe6df]'}`}>
-                                {deliveryZones.map((zone) => (
-                                    <div key={zone.id} className="flex items-center justify-between p-3">
-                                        <div className="flex items-center gap-3">
-                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isDark ? 'bg-blue-900/20 text-blue-400' : 'bg-blue-50 text-blue-600'}`}>
-                                                📍
-                                            </div>
-                                            <div>
-                                                <p className="text-sm font-bold">{zone.name}</p>
-                                                <p className={`text-xs ${isDark ? 'text-[#618971]' : 'text-[#618971]'}`}>{zone.time}</p>
-                                            </div>
+                        ) : (
+                            shipments.map((shipment) => (
+                                <div key={shipment.id} className={`rounded-2xl p-4 border backdrop-blur-xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-gray-100'}`}>
+                                    <div className="flex items-center justify-between mb-3">
+                                        <div>
+                                            <p className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{shipment.id}</p>
+                                            <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{shipment.order_id}</p>
                                         </div>
-                                        <div className="flex items-center gap-3">
-                                            <span className="font-bold text-sm">₦{formatCurrency(zone.fee)}</span>
-                                            <button
-                                                onClick={() => { setEditingZone(zone); setShowZoneModal(true) }}
-                                                className={`${isDark ? 'text-[#618971]' : 'text-[#618971]'} hover:text-[#2bee79]`}
-                                            >
-                                                ✏️
-                                            </button>
+                                        <span className="px-2 py-1 rounded-lg bg-blue-500/15 text-blue-400 text-xs font-bold">
+                                            🚚 In Transit
+                                        </span>
+                                    </div>
+
+                                    {/* Progress Bar */}
+                                    <div className="relative">
+                                        <div className={`h-1.5 rounded-full ${isDark ? 'bg-white/10' : 'bg-gray-200'}`}>
+                                            <div className="h-full w-2/3 rounded-full bg-gradient-to-r from-emerald-400 to-blue-500"></div>
+                                        </div>
+                                        <div className="flex justify-between mt-2 text-xs">
+                                            <span className="text-emerald-400">Picked up</span>
+                                            <span className="text-blue-400 font-semibold">In Transit</span>
+                                            <span className={isDark ? 'text-gray-500' : 'text-gray-400'}>{shipment.destination}</span>
                                         </div>
                                     </div>
-                                ))}
-                            </div>
-                        </div>
-                    </section>
+
+                                    <div className={`flex items-center justify-between mt-4 pt-3 border-t ${isDark ? 'border-white/10' : 'border-gray-100'}`}>
+                                        <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>ETA: {shipment.eta}</span>
+                                        <button className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-400 to-emerald-600 text-white text-sm font-bold shadow-lg hover:scale-105 transition-all">
+                                            Track
+                                        </button>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
                 )}
             </div>
 
-            {/* Invoice Generation Modal */}
-            {showInvoiceModal && selectedOrder && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-                    <div className={`w-full max-w-sm rounded-2xl p-6 ${isDark ? 'bg-[#1a2c22]' : 'bg-white'}`}>
-                        <h3 className="text-lg font-bold mb-4">Generate Invoice</h3>
-                        <div className="space-y-3">
-                            <p><strong>Order:</strong> #{selectedOrder.id}</p>
-                            <p><strong>Customer:</strong> {selectedOrder.customer_name || selectedOrder.customer_phone}</p>
-                            <p><strong>Items:</strong> {selectedOrder.product_name}</p>
-                            <p><strong>Amount:</strong> ₦{formatCurrency(selectedOrder.total_amount)}</p>
-                        </div>
-                        <div className="flex gap-3 mt-6">
-                            <button
-                                onClick={() => setShowInvoiceModal(false)}
-                                className={`flex-1 py-2 rounded-lg font-bold border ${isDark ? 'border-[#2a4034]' : 'border-gray-200'}`}
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={() => generateInvoice(selectedOrder)}
-                                disabled={actionLoading === 'invoice'}
-                                className="flex-1 py-2 rounded-lg font-bold bg-[#2bee79] text-[#052e16] disabled:opacity-50"
-                            >
-                                {actionLoading === 'invoice' ? 'Generating...' : 'Generate & Download'}
+            {/* Order Detail Modal */}
+            {selectedOrder && (
+                <div className="fixed inset-0 z-50 flex items-end justify-center">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedOrder(null)}></div>
+                    <div className={`relative w-full max-w-md rounded-t-3xl p-6 ${isDark ? 'bg-[#030712]' : 'bg-white'}`}>
+                        <div className="flex items-center justify-between mb-6">
+                            <div>
+                                <p className={`font-bold text-xl ${isDark ? 'text-white' : 'text-gray-900'}`}>{selectedOrder.id}</p>
+                                <p className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{selectedOrder.created_at}</p>
+                            </div>
+                            <button onClick={() => setSelectedOrder(null)} className={`w-10 h-10 rounded-full flex items-center justify-center ${isDark ? 'bg-white/5' : 'bg-gray-100'}`}>
+                                ✕
                             </button>
                         </div>
-                    </div>
-                </div>
-            )}
 
-            {/* Delivery Zone Modal */}
-            {showZoneModal && editingZone && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-                    <div className={`w-full max-w-sm rounded-2xl p-6 ${isDark ? 'bg-[#1a2c22]' : 'bg-white'}`}>
-                        <h3 className="text-lg font-bold mb-4">{editingZone.id ? 'Edit' : 'Add'} Delivery Zone</h3>
-                        <div className="space-y-4">
-                            <input
-                                type="text"
-                                placeholder="Zone Name"
-                                value={editingZone.name}
-                                onChange={(e) => setEditingZone({ ...editingZone, name: e.target.value })}
-                                className={`w-full p-3 rounded-lg ${isDark ? 'bg-[#102217]' : 'bg-gray-50'}`}
-                            />
-                            <input
-                                type="text"
-                                placeholder="Delivery Time (e.g. 1-2 Days)"
-                                value={editingZone.time}
-                                onChange={(e) => setEditingZone({ ...editingZone, time: e.target.value })}
-                                className={`w-full p-3 rounded-lg ${isDark ? 'bg-[#102217]' : 'bg-gray-50'}`}
-                            />
-                            <input
-                                type="number"
-                                placeholder="Fee"
-                                value={editingZone.fee}
-                                onChange={(e) => setEditingZone({ ...editingZone, fee: parseInt(e.target.value) || 0 })}
-                                className={`w-full p-3 rounded-lg ${isDark ? 'bg-[#102217]' : 'bg-gray-50'}`}
-                            />
+                        <div className={`rounded-2xl p-4 mb-4 ${isDark ? 'bg-white/5' : 'bg-gray-50'}`}>
+                            <p className={`text-sm font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Customer</p>
+                            <p className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{selectedOrder.customer_name}</p>
+                            <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{selectedOrder.customer_phone}</p>
                         </div>
-                        <div className="flex gap-3 mt-6">
-                            <button
-                                onClick={() => { setShowZoneModal(false); setEditingZone(null) }}
-                                className={`flex-1 py-2 rounded-lg font-bold border ${isDark ? 'border-[#2a4034]' : 'border-gray-200'}`}
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={() => saveDeliveryZone(editingZone)}
-                                className="flex-1 py-2 rounded-lg font-bold bg-[#2bee79] text-[#052e16]"
-                            >
-                                Save
-                            </button>
+
+                        <div className="flex items-center justify-between mb-6">
+                            <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{selectedOrder.items} items</p>
+                            <p className="text-2xl font-black text-emerald-500">{formatCurrency(selectedOrder.total_amount)}</p>
+                        </div>
+
+                        {/* Quick Actions */}
+                        <div className="grid grid-cols-2 gap-3">
+                            {selectedOrder.status === 'pending' && (
+                                <>
+                                    <button onClick={() => handleUpdateStatus(selectedOrder.id, 'processing')} className="py-3 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold">
+                                        ⚙️ Process
+                                    </button>
+                                    <button onClick={() => handleUpdateStatus(selectedOrder.id, 'delivered')} className="py-3 rounded-xl bg-gradient-to-r from-emerald-400 to-emerald-600 text-white font-bold">
+                                        ✓ Mark Paid
+                                    </button>
+                                </>
+                            )}
+                            {selectedOrder.status === 'processing' && (
+                                <button onClick={() => handleUpdateStatus(selectedOrder.id, 'shipped')} className="col-span-2 py-3 rounded-xl bg-gradient-to-r from-purple-500 to-purple-600 text-white font-bold">
+                                    📦 Mark Shipped
+                                </button>
+                            )}
+                            {selectedOrder.status === 'shipped' && (
+                                <button onClick={() => handleUpdateStatus(selectedOrder.id, 'delivered')} className="col-span-2 py-3 rounded-xl bg-gradient-to-r from-emerald-400 to-emerald-600 text-white font-bold">
+                                    ✅ Mark Delivered
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
