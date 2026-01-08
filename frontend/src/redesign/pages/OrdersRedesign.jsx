@@ -1,5 +1,5 @@
 import { useState, useEffect, useContext } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { apiCall, API_ENDPOINTS } from '../../config/api'
 import { ThemeContext } from '../../context/ThemeContext'
 
@@ -13,6 +13,7 @@ const colors = {
 
 const OrdersRedesign = () => {
     const navigate = useNavigate()
+    const location = useLocation()
     const { theme } = useContext(ThemeContext)
     const isDark = theme === 'dark'
 
@@ -22,6 +23,7 @@ const OrdersRedesign = () => {
     const [loading, setLoading] = useState(true)
     const [activeStatus, setActiveStatus] = useState('all')
     const [showOrderDetail, setShowOrderDetail] = useState(null)
+    const [showInvoiceHint, setShowInvoiceHint] = useState(false)
 
     const tabs = [
         { id: 'orders', label: 'Orders', icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg> },
@@ -37,6 +39,17 @@ const OrdersRedesign = () => {
     ]
 
     useEffect(() => { loadData() }, [activeTab])
+
+    // Handle Deep Link
+    useEffect(() => {
+        if (location.state?.action === 'invoice') {
+            setActiveTab('orders')
+            setActiveStatus('pending')
+            setShowInvoiceHint(true)
+            setTimeout(() => setShowInvoiceHint(false), 5000)
+            navigate(location.pathname, { replace: true, state: {} })
+        }
+    }, [location, navigate])
 
     const loadData = async () => {
         setLoading(true)
@@ -95,107 +108,102 @@ const OrdersRedesign = () => {
                 body: JSON.stringify({ status: newStatus })
             })
             setOrders(orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o))
+            setShowOrderDetail({ ...showOrderDetail, status: newStatus })
         } catch (e) {
             setOrders(orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o))
+            setShowOrderDetail({ ...showOrderDetail, status: newStatus })
         }
-        setShowOrderDetail(null)
     }
 
     const handleGenerateInvoice = async (order) => {
         try {
-            await apiCall(API_ENDPOINTS.GENERATE_INVOICE, {
+            await apiCall(API_ENDPOINTS.CREATE_INVOICE, {
                 method: 'POST',
-                body: JSON.stringify({
-                    order_id: order.id,
-                    customer_name: order.customer_name,
-                    customer_phone: order.customer_phone,
-                    items: (order.items || []).map(i => ({ product_name: i.name, quantity: i.quantity || 1, unit_price_ngn: i.price })),
-                    delivery_fee: 0
-                })
+                body: JSON.stringify({ order_id: order.id })
             })
-            alert('Invoice generated successfully!')
-            loadData()
+            alert(`Invoice generated for ${order.id}`)
+            setActiveTab('invoices')
         } catch (e) {
-            alert('Invoice generated locally')
+            alert('Invoice simulated (backend optional)')
+            setActiveTab('invoices')
         }
     }
 
     const handleMarkPaid = async (invoiceId) => {
-        if (!confirm('Mark this invoice as paid?')) return
-        try {
-            await apiCall(API_ENDPOINTS.MARK_INVOICE_PAID(invoiceId), {
-                method: 'POST',
-                body: JSON.stringify({ payment_ref: `PAY-${Date.now()}` })
-            })
-            setInvoices(invoices.map(i => i.invoice_id === invoiceId ? { ...i, paid: true } : i))
-        } catch (e) {
-            setInvoices(invoices.map(i => i.invoice_id === invoiceId ? { ...i, paid: true } : i))
-        }
+        setInvoices(invoices.map(i => i.invoice_id === invoiceId ? { ...i, paid: true } : i))
     }
 
     const filteredOrders = orders.filter(o => activeStatus === 'all' || o.status === activeStatus)
+
+    if (loading) {
+        return (
+            <div className={`min-h-screen flex items-center justify-center ${isDark ? 'bg-[#0a0a14]' : 'bg-[#fafaff]'}`}>
+                <div className="relative w-16 h-16">
+                    <div className={`absolute inset-0 rounded-full border-2 border-[${colors.lavender}]/30`}></div>
+                    <div className={`absolute inset-0 rounded-full border-2 border-transparent border-t-[${colors.violet}] animate-spin`}></div>
+                </div>
+            </div>
+        )
+    }
 
     return (
         <div className={`min-h-screen font-['SF_Pro_Display',-apple-system,sans-serif] ${isDark ? 'bg-[#0a0a14]' : 'bg-[#fafaff]'}`}>
 
             {/* Ambient Gradient */}
             <div className="fixed inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute top-40 -right-40 w-80 h-80 rounded-full blur-[120px]" style={{ background: isDark ? `${colors.indigo}30` : `${colors.lavender}20` }}></div>
+                <div className={`absolute top-20 -left-20 w-60 h-60 rounded-full blur-[100px] ${isDark ? `bg-[${colors.violet}]/20` : `bg-[${colors.lavender}]/20`}`}></div>
             </div>
 
             <div className="relative max-w-md mx-auto pb-28">
 
                 {/* Header */}
-                <header className={`sticky top-0 z-30 px-6 pt-5 pb-4 ${isDark ? 'bg-[#0a0a14]/70' : 'bg-[#fafaff]/70'} backdrop-blur-2xl`}>
-                    <div className="flex items-center justify-between mb-5">
+                <header className={`sticky top-0 z-30 px-6 pt-5 pb-2 ${isDark ? 'bg-[#0a0a14]/70' : 'bg-[#fafaff]/70'} backdrop-blur-2xl`}>
+                    <div className="flex items-center justify-between mb-6">
                         <button onClick={() => navigate('/dashboard')} className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all hover:scale-105 ${isDark ? 'bg-white/5' : 'bg-black/5'}`}>
                             <svg className={`w-5 h-5 ${isDark ? 'text-white/70' : 'text-black/70'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 19l-7-7 7-7" />
                             </svg>
                         </button>
-                        <button onClick={loadData} className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all hover:scale-105 ${isDark ? 'bg-white/5' : 'bg-black/5'}`}>
-                            <svg className={`w-5 h-5 ${isDark ? 'text-white/70' : 'text-black/70'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                            </svg>
-                        </button>
+                        <h1 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-black'}`}>Orders & Invoices</h1>
+                        <div className="w-11"></div>
                     </div>
 
-                    <h1 className={`text-3xl font-bold tracking-tight mb-1 ${isDark ? 'text-white' : 'text-black'}`}>{activeTab === 'orders' ? 'Orders' : 'Invoices'}</h1>
-                    <p className={`text-sm ${isDark ? 'text-white/60' : 'text-black/60'}`}>{activeTab === 'orders' ? `${orders.length} total orders` : `${invoices.length} invoices`}</p>
+                    {/* Hint for Invoice */}
+                    {showInvoiceHint && (
+                        <div className="mb-4 p-3 rounded-xl bg-indigo-500/20 text-indigo-300 text-xs font-semibold text-center animate-pulse">
+                            Select a pending order to generate an invoice
+                        </div>
+                    )}
+
+                    {/* Tabs */}
+                    <div className={`p-1 mx-6 mb-4 rounded-xl flex ${isDark ? 'bg-white/10' : 'bg-black/5'}`}>
+                        {tabs.map(tab => (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id)}
+                                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all ${activeTab === tab.id
+                                    ? (isDark ? 'bg-white/10 text-white shadow-lg' : 'bg-white text-black shadow')
+                                    : (isDark ? 'text-white/40 hover:text-white/60' : 'text-black/40 hover:text-black/60')
+                                    }`}
+                            >
+                                {tab.icon}
+                                {tab.label}
+                            </button>
+                        ))}
+                    </div>
                 </header>
 
-                {/* Tab Navigation */}
-                <div className="flex gap-2 px-6 pt-2">
-                    {tabs.map(tab => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
-                            className={`flex items-center gap-2 px-4 h-10 rounded-xl text-sm font-medium transition-all hover:scale-105 ${activeTab === tab.id ? 'text-white' : isDark ? 'bg-white/[0.03] text-white/70 border border-white/[0.06]' : 'bg-white text-black/70 border border-black/[0.04]'
-                                }`}
-                            style={activeTab === tab.id ? { background: `linear-gradient(135deg, ${colors.violet}, ${colors.indigo})`, boxShadow: `0 4px 12px ${colors.indigo}40` } : {}}
-                        >
-                            {tab.icon}
-                            <span>{tab.label}</span>
-                        </button>
-                    ))}
-                </div>
-
-                {/* Loading State or Content */}
-                {loading ? (
-                    <div className="flex flex-col items-center justify-center py-20">
-                        <div className="relative w-12 h-12">
-                            <div className="absolute inset-0 rounded-full border-2 border-current opacity-20" style={{ color: colors.violet }}></div>
-                            <div className="absolute inset-0 rounded-full border-2 border-transparent animate-spin" style={{ borderTopColor: colors.violet }}></div>
-                        </div>
-                        <p className={`text-sm mt-4 font-medium ${isDark ? 'text-white/50' : 'text-black/50'}`}>Loading...</p>
+                {(loading && orders.length === 0) ? (
+                    <div className="flex justify-center py-20">
+                        <div className={`w-8 h-8 border-2 border-t-transparent border-[${colors.violet}] rounded-full animate-spin`}></div>
                     </div>
                 ) : (
                     <>
                         {/* Orders Tab */}
                         {activeTab === 'orders' && (
-                            <>
-                                {/* Status Filter */}
-                                <div className="flex gap-2 px-6 pt-4 overflow-x-auto no-scrollbar">
+                            <div className="pb-6">
+                                {/* Status Filters */}
+                                <div className="flex gap-2 px-6 overflow-x-auto no-scrollbar mb-4 pb-2">
                                     {statusFilters.map(f => (
                                         <button
                                             key={f.id}
@@ -261,7 +269,7 @@ const OrdersRedesign = () => {
                                         })}
                                     </div>
                                 )}
-                            </>
+                            </div>
                         )}
 
                         {/* Invoices Tab */}
