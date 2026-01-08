@@ -22,6 +22,7 @@ const ProductsRedesign = () => {
     const [saving, setSaving] = useState(false)
     const [searchQuery, setSearchQuery] = useState('')
     const [selectedCategory, setSelectedCategory] = useState('All')
+    const [viewMode, setViewMode] = useState('grid') // 'grid' or 'list'
     const [showAddModal, setShowAddModal] = useState(false)
     const [showProductDetail, setShowProductDetail] = useState(null)
     const [imagePreview, setImagePreview] = useState(null)
@@ -183,9 +184,9 @@ const ProductsRedesign = () => {
                     </div>
                 </header>
 
-                {/* Search */}
-                <div className="px-6 pt-2">
-                    <div className={`flex items-center rounded-2xl h-12 border backdrop-blur-xl transition-all ${isDark ? 'bg-white/[0.03] border-white/[0.06]' : 'bg-white border-black/[0.04]'}`}>
+                {/* Search + View Toggle */}
+                <div className="px-6 pt-2 flex items-center gap-3">
+                    <div className={`flex-1 flex items-center rounded-2xl h-12 border backdrop-blur-xl transition-all ${isDark ? 'bg-white/[0.03] border-white/[0.06]' : 'bg-white border-black/[0.04]'}`}>
                         <svg className={`ml-4 w-5 h-5 ${isDark ? 'text-white/30' : 'text-black/30'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
@@ -197,6 +198,28 @@ const ProductsRedesign = () => {
                             className={`flex-1 bg-transparent border-none focus:outline-none px-3 text-sm ${isDark ? 'text-white placeholder-white/30' : 'text-black placeholder-black/30'}`}
                         />
                     </div>
+
+                    {/* View Toggle */}
+                    <div className={`flex items-center rounded-xl border ${isDark ? 'bg-white/[0.03] border-white/[0.06]' : 'bg-white border-black/[0.04]'}`}>
+                        <button
+                            onClick={() => setViewMode('grid')}
+                            className={`p-2.5 rounded-l-xl transition-all ${viewMode === 'grid' ? 'text-white' : isDark ? 'text-white/40' : 'text-black/40'}`}
+                            style={viewMode === 'grid' ? { background: `linear-gradient(135deg, ${colors.violet}, ${colors.indigo})` } : {}}
+                        >
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
+                            </svg>
+                        </button>
+                        <button
+                            onClick={() => setViewMode('list')}
+                            className={`p-2.5 rounded-r-xl transition-all ${viewMode === 'list' ? 'text-white' : isDark ? 'text-white/40' : 'text-black/40'}`}
+                            style={viewMode === 'list' ? { background: `linear-gradient(135deg, ${colors.violet}, ${colors.indigo})` } : {}}
+                        >
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h16M4 12h16M4 18h16" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
 
                 {/* Category Pills */}
@@ -206,8 +229,8 @@ const ProductsRedesign = () => {
                             key={cat}
                             onClick={() => setSelectedCategory(cat)}
                             className={`px-4 h-9 rounded-xl whitespace-nowrap text-sm font-medium transition-all hover:scale-105 ${selectedCategory === cat
-                                    ? 'text-white shadow-lg'
-                                    : isDark ? 'bg-white/[0.03] text-white/50 border border-white/[0.06]' : 'bg-white text-black/50 border border-black/[0.04]'
+                                ? 'text-white shadow-lg'
+                                : isDark ? 'bg-white/[0.03] text-white/50 border border-white/[0.06]' : 'bg-white text-black/50 border border-black/[0.04]'
                                 }`}
                             style={selectedCategory === cat ? { background: `linear-gradient(135deg, ${colors.violet}, ${colors.indigo})`, boxShadow: `0 4px 12px ${colors.indigo}40` } : {}}
                         >
@@ -232,7 +255,7 @@ const ProductsRedesign = () => {
                             + Add Product
                         </button>
                     </div>
-                ) : (
+                ) : viewMode === 'grid' ? (
                     <div className="grid grid-cols-2 gap-4 p-6">
                         {filteredProducts.map((product) => (
                             <div
@@ -272,6 +295,49 @@ const ProductsRedesign = () => {
                                         </div>
                                     </div>
                                 </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    /* List View */
+                    <div className="px-6 space-y-3 pb-6">
+                        {filteredProducts.map((product) => (
+                            <div
+                                key={product.id}
+                                onClick={() => setShowProductDetail(product)}
+                                className={`flex items-center gap-4 p-4 rounded-2xl cursor-pointer transition-all duration-300 hover:scale-[1.01] ${isDark ? 'bg-white/[0.03] border border-white/[0.06]' : 'bg-white border border-black/[0.04]'}`}
+                            >
+                                {/* Image */}
+                                <div className="relative w-20 h-20 rounded-xl overflow-hidden flex-shrink-0">
+                                    {product.image_url ? (
+                                        <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <div className={`w-full h-full flex items-center justify-center ${isDark ? 'bg-white/[0.02]' : 'bg-black/[0.02]'}`}>
+                                            <svg className="w-8 h-8" style={{ color: colors.muted, opacity: 0.3 }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                            </svg>
+                                        </div>
+                                    )}
+                                    {product.stock <= 3 && (
+                                        <div className="absolute top-1 left-1 w-2 h-2 bg-red-500 rounded-full"></div>
+                                    )}
+                                </div>
+
+                                {/* Info */}
+                                <div className="flex-1 min-w-0">
+                                    <p className={`font-semibold text-sm ${isDark ? 'text-white' : 'text-black'} truncate`}>{product.name}</p>
+                                    <div className="flex items-center gap-3 mt-1">
+                                        <span className={`text-xs px-2 py-0.5 rounded-md ${isDark ? 'bg-white/[0.05] text-white/50' : 'bg-black/[0.03] text-black/50'}`}>
+                                            {product.category || 'General'}
+                                        </span>
+                                        <span className={`text-xs ${isDark ? 'text-white/40' : 'text-black/40'}`}>
+                                            Stock: {product.stock}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Price */}
+                                <p className="text-lg font-bold" style={{ color: colors.violet }}>{formatCurrency(product.price)}</p>
                             </div>
                         ))}
                     </div>
