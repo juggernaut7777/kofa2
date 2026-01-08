@@ -8,12 +8,13 @@ export { default as theme } from './theme'
 // Layout
 export { default as LayoutRedesign } from './components/LayoutRedesign'
 
-// Pages
+// Pages - All 5 complete!
 export { default as DashboardRedesign } from './pages/DashboardRedesign'
 export { default as ProductsRedesign } from './pages/ProductsRedesign'
 export { default as OrdersRedesign } from './pages/OrdersRedesign'
 export { default as InsightsRedesign } from './pages/InsightsRedesign'
-// export { default as SettingsRedesign } from './pages/SettingsRedesign'  // Coming soon
+export { default as SettingsRedesign } from './pages/SettingsRedesign'
+
 
 
 
