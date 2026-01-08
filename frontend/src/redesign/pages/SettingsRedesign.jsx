@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext } from 'react'
+import { useState, useEffect, useContext, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { apiCall, API_ENDPOINTS } from '../../config/api'
 import { ThemeContext } from '../../context/ThemeContext'
@@ -17,6 +17,7 @@ const SettingsRedesign = () => {
     const { theme, toggleTheme } = useContext(ThemeContext)
     const { user, logout } = useAuth()
     const isDark = theme === 'dark'
+    const chatEndRef = useRef(null)
 
     const [activeSection, setActiveSection] = useState('general')
     const [saving, setSaving] = useState(false)
@@ -27,6 +28,12 @@ const SettingsRedesign = () => {
     const [bankName, setBankName] = useState('')
     const [accountNumber, setAccountNumber] = useState('')
 
+    // Test Bot State
+    const [testMessage, setTestMessage] = useState('')
+    const [chatHistory, setChatHistory] = useState([
+        { role: 'assistant', content: 'Hello! How can I help you today?' }
+    ])
+
     const [channels, setChannels] = useState([
         { id: 'whatsapp', name: 'WhatsApp', color: '#22c55e', connected: true },
         { id: 'instagram', name: 'Instagram', color: '#ec4899', connected: false },
@@ -36,6 +43,7 @@ const SettingsRedesign = () => {
     const sections = [
         { id: 'general', label: 'General', icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg> },
         { id: 'bot', label: 'Bot', icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg> },
+        { id: 'test', label: 'Test Bot', icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg> },
         { id: 'channels', label: 'Channels', icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0" /></svg> },
         { id: 'payment', label: 'Payment', icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg> },
     ]
@@ -48,6 +56,7 @@ const SettingsRedesign = () => {
     const banks = ['GTBank', 'Access Bank', 'First Bank', 'Zenith Bank', 'UBA', 'Kuda', 'Opay', 'Moniepoint']
 
     useEffect(() => { loadSettings() }, [])
+    useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [chatHistory, activeSection])
 
     const loadSettings = async () => {
         try {
@@ -55,6 +64,10 @@ const SettingsRedesign = () => {
             if (botStatus) {
                 setBotActive(botStatus.active !== false)
                 setBotPersonality(botStatus.style || 'professional')
+                setChatHistory([{
+                    role: 'assistant',
+                    content: botStatus.style === 'pidgin' ? 'How far! Anything you want make I help you check?' : 'Hello! How can I help you today?'
+                }])
             }
         } catch (e) { }
     }
@@ -85,12 +98,39 @@ const SettingsRedesign = () => {
 
     const handleSetPersonality = async (p) => {
         setBotPersonality(p)
+        setChatHistory([{
+            role: 'assistant',
+            content: p === 'pidgin' ? 'How far! Anything you want make I help you check?' : 'Hello! How can I help you today?'
+        }])
         try { await apiCall(API_ENDPOINTS.BOT_STYLE, { method: 'PUT', body: JSON.stringify({ style: p }) }) } catch (e) { }
     }
 
     const handleToggleChannel = (id) => {
         setChannels(channels.map(c => c.id === id ? { ...c, connected: !c.connected } : c))
         alert(channels.find(c => c.id === id)?.connected ? 'Disconnected' : 'Connecting...')
+    }
+
+    const handleSendMessage = () => {
+        if (!testMessage.trim()) return
+
+        const newMsg = { role: 'user', content: testMessage }
+        setChatHistory([...chatHistory, newMsg])
+        setTestMessage('')
+
+        // Simulate Bot Response
+        setTimeout(() => {
+            let response = "I received your message."
+            if (botPersonality === 'pidgin') {
+                if (testMessage.toLowerCase().includes('price')) response = "The price na ₦15,000 only. You wan buy?"
+                else if (testMessage.toLowerCase().includes('hello')) response = "How far boss! Wetin dey happen?"
+                else response = "No wahala, send details make I process am fast fast."
+            } else {
+                if (testMessage.toLowerCase().includes('price')) response = "The price is ₦15,000. Would you like to place an order?"
+                else if (testMessage.toLowerCase().includes('hello')) response = "Hello! How may I assist you with your order?"
+                else response = "Thank you. Please provide your delivery details."
+            }
+            setChatHistory(prev => [...prev, { role: 'assistant', content: response }])
+        }, 800)
     }
 
     return (
@@ -222,6 +262,54 @@ const SettingsRedesign = () => {
                                 ))}
                             </div>
                         </div>
+                    </div>
+                )}
+
+                {/* Test Bot Section */}
+                {activeSection === 'test' && (
+                    <div className="px-6 pt-5 h-[500px] flex flex-col">
+                        <div className={`flex-1 rounded-2xl p-4 mb-4 overflow-y-auto no-scrollbar ${isDark ? 'bg-white/[0.03] border border-white/[0.06]' : 'bg-white border border-black/[0.04]'}`}>
+                            {chatHistory.map((msg, i) => (
+                                <div key={i} className={`flex mb-4 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                    <div
+                                        className={`max-w-[80%] p-3 rounded-2xl text-sm ${msg.role === 'user'
+                                                ? 'bg-blue-600 text-white rounded-tr-sm'
+                                                : isDark
+                                                    ? 'bg-white/10 text-white rounded-tl-sm'
+                                                    : 'bg-black/5 text-black rounded-tl-sm'
+                                            }`}
+                                        style={msg.role === 'user' ? { background: `linear-gradient(135deg, ${colors.violet}, ${colors.indigo})` } : {}}
+                                    >
+                                        {msg.content}
+                                    </div>
+                                </div>
+                            ))}
+                            <div ref={chatEndRef} />
+                        </div>
+
+                        <div className="relative">
+                            <input
+                                type="text"
+                                value={testMessage}
+                                onChange={e => setTestMessage(e.target.value)}
+                                onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
+                                placeholder={`Message ${botPersonality === 'pidgin' ? 'Pidgin' : 'Professional'} Bot...`}
+                                className={`w-full h-12 pl-4 pr-12 rounded-xl transition-all focus:outline-none ${isDark ? 'bg-white/10 text-white placeholder-white/30' : 'bg-black/5 text-black placeholder-black/30'
+                                    }`}
+                            />
+                            <button
+                                onClick={handleSendMessage}
+                                className="absolute right-2 top-2 w-8 h-8 flex items-center justify-center rounded-lg text-white transition-all hover:scale-105"
+                                style={{ background: `linear-gradient(135deg, ${colors.violet}, ${colors.indigo})` }}
+                            >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                                </svg>
+                            </button>
+                        </div>
+                        <p className={`text-center text-xs mt-3 ${isDark ? 'text-white/30' : 'text-black/30'}`}>
+                            Previewing {botPersonality === 'pidgin' ? 'Pidgin' : 'Professional'} personality
+                        </p>
                     </div>
                 )}
 
