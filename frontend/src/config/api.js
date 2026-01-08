@@ -39,6 +39,7 @@ export const API_ENDPOINTS = {
 
   // Expenses
   LOG_EXPENSE: '/expenses/log',
+  ADD_EXPENSE: '/expenses/log',
   EXPENSE_SUMMARY: '/expenses/summary',
   LIST_EXPENSES: '/expenses/list',
 
@@ -77,6 +78,7 @@ export const API_ENDPOINTS = {
   // Receipts & Invoices
   GENERATE_RECEIPT: '/receipts/generate',
   GENERATE_INVOICE: '/invoices/generate',
+  CREATE_INVOICE: '/invoices/generate',
   LIST_INVOICES: '/invoices',
   GET_INVOICE: (id) => `/invoices/${id}`,
   MARK_INVOICE_PAID: (id) => `/invoices/${id}/mark-paid`,
@@ -98,22 +100,6 @@ export const API_ENDPOINTS = {
 export const apiCall = async (endpoint, options = {}) => {
   const url = `${API_BASE_URL}${endpoint}`;
 
-  // #region agent log - API call start
-  fetch('http://127.0.0.1:7243/ingest/10d59c38-d459-4ce0-b67c-7b3366efe76e', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      sessionId: 'debug-session',
-      runId: 'initial',
-      hypothesisId: 'C',
-      location: 'api.js:68',
-      message: 'API call starting',
-      data: { endpoint, method: options.method || 'GET', url },
-      timestamp: Date.now()
-    })
-  }).catch(() => { });
-  // #endregion
-
   const config = {
     headers: {
       'Content-Type': 'application/json',
@@ -130,44 +116,12 @@ export const apiCall = async (endpoint, options = {}) => {
     const response = await fetch(url, { ...config, signal: controller.signal });
     clearTimeout(timeoutId);
 
-    // #region agent log - API response received
-    fetch('http://127.0.0.1:7243/ingest/10d59c38-d459-4ce0-b67c-7b3366efe76e', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sessionId: 'debug-session',
-        runId: 'initial',
-        hypothesisId: 'C',
-        location: 'api.js:84',
-        message: 'API response received',
-        data: { status: response.status, statusText: response.statusText, url },
-        timestamp: Date.now()
-      })
-    }).catch(() => { });
-    // #endregion
-
     if (!response.ok) {
       throw new Error(`API Error: ${response.status} ${response.statusText}`);
     }
     return await response.json();
   } catch (error) {
     clearTimeout(timeoutId);
-
-    // #region agent log - API call failed
-    fetch('http://127.0.0.1:7243/ingest/10d59c38-d459-4ce0-b67c-7b3366efe76e', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sessionId: 'debug-session',
-        runId: 'initial',
-        hypothesisId: 'C',
-        location: 'api.js:102',
-        message: 'API call failed',
-        data: { error: error.message, url, endpoint },
-        timestamp: Date.now()
-      })
-    }).catch(() => { });
-    // #endregion
 
     if (error.name === 'AbortError') {
       throw new Error('API request timed out after 10 seconds');
@@ -177,4 +131,3 @@ export const apiCall = async (endpoint, options = {}) => {
     throw error;
   }
 };
-
