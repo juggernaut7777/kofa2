@@ -34,26 +34,44 @@ const DashboardRedesign = () => {
     }, [])
 
     const loadData = async () => {
-        try {
-            const [summary, orders, profit] = await Promise.all([
-                apiCall(API_ENDPOINTS.DASHBOARD_SUMMARY).catch(() => null),
-                apiCall(API_ENDPOINTS.ORDERS).catch(() => []),
-                apiCall(API_ENDPOINTS.PROFIT_TODAY).catch(() => null)
-            ])
+        // Load data progressively - don't wait for all APIs
+        // Start with fallback values immediately
+        setLoading(false)
 
-            setStats({
-                revenue: summary?.total_revenue || 2450000,
-                orders: summary?.pending_orders || 18,
-                customers: summary?.new_customers || 42,
-                profit: profit?.net_profit_ngn || 890000
+        // Load summary (slowest, but most important)
+        apiCall(API_ENDPOINTS.DASHBOARD_SUMMARY)
+            .then(summary => {
+                if (summary) {
+                    setStats(prev => ({
+                        ...prev,
+                        revenue: summary.total_revenue || prev.revenue,
+                        orders: summary.pending_orders || prev.orders,
+                        customers: summary.new_customers || prev.customers
+                    }))
+                }
             })
+            .catch(() => { })
 
-            setRecentOrders(Array.isArray(orders) ? orders.slice(0, 4) : [])
-        } catch (e) {
-            setStats({ revenue: 2450000, orders: 18, customers: 42, profit: 890000 })
-        } finally {
-            setLoading(false)
-        }
+        // Load orders for recent activity
+        apiCall(API_ENDPOINTS.ORDERS)
+            .then(orders => {
+                if (Array.isArray(orders)) {
+                    setRecentOrders(orders.slice(0, 4))
+                }
+            })
+            .catch(() => { })
+
+        // Load profit summary (not PROFIT_TODAY which returns 404)
+        apiCall(API_ENDPOINTS.PROFIT_SUMMARY)
+            .then(profit => {
+                if (profit) {
+                    setStats(prev => ({
+                        ...prev,
+                        profit: profit.net_profit_ngn || profit.total_profit || prev.profit
+                    }))
+                }
+            })
+            .catch(() => { })
     }
 
     const formatCurrency = (n) => {
