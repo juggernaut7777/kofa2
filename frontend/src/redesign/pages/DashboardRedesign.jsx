@@ -50,7 +50,6 @@ const DashboardRedesign = () => {
 
             setRecentOrders(Array.isArray(orders) ? orders.slice(0, 4) : [])
         } catch (e) {
-            // Fallback for demo
             setStats({ revenue: 2450000, orders: 18, customers: 42, profit: 890000 })
         } finally {
             setLoading(false)
@@ -65,7 +64,6 @@ const DashboardRedesign = () => {
 
     // --- Chart Components ---
 
-    // Donut Chart: Sales by Category (Mock Data for Visualization)
     const DonutChart = () => {
         const data = [
             { label: 'Shoes', value: 45, color: colors.violet },
@@ -120,7 +118,6 @@ const DashboardRedesign = () => {
         )
     }
 
-    // Bar Chart: Weekly Activity
     const BarChart = () => {
         const data = [
             { day: 'M', value: 60 },
@@ -178,22 +175,10 @@ const DashboardRedesign = () => {
                         <p className={`text-sm font-medium ${isDark ? 'text-white/60' : 'text-black/60'}`}>{new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
                         <h1 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-black'}`}>{greeting}, {user?.storeName?.split(' ')[0] || 'Vendor'}</h1>
                     </div>
-
-                    {/* Create Invoice Action */}
-                    <button
-                        onClick={() => {
-                            // Navigate to Orders page and switch to invoices tab (handled by saving state or query param, simpler: navigate to orders)
-                            navigate('/orders')
-                        }}
-                        className="flex items-center gap-2 pl-3 pr-4 py-2.5 rounded-xl text-sm font-bold text-white shadow-lg transition-transform hover:scale-105"
-                        style={{ background: `linear-gradient(135deg, ${colors.violet}, ${colors.indigo})` }}
-                    >
-                        <span className="text-lg leading-none">+</span> Invoice
-                    </button>
                 </header>
 
                 {/* Overview Cards (Horizontal Scroll) */}
-                <section className="mb-8">
+                <section className="mb-6">
                     <div className="flex gap-4 px-6 overflow-x-auto no-scrollbar pb-2">
                         {[
                             { label: 'Total Revenue', value: formatCurrency(stats.revenue), trend: '+12%', icon: '💰' },
@@ -215,11 +200,47 @@ const DashboardRedesign = () => {
                     </div>
                 </section>
 
+                {/* Quick Actions */}
+                <section className="px-6 mb-8">
+                    <h2 className={`text-sm font-bold uppercase tracking-wide mb-3 ${isDark ? 'text-white/40' : 'text-black/40'}`}>Quick Actions</h2>
+                    <div className="grid grid-cols-3 gap-3">
+                        <button
+                            onClick={() => navigate('/products')}
+                            className={`flex flex-col items-center justify-center p-4 rounded-2xl gap-2 transition-all hover:scale-[1.02] ${isDark ? 'bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06]' : 'bg-white border border-black/[0.04] hover:bg-black/[0.02]'}`}
+                        >
+                            <div className="w-10 h-10 rounded-full flex items-center justify-center bg-indigo-500/10 text-indigo-500">
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                            </div>
+                            <span className={`text-xs font-semibold ${isDark ? 'text-white' : 'text-black'}`}>Product</span>
+                        </button>
+
+                        <button
+                            onClick={() => navigate('/insights')}
+                            className={`flex flex-col items-center justify-center p-4 rounded-2xl gap-2 transition-all hover:scale-[1.02] ${isDark ? 'bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06]' : 'bg-white border border-black/[0.04] hover:bg-black/[0.02]'}`}
+                        >
+                            <div className="w-10 h-10 rounded-full flex items-center justify-center bg-pink-500/10 text-pink-500">
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            </div>
+                            <span className={`text-xs font-semibold ${isDark ? 'text-white' : 'text-black'}`}>Expense</span>
+                        </button>
+
+                        <button
+                            onClick={() => navigate('/orders')}
+                            className={`flex flex-col items-center justify-center p-4 rounded-2xl gap-2 transition-all hover:scale-[1.02] ${isDark ? 'bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06]' : 'bg-white border border-black/[0.04] hover:bg-black/[0.02]'}`}
+                        >
+                            <div className="w-10 h-10 rounded-full flex items-center justify-center bg-emerald-500/10 text-emerald-500">
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                            </div>
+                            <span className={`text-xs font-semibold ${isDark ? 'text-white' : 'text-black'}`}>Invoice</span>
+                        </button>
+                    </div>
+                </section>
+
                 {/* Analytics Section (Merged) */}
                 <section className="px-6 mb-8">
                     <div className="flex items-center justify-between mb-4">
                         <h2 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-black'}`}>Analytics Overview</h2>
-                        <button className={`text-xs font-medium ${isDark ? 'text-white/40' : 'text-black/40'}`}>See all</button>
+                        <button onClick={() => navigate('/insights')} className={`text-xs font-medium ${isDark ? 'text-white/40' : 'text-black/40'}`}>See all</button>
                     </div>
 
                     <div className="space-y-4">
