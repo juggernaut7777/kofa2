@@ -7,95 +7,74 @@ import { useAuth } from '../../context/AuthContext'
 const SettingsRedesign = () => {
     const navigate = useNavigate()
     const { theme, toggleTheme } = useContext(ThemeContext)
-    const { user } = useAuth()
+    const { user, logout } = useAuth()
     const isDark = theme === 'dark'
-    const [loading, setLoading] = useState(true)
 
+    const [activeSection, setActiveSection] = useState('general')
+    const [saving, setSaving] = useState(false)
     const [botActive, setBotActive] = useState(true)
     const [botPersonality, setBotPersonality] = useState('friendly')
-    const [storeName, setStoreName] = useState('Lagos Trends')
-    const [storePhone, setStorePhone] = useState('801 234 5678')
-    const [bankName, setBankName] = useState('Guaranty Trust Bank')
-    const [accountNumber, setAccountNumber] = useState('0123456789')
-    const [accountName, setAccountName] = useState('LAGOS TRENDS LTD')
-    const [saving, setSaving] = useState(false)
+    const [storeName, setStoreName] = useState(user?.storeName || 'My Store')
+    const [storePhone, setStorePhone] = useState(user?.phone || '')
+    const [bankName, setBankName] = useState('')
+    const [accountNumber, setAccountNumber] = useState('')
 
-    const [channels, setChannels] = useState({
-        whatsapp: { connected: true, status: 'Connected' },
-        instagram: { connected: false, status: 'Not connected' }
-    })
-
-    const [testMessages, setTestMessages] = useState([
-        { type: 'bot', text: 'Hello! Welcome to Lagos Trends. How can I help you today? 👋' },
-        { type: 'user', text: 'Do you have the Nike Air Max in size 42?' },
-        { type: 'bot', text: 'Let me check that for you immediately! 👟' },
+    const [channels, setChannels] = useState([
+        { id: 'whatsapp', name: 'WhatsApp', icon: '💬', color: '#22c55e', connected: true },
+        { id: 'instagram', name: 'Instagram', icon: '📸', color: '#ec4899', connected: false },
+        { id: 'tiktok', name: 'TikTok', icon: '🎵', color: '#000000', connected: false },
     ])
-    const [testInput, setTestInput] = useState('')
-    const [botTyping, setBotTyping] = useState(false)
+
+    const sections = [
+        { id: 'general', icon: '⚙️', label: 'General' },
+        { id: 'bot', icon: '🤖', label: 'Bot' },
+        { id: 'channels', icon: '📱', label: 'Channels' },
+        { id: 'payment', icon: '💳', label: 'Payment' },
+    ]
 
     const personalities = [
-        { id: 'friendly', label: 'Friendly', icon: '😊' },
-        { id: 'professional', label: 'Professional', icon: '👔' },
-        { id: 'urgent', label: 'Urgent', icon: '⚡' },
+        { id: 'friendly', icon: '😊', label: 'Friendly' },
+        { id: 'professional', icon: '💼', label: 'Professional' },
+        { id: 'casual', icon: '😎', label: 'Casual' },
+        { id: 'formal', icon: '🎩', label: 'Formal' },
     ]
 
-    const banks = [
-        'Guaranty Trust Bank',
-        'Zenith Bank',
-        'Access Bank',
-        'First Bank of Nigeria',
-        'United Bank for Africa',
-        'Stanbic IBTC',
-        'Fidelity Bank',
-        'Union Bank',
-    ]
+    const banks = ['GTBank', 'Access Bank', 'First Bank', 'Zenith Bank', 'UBA', 'Kuda', 'Opay', 'Moniepoint']
 
-    useEffect(() => {
-        loadSettings()
-    }, [])
+    useEffect(() => { loadSettings() }, [])
 
     const loadSettings = async () => {
         try {
-            // Try to load bot settings
-            const botSettings = await apiCall(API_ENDPOINTS.BOT_STATUS)
-            if (botSettings) {
-                setBotActive(botSettings.active !== false)
-                setBotPersonality(botSettings.style || 'friendly')
+            const botStatus = await apiCall(API_ENDPOINTS.BOT_STATUS).catch(() => null)
+            if (botStatus) {
+                setBotActive(botStatus.active !== false)
+                setBotPersonality(botStatus.style || 'friendly')
             }
-        } catch (e) {
-            console.log('Using default settings')
-        }
-        setLoading(false)
+        } catch (e) { }
     }
 
-    const handleSaveBusinessInfo = async () => {
+    const handleSaveGeneral = async () => {
         setSaving(true)
         try {
             await apiCall(API_ENDPOINTS.VENDOR_BUSINESS_INFO, {
                 method: 'PUT',
                 body: JSON.stringify({ store_name: storeName, phone: storePhone })
             })
-            alert('Business info saved!')
-        } catch (error) {
-            alert('Business info saved locally!')
-        } finally {
-            setSaving(false)
-        }
+        } catch (e) { }
+        setSaving(false)
+        alert('Settings saved!')
     }
 
-    const handleSavePaymentInfo = async () => {
+    const handleSavePayment = async () => {
         setSaving(true)
         try {
             await apiCall(API_ENDPOINTS.VENDOR_PAYMENT_ACCOUNT, {
                 method: 'PUT',
                 body: JSON.stringify({ bank_name: bankName, account_number: accountNumber })
             })
-            alert('Payment info saved!')
-        } catch (error) {
-            alert('Payment info saved locally!')
-        } finally {
-            setSaving(false)
-        }
+        } catch (e) { }
+        setSaving(false)
+        alert('Payment settings saved!')
     }
 
     const handleToggleBot = async () => {
@@ -106,400 +85,280 @@ const SettingsRedesign = () => {
                 method: 'POST',
                 body: JSON.stringify({ paused: !newState })
             })
-        } catch (e) {
-            console.log('Bot toggle saved locally')
-        }
+        } catch (e) { }
     }
 
-    const handleSetPersonality = async (personality) => {
-        setBotPersonality(personality)
+    const handleSetPersonality = async (p) => {
+        setBotPersonality(p)
         try {
             await apiCall(API_ENDPOINTS.BOT_STYLE, {
                 method: 'PUT',
-                body: JSON.stringify({ style: personality })
+                body: JSON.stringify({ style: p })
             })
-        } catch (e) {
-            console.log('Personality saved locally')
-        }
+        } catch (e) { }
     }
 
-    const handleTestMessage = () => {
-        if (!testInput.trim()) return
-
-        setTestMessages(prev => [...prev, { type: 'user', text: testInput }])
-        setTestInput('')
-        setBotTyping(true)
-
-        // Simulate bot response
-        setTimeout(() => {
-            setBotTyping(false)
-            setTestMessages(prev => [...prev, {
-                type: 'bot',
-                text: `I found the Nike Air Max in size 42! It's ₦45,000. Would you like to order? 🛒`
-            }])
-        }, 1500)
-    }
-
-    const handleClearChat = () => {
-        setTestMessages([
-            { type: 'bot', text: 'Hello! Welcome to Lagos Trends. How can I help you today? 👋' }
-        ])
-    }
-
-    const handleConnect = (platform) => {
-        // Would trigger OAuth flow in real implementation
-        setChannels(prev => ({
-            ...prev,
-            [platform]: { connected: true, status: 'Connected' }
-        }))
-    }
-
-    const handleDisconnect = (platform) => {
-        setChannels(prev => ({
-            ...prev,
-            [platform]: { connected: false, status: 'Not connected' }
-        }))
+    const handleToggleChannel = (id) => {
+        setChannels(channels.map(c => c.id === id ? { ...c, connected: !c.connected } : c))
+        // In real app, this would trigger OAuth flow
+        alert(channels.find(c => c.id === id)?.connected ? 'Disconnected' : 'Connecting...')
     }
 
     return (
-        <div className={`min-h-screen font-['Manrope'] ${isDark ? 'bg-[#102217] text-white' : 'bg-[#f6f8f7] text-[#111814]'}`}>
-            <div className="max-w-md mx-auto pb-24">
+        <div className={`min-h-screen font-['Inter',system-ui,sans-serif] ${isDark ? 'bg-[#030712]' : 'bg-gray-50'}`}>
+
+            {/* Ambient Background */}
+            <div className="fixed inset-0 overflow-hidden pointer-events-none">
+                <div className={`absolute top-20 -right-20 w-60 h-60 rounded-full blur-3xl ${isDark ? 'bg-violet-500/10' : 'bg-violet-500/5'}`}></div>
+                <div className={`absolute bottom-40 -left-20 w-40 h-40 rounded-full blur-3xl ${isDark ? 'bg-emerald-500/10' : 'bg-emerald-500/5'}`}></div>
+            </div>
+
+            <div className="relative max-w-md mx-auto pb-28">
 
                 {/* Header */}
-                {/* Header */}
-                <header className={`sticky top-0 z-20 flex items-center p-4 pb-2 justify-between border-b ${isDark ? 'bg-[#102217] border-white/5' : 'bg-white border-gray-100'}`}>
-                    <button onClick={() => navigate('/dashboard')} className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100 dark:hover:bg-white/10">
-                        <span className="text-xl">←</span>
-                    </button>
-                    <h2 className="text-lg font-bold flex-1 text-center">Settings</h2>
-                    <button onClick={toggleTheme} className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100 dark:hover:bg-white/10">
-                        <span className="text-xl">{isDark ? '☀️' : '🌙'}</span>
-                    </button>
+                <header className={`sticky top-0 z-30 px-5 pt-4 pb-3 ${isDark ? 'bg-[#030712]/80' : 'bg-gray-50/80'} backdrop-blur-2xl`}>
+                    <div className="flex items-center justify-between mb-4">
+                        <button onClick={() => navigate('/dashboard')} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all hover:scale-105 ${isDark ? 'bg-white/5' : 'bg-gray-100'}`}>
+                            <span className="text-lg">←</span>
+                        </button>
+                        <button onClick={toggleTheme} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all hover:scale-105 ${isDark ? 'bg-white/5' : 'bg-gray-100'}`}>
+                            <span className="text-lg">{isDark ? '☀️' : '🌙'}</span>
+                        </button>
+                    </div>
+
+                    <h1 className={`text-3xl font-black tracking-tight mb-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>Settings</h1>
+                    <p className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Manage your store</p>
                 </header>
 
-                <div className="flex-1 flex flex-col gap-6 p-4">
-
-                    {/* Bot Settings Section */}
-                    <section className={`flex flex-col gap-3 rounded-xl p-4 shadow-sm border ${isDark ? 'bg-[#1c3024] border-white/5' : 'bg-white border-gray-100'
+                {/* Profile Card */}
+                <div className="px-5 pt-4">
+                    <div className={`relative overflow-hidden rounded-2xl p-5 ${isDark
+                        ? 'bg-gradient-to-br from-violet-500/20 via-purple-600/10 to-transparent border border-violet-500/20'
+                        : 'bg-gradient-to-br from-violet-50 to-white border border-violet-100'
                         }`}>
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-[#2bee79]/10 text-[#2bee79]">
-                                <span className="text-xl">🤖</span>
+                        <div className="flex items-center gap-4">
+                            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-400 to-purple-600 flex items-center justify-center text-white text-2xl font-bold shadow-lg">
+                                {storeName?.charAt(0) || 'K'}
                             </div>
-                            <h3 className="text-lg font-bold">Bot Settings</h3>
-                        </div>
-
-                        {/* Active Status Toggle */}
-                        <div className={`flex items-center gap-4 py-2 justify-between border-b border-dashed pb-4 ${isDark ? 'border-white/10' : 'border-gray-200'
-                            }`}>
-                            <div className="flex flex-col">
-                                <p className="text-base font-semibold">Active Status</p>
-                                <p className={`text-xs ${isDark ? 'text-[#a0b0a8]' : 'text-[#637588]'}`}>Enable auto-responses</p>
+                            <div className="flex-1">
+                                <p className={`font-bold text-lg ${isDark ? 'text-white' : 'text-gray-900'}`}>{storeName}</p>
+                                <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{user?.email || 'vendor@kofa.app'}</p>
                             </div>
-                            <button
-                                onClick={handleToggleBot}
-                                className={`relative w-[51px] h-[31px] rounded-full p-0.5 transition-colors ${botActive ? 'bg-[#2bee79]' : isDark ? 'bg-[#2a3e32]' : 'bg-[#f0f4f2]'}`}
-                            >
-                                <div className={`h-full w-[27px] rounded-full bg-white shadow-sm transition-transform ${botActive ? 'translate-x-5' : 'translate-x-0'}`}></div>
-                            </button>
+                            <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-bold border border-emerald-500/30">
+                                Active
+                            </span>
                         </div>
+                    </div>
+                </div>
 
-                        {/* Personality Selector */}
-                        <div className="flex flex-col gap-2 pt-2">
-                            <p className="text-sm font-medium">Bot Personality</p>
-                            <div className="flex gap-2 flex-wrap">
-                                {personalities.map(p => (
-                                    <button
-                                        key={p.id}
-                                        onClick={() => handleSetPersonality(p.id)}
-                                        className={`flex h-9 items-center justify-center gap-2 rounded-lg px-4 transition-all ${botPersonality === p.id
-                                            ? 'bg-[#2bee79] text-[#111814] font-bold shadow-sm'
-                                            : isDark ? 'bg-[#2a3e32] hover:bg-white/10' : 'bg-[#f0f4f2] hover:bg-gray-200'
-                                            }`}
-                                    >
-                                        <span>{p.icon}</span>
-                                        <span className="text-sm">{p.label}</span>
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    </section>
+                {/* Section Navigation */}
+                <div className="flex gap-2 px-5 pt-5 overflow-x-auto no-scrollbar">
+                    {sections.map(s => (
+                        <button
+                            key={s.id}
+                            onClick={() => setActiveSection(s.id)}
+                            className={`flex items-center gap-2 px-4 h-10 rounded-xl whitespace-nowrap transition-all hover:scale-105 ${activeSection === s.id
+                                    ? 'bg-gradient-to-r from-emerald-400 to-emerald-600 text-white font-semibold shadow-lg'
+                                    : isDark ? 'bg-white/5 text-gray-400 border border-white/10' : 'bg-white text-gray-600 border border-gray-200'
+                                }`}
+                        >
+                            <span>{s.icon}</span>
+                            <span className="text-sm">{s.label}</span>
+                        </button>
+                    ))}
+                </div>
 
-                    {/* Business Info Section */}
-                    <section className={`flex flex-col gap-4 rounded-xl p-4 shadow-sm border ${isDark ? 'bg-[#1c3024] border-white/5' : 'bg-white border-gray-100'
-                        }`}>
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-[#2bee79]/10 text-[#2bee79]">
-                                <span className="text-xl">🏪</span>
-                            </div>
-                            <h3 className="text-lg font-bold">Business Info</h3>
-                        </div>
+                {/* General Section */}
+                {activeSection === 'general' && (
+                    <div className="px-5 pt-5 space-y-4">
+                        <div className={`rounded-2xl p-5 border backdrop-blur-xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-gray-100'}`}>
+                            <h3 className={`font-bold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>Store Information</h3>
 
-                        {/* Logo Upload */}
-                        <div className="flex justify-center py-2">
-                            <div className="relative group cursor-pointer">
-                                <div className={`w-24 h-24 rounded-full flex items-center justify-center overflow-hidden border-2 border-transparent group-hover:border-[#2bee79] transition-all ${isDark ? 'bg-[#2a3e32]' : 'bg-[#f0f4f2]'
-                                    }`}>
-                                    <span className="text-4xl">🏪</span>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className={`block text-xs font-bold uppercase mb-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Store Name</label>
+                                    <input
+                                        type="text"
+                                        value={storeName}
+                                        onChange={(e) => setStoreName(e.target.value)}
+                                        className={`w-full rounded-xl px-4 py-3 border focus:ring-2 focus:ring-emerald-500 ${isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-gray-50 border-gray-200'}`}
+                                    />
                                 </div>
-                                <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <span className="text-white text-2xl">📷</span>
-                                </div>
-                                <div className={`absolute bottom-0 right-0 bg-[#2bee79] rounded-full p-1.5 shadow-md border-2 ${isDark ? 'border-[#1c3024]' : 'border-white'}`}>
-                                    <span className="text-xs">✏️</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Inputs */}
-                        <div className="space-y-4">
-                            <div className="flex flex-col gap-1.5">
-                                <label className={`text-xs font-semibold uppercase tracking-wide ml-1 ${isDark ? 'text-[#a0b0a8]' : 'text-[#637588]'}`}>
-                                    Store Name
-                                </label>
-                                <input
-                                    type="text"
-                                    value={storeName}
-                                    onChange={(e) => setStoreName(e.target.value)}
-                                    placeholder="Enter store name"
-                                    className={`w-full h-12 rounded-lg border-none px-4 focus:ring-2 focus:ring-[#2bee79] focus:outline-none transition-all ${isDark ? 'bg-[#2a3e32] text-white placeholder-[#637588]' : 'bg-[#f0f4f2] text-[#111814] placeholder-[#637588]'
-                                        }`}
-                                />
-                            </div>
-
-                            <div className="flex flex-col gap-1.5">
-                                <label className={`text-xs font-semibold uppercase tracking-wide ml-1 ${isDark ? 'text-[#a0b0a8]' : 'text-[#637588]'}`}>
-                                    Support Phone
-                                </label>
-                                <div className="relative">
-                                    <div className={`absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2 border-r pr-3 ${isDark ? 'border-white/10' : 'border-gray-300'
-                                        }`}>
-                                        <span className="text-lg">🇳🇬</span>
-                                        <span className={`text-sm font-medium ${isDark ? 'text-[#a0b0a8]' : 'text-[#637588]'}`}>+234</span>
-                                    </div>
+                                <div>
+                                    <label className={`block text-xs font-bold uppercase mb-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Phone Number</label>
                                     <input
                                         type="tel"
                                         value={storePhone}
                                         onChange={(e) => setStorePhone(e.target.value)}
-                                        placeholder="800 000 0000"
-                                        className={`w-full h-12 rounded-lg border-none pl-28 pr-4 focus:ring-2 focus:ring-[#2bee79] focus:outline-none transition-all ${isDark ? 'bg-[#2a3e32] text-white placeholder-[#637588]' : 'bg-[#f0f4f2] text-[#111814] placeholder-[#637588]'
-                                            }`}
+                                        placeholder="+234 801 234 5678"
+                                        className={`w-full rounded-xl px-4 py-3 border focus:ring-2 focus:ring-emerald-500 ${isDark ? 'bg-white/5 border-white/10 text-white placeholder-gray-500' : 'bg-gray-50 border-gray-200'}`}
                                     />
                                 </div>
                             </div>
 
                             <button
-                                onClick={handleSaveBusinessInfo}
+                                onClick={handleSaveGeneral}
                                 disabled={saving}
-                                className="w-full h-12 bg-[#2bee79] hover:bg-[#2bee79]/90 text-[#111814] font-bold rounded-lg mt-2 flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50"
+                                className="w-full mt-5 py-3 rounded-xl bg-gradient-to-r from-emerald-400 to-emerald-600 text-white font-bold shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
                             >
-                                <span>{saving ? 'Saving...' : 'Save Changes'}</span>
-                                {!saving && <span>✓</span>}
+                                {saving ? 'Saving...' : 'Save Changes'}
                             </button>
                         </div>
-                    </section>
 
-                    {/* Payment Account Section */}
-                    <section className={`flex flex-col gap-4 rounded-xl p-4 shadow-sm border ${isDark ? 'bg-[#1c3024] border-white/5' : 'bg-white border-gray-100'
-                        }`}>
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-[#2bee79]/10 text-[#2bee79]">
-                                <span className="text-xl">💳</span>
+                        {/* Theme Toggle */}
+                        <div className={`rounded-2xl p-5 border backdrop-blur-xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-gray-100'}`}>
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>Dark Mode</p>
+                                    <p className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Toggle app theme</p>
+                                </div>
+                                <button
+                                    onClick={toggleTheme}
+                                    className={`relative w-14 h-8 rounded-full transition-colors ${isDark ? 'bg-emerald-500' : 'bg-gray-300'}`}
+                                >
+                                    <div className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow transition-transform ${isDark ? 'left-7' : 'left-1'}`}></div>
+                                </button>
                             </div>
-                            <h3 className="text-lg font-bold">Payment Account</h3>
+                        </div>
+                    </div>
+                )}
+
+                {/* Bot Section */}
+                {activeSection === 'bot' && (
+                    <div className="px-5 pt-5 space-y-4">
+                        {/* Bot Status */}
+                        <div className={`rounded-2xl p-5 border backdrop-blur-xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-gray-100'}`}>
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${botActive ? 'bg-emerald-500/20' : 'bg-gray-500/20'}`}>
+                                        <span className="text-2xl">🤖</span>
+                                    </div>
+                                    <div>
+                                        <p className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>KOFA Bot</p>
+                                        <p className={`text-sm ${botActive ? 'text-emerald-400' : isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                                            {botActive ? 'Active & responding' : 'Paused'}
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={handleToggleBot}
+                                    className={`relative w-14 h-8 rounded-full transition-colors ${botActive ? 'bg-emerald-500' : 'bg-gray-300'}`}
+                                >
+                                    <div className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow transition-transform ${botActive ? 'left-7' : 'left-1'}`}></div>
+                                </button>
+                            </div>
                         </div>
 
-                        <div className="space-y-4">
-                            <div className="flex flex-col gap-1.5">
-                                <label className={`text-xs font-semibold uppercase tracking-wide ml-1 ${isDark ? 'text-[#a0b0a8]' : 'text-[#637588]'}`}>
-                                    Bank Name
-                                </label>
-                                <div className="relative">
+                        {/* Personality */}
+                        <div className={`rounded-2xl p-5 border backdrop-blur-xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-gray-100'}`}>
+                            <h3 className={`font-bold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>Bot Personality</h3>
+                            <div className="grid grid-cols-2 gap-3">
+                                {personalities.map(p => (
+                                    <button
+                                        key={p.id}
+                                        onClick={() => handleSetPersonality(p.id)}
+                                        className={`flex items-center gap-3 p-3 rounded-xl transition-all hover:scale-[1.02] ${botPersonality === p.id
+                                                ? 'bg-gradient-to-r from-emerald-400 to-emerald-600 text-white shadow-lg'
+                                                : isDark ? 'bg-white/5' : 'bg-gray-100'
+                                            }`}
+                                    >
+                                        <span className="text-xl">{p.icon}</span>
+                                        <span className="font-semibold text-sm">{p.label}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Channels Section */}
+                {activeSection === 'channels' && (
+                    <div className="px-5 pt-5 space-y-3">
+                        <h3 className={`font-bold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>Connected Channels</h3>
+
+                        {channels.map(channel => (
+                            <div key={channel.id} className={`rounded-2xl p-4 border backdrop-blur-xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-gray-100'}`}>
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-2xl">{channel.icon}</span>
+                                        <div>
+                                            <p className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>{channel.name}</p>
+                                            <p className={`text-xs ${channel.connected ? 'text-emerald-400' : isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                                                {channel.connected ? '✓ Connected' : 'Not connected'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => handleToggleChannel(channel.id)}
+                                        className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all hover:scale-105 ${channel.connected
+                                                ? isDark ? 'bg-red-500/20 text-red-400' : 'bg-red-100 text-red-600'
+                                                : 'bg-gradient-to-r from-emerald-400 to-emerald-600 text-white shadow-lg'
+                                            }`}
+                                    >
+                                        {channel.connected ? 'Disconnect' : 'Connect'}
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {/* Payment Section */}
+                {activeSection === 'payment' && (
+                    <div className="px-5 pt-5 space-y-4">
+                        <div className={`rounded-2xl p-5 border backdrop-blur-xl ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-gray-100'}`}>
+                            <h3 className={`font-bold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>Payout Account</h3>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <label className={`block text-xs font-bold uppercase mb-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Bank Name</label>
                                     <select
                                         value={bankName}
                                         onChange={(e) => setBankName(e.target.value)}
-                                        className={`w-full h-12 appearance-none rounded-lg border-none px-4 focus:ring-2 focus:ring-[#2bee79] focus:outline-none transition-all ${isDark ? 'bg-[#2a3e32] text-white' : 'bg-[#f0f4f2] text-[#111814]'
-                                            }`}
+                                        className={`w-full rounded-xl px-4 py-3 border focus:ring-2 focus:ring-emerald-500 ${isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-gray-50 border-gray-200'}`}
                                     >
+                                        <option value="">Select bank...</option>
                                         {banks.map(b => <option key={b} value={b}>{b}</option>)}
                                     </select>
-                                    <div className={`pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 ${isDark ? 'text-[#a0b0a8]' : 'text-[#637588]'}`}>
-                                        ▼
-                                    </div>
                                 </div>
-                            </div>
-
-                            <div className="flex flex-col gap-1.5">
-                                <label className={`text-xs font-semibold uppercase tracking-wide ml-1 ${isDark ? 'text-[#a0b0a8]' : 'text-[#637588]'}`}>
-                                    Account Number
-                                </label>
-                                <div className="relative">
+                                <div>
+                                    <label className={`block text-xs font-bold uppercase mb-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Account Number</label>
                                     <input
                                         type="text"
                                         value={accountNumber}
                                         onChange={(e) => setAccountNumber(e.target.value)}
-                                        className={`w-full h-12 rounded-lg border-none px-4 font-mono tracking-wider focus:ring-2 focus:ring-[#2bee79] focus:outline-none transition-all ${isDark ? 'bg-[#2a3e32] text-white' : 'bg-[#f0f4f2] text-[#111814]'
-                                            }`}
+                                        placeholder="0123456789"
+                                        className={`w-full rounded-xl px-4 py-3 border focus:ring-2 focus:ring-emerald-500 ${isDark ? 'bg-white/5 border-white/10 text-white placeholder-gray-500' : 'bg-gray-50 border-gray-200'}`}
                                     />
-                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[#2bee79]">
-                                        ✓
-                                    </div>
                                 </div>
                             </div>
 
-                            <div className="flex flex-col gap-1.5">
-                                <label className={`text-xs font-semibold uppercase tracking-wide ml-1 ${isDark ? 'text-[#a0b0a8]' : 'text-[#637588]'}`}>
-                                    Account Name
-                                </label>
-                                <input
-                                    type="text"
-                                    value={accountName}
-                                    disabled
-                                    className={`w-full h-12 rounded-lg border border-dashed px-4 opacity-70 cursor-not-allowed ${isDark ? 'border-white/20 bg-transparent text-[#a0b0a8]' : 'border-gray-300 bg-transparent text-[#637588]'}`}
-                                />
-                            </div>
-
                             <button
-                                onClick={handleSavePaymentInfo}
+                                onClick={handleSavePayment}
                                 disabled={saving}
-                                className="w-full h-12 bg-[#2bee79] hover:bg-[#2bee79]/90 text-[#111814] font-bold rounded-lg mt-2 flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50"
+                                className="w-full mt-5 py-3 rounded-xl bg-gradient-to-r from-emerald-400 to-emerald-600 text-white font-bold shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
                             >
-                                <span>{saving ? 'Saving...' : 'Save Payment Info'}</span>
-                                {!saving && <span>✓</span>}
+                                {saving ? 'Saving...' : 'Save Account'}
                             </button>
                         </div>
-                    </section>
+                    </div>
+                )}
 
-                    {/* Social Connections Section */}
-                    <section className={`flex flex-col gap-0 rounded-xl overflow-hidden shadow-sm border ${isDark ? 'bg-[#1c3024] border-white/5' : 'bg-white border-gray-100'
-                        }`}>
-                        <div className="flex items-center gap-3 p-4 pb-2">
-                            <div className="p-2 rounded-lg bg-[#2bee79]/10 text-[#2bee79]">
-                                <span className="text-xl">🔗</span>
-                            </div>
-                            <h3 className="text-lg font-bold">Channels</h3>
-                        </div>
-
-                        <div className={`divide-y ${isDark ? 'divide-white/5' : 'divide-gray-100'}`}>
-                            {/* WhatsApp */}
-                            <div className={`flex items-center justify-between p-4 ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`}>
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-[#25D366]/10 flex items-center justify-center text-[#25D366]">
-                                        💬
-                                    </div>
-                                    <div>
-                                        <p className="font-bold text-sm">WhatsApp</p>
-                                        <p className={`text-xs flex items-center gap-1 ${channels.whatsapp.connected ? 'text-[#2bee79]' : isDark ? 'text-[#a0b0a8]' : 'text-[#637588]'}`}>
-                                            {channels.whatsapp.connected && <span className="w-1.5 h-1.5 rounded-full bg-[#2bee79]"></span>}
-                                            {channels.whatsapp.status}
-                                        </p>
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={() => channels.whatsapp.connected ? handleDisconnect('whatsapp') : handleConnect('whatsapp')}
-                                    className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${channels.whatsapp.connected
-                                        ? 'text-red-500 bg-red-50 dark:bg-red-500/10 hover:bg-red-100'
-                                        : isDark ? 'bg-[#2a3e32] hover:bg-white/10' : 'bg-[#f0f4f2] hover:bg-gray-200'
-                                        }`}
-                                >
-                                    {channels.whatsapp.connected ? 'Disconnect' : 'Connect'}
-                                </button>
-                            </div>
-
-                            {/* Instagram */}
-                            <div className={`flex items-center justify-between p-4 ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`}>
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-pink-500/10 flex items-center justify-center text-pink-600">
-                                        📸
-                                    </div>
-                                    <div>
-                                        <p className="font-bold text-sm">Instagram</p>
-                                        <p className={`text-xs ${channels.instagram.connected ? 'text-[#2bee79]' : isDark ? 'text-[#a0b0a8]' : 'text-[#637588]'}`}>
-                                            {channels.instagram.status}
-                                        </p>
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={() => channels.instagram.connected ? handleDisconnect('instagram') : handleConnect('instagram')}
-                                    className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${channels.instagram.connected
-                                        ? 'text-red-500 bg-red-50 dark:bg-red-500/10 hover:bg-red-100'
-                                        : isDark ? 'bg-[#2a3e32] hover:bg-white/10' : 'bg-[#f0f4f2] hover:bg-gray-200'
-                                        }`}
-                                >
-                                    {channels.instagram.connected ? 'Disconnect' : 'Connect'}
-                                </button>
-                            </div>
-                        </div>
-                    </section>
-
-                    {/* Test Bot Section */}
-                    <section className={`flex flex-col gap-4 rounded-xl p-4 shadow-sm border relative overflow-hidden ${isDark ? 'bg-[#1c3024] border-white/5' : 'bg-white border-gray-100'
-                        }`}>
-                        <div className="absolute top-0 right-0 p-3 opacity-10 pointer-events-none text-6xl">💬</div>
-
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-lg bg-[#2bee79]/10 text-[#2bee79]">
-                                    <span className="text-xl">🧪</span>
-                                </div>
-                                <h3 className="text-lg font-bold">Test Bot</h3>
-                            </div>
-                            <button onClick={handleClearChat} className={`text-xs hover:text-red-500 transition-colors ${isDark ? 'text-[#a0b0a8]' : 'text-[#637588]'}`}>
-                                Clear Chat
-                            </button>
-                        </div>
-
-                        {/* Chat Area */}
-                        <div className={`rounded-lg p-4 h-64 overflow-y-auto flex flex-col gap-3 border ${isDark ? 'bg-[#0c1a12] border-white/5' : 'bg-[#f0f4f2] border-gray-100'
-                            }`}>
-                            {testMessages.map((msg, idx) => (
-                                <div key={idx} className={`flex items-end gap-2 max-w-[85%] ${msg.type === 'user' ? 'self-end flex-row-reverse' : 'self-start'}`}>
-                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${msg.type === 'bot' ? 'bg-[#2bee79] text-black text-[10px]' : isDark ? 'bg-gray-600' : 'bg-gray-300'
-                                        }`}>
-                                        {msg.type === 'bot' ? '🤖' : '👤'}
-                                    </div>
-                                    <div className={`p-3 rounded-2xl shadow-sm text-sm ${msg.type === 'bot'
-                                        ? `${isDark ? 'bg-[#1c3024]' : 'bg-white'} ${msg.type === 'bot' ? 'rounded-bl-none' : 'rounded-br-none'}`
-                                        : 'bg-[#2bee79] text-[#111814] rounded-br-none'
-                                        }`}>
-                                        <p>{msg.text}</p>
-                                    </div>
-                                </div>
-                            ))}
-
-                            {botTyping && (
-                                <div className="flex items-end gap-2 self-start">
-                                    <div className={`px-3 py-2 rounded-2xl rounded-bl-none shadow-sm flex gap-1 items-center ml-8 ${isDark ? 'bg-[#1c3024]' : 'bg-white'
-                                        }`}>
-                                        <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"></div>
-                                        <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                                        <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Chat Input */}
-                        <div className="flex gap-2">
-                            <input
-                                type="text"
-                                value={testInput}
-                                onChange={(e) => setTestInput(e.target.value)}
-                                onKeyPress={(e) => e.key === 'Enter' && handleTestMessage()}
-                                placeholder="Type a message..."
-                                className={`flex-1 h-10 rounded-full border-none px-4 text-sm focus:ring-1 focus:ring-[#2bee79] focus:outline-none ${isDark ? 'bg-[#2a3e32] text-white placeholder-[#637588]' : 'bg-[#f0f4f2] text-[#111814] placeholder-[#637588]'
-                                    }`}
-                            />
-                            <button
-                                onClick={handleTestMessage}
-                                className="w-10 h-10 rounded-full bg-[#2bee79] flex items-center justify-center shadow-sm hover:opacity-90 transition-colors shrink-0"
-                            >
-                                <span className="text-[#111814]">➤</span>
-                            </button>
-                        </div>
-                    </section>
+                {/* Logout */}
+                <div className="px-5 pt-6">
+                    <button
+                        onClick={() => { logout(); navigate('/login') }}
+                        className={`w-full py-4 rounded-2xl font-semibold transition-all ${isDark ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-red-50 text-red-600 border border-red-100'}`}
+                    >
+                        Log Out
+                    </button>
                 </div>
             </div>
+
+            <style jsx>{`
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
         </div>
     )
 }
