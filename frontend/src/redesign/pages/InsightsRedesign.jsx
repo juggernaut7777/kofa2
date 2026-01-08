@@ -32,25 +32,41 @@ const InsightsRedesign = () => {
     useEffect(() => { loadData() }, [])
 
     const loadData = async () => {
-        try {
-            const [summary, profitData, expensesData] = await Promise.all([
-                apiCall(API_ENDPOINTS.DASHBOARD_SUMMARY).catch(() => null),
-                apiCall(API_ENDPOINTS.PROFIT_TODAY).catch(() => null),
-                apiCall(API_ENDPOINTS.LIST_EXPENSES).catch(() => [])
-            ])
+        // Load immediately with defaults, update as data arrives
+        setLoading(false)
 
-            setStats({
-                revenue: summary?.total_revenue || 2450000,
-                orders: summary?.pending_orders || 18,
-                profit: profitData?.net_profit_ngn || 890000,
-                customers: summary?.new_customers || 124,
-                expenses: expensesData?.reduce((acc, curr) => acc + (curr.amount || 0), 0) || 450000
+        apiCall(API_ENDPOINTS.DASHBOARD_SUMMARY)
+            .then(summary => {
+                if (summary) {
+                    setStats(prev => ({
+                        ...prev,
+                        revenue: summary.total_revenue || prev.revenue,
+                        orders: summary.pending_orders || prev.orders,
+                        customers: summary.new_customers || prev.customers
+                    }))
+                }
             })
-        } catch (e) {
-            setLoading(false)
-        } finally {
-            setLoading(false)
-        }
+            .catch(() => { })
+
+        apiCall(API_ENDPOINTS.PROFIT_SUMMARY)
+            .then(profitData => {
+                if (profitData) {
+                    setStats(prev => ({
+                        ...prev,
+                        profit: profitData.net_profit_ngn || profitData.total_profit || prev.profit
+                    }))
+                }
+            })
+            .catch(() => { })
+
+        apiCall(API_ENDPOINTS.LIST_EXPENSES)
+            .then(expensesData => {
+                if (Array.isArray(expensesData)) {
+                    const total = expensesData.reduce((acc, curr) => acc + (curr.amount || 0), 0)
+                    setStats(prev => ({ ...prev, expenses: total || prev.expenses }))
+                }
+            })
+            .catch(() => { })
     }
 
     const formatCurrency = (n) => `₦${n?.toLocaleString()}`
