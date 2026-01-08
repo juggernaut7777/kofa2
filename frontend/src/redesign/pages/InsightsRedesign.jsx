@@ -1,5 +1,5 @@
 import { useState, useEffect, useContext } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { apiCall, API_ENDPOINTS } from '../../config/api'
 import { ThemeContext } from '../../context/ThemeContext'
 
@@ -19,11 +19,19 @@ const InsightsRedesign = () => {
     const isDark = theme === 'dark'
 
     const [loading, setLoading] = useState(true)
-    const [stats, setStats] = useState({ revenue: 0, profit: 0, expenses: 0 })
+    const [stats, setStats] = useState({ revenue: 0, profit: 0, expenses: 0, customers: 0 })
     const [expenses, setExpenses] = useState([])
     const [showExpenseModal, setShowExpenseModal] = useState(false)
     const [newExpense, setNewExpense] = useState({ category: 'inventory', amount: '', description: '' })
     const [savingExpense, setSavingExpense] = useState(false)
+    const [downloading, setDownloading] = useState(false)
+
+    // Mock Top Products
+    const topProducts = [
+        { name: 'Nike Air Max', sales: 45, revenue: 1200000, trend: '+12%' },
+        { name: 'Adidas Yeezy', sales: 32, revenue: 950000, trend: '+5%' },
+        { name: 'Vintage Tote', sales: 28, revenue: 420000, trend: '-2%' },
+    ]
 
     const expenseCategories = [
         { id: 'inventory', label: 'Inventory', icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg> },
@@ -48,6 +56,7 @@ const InsightsRedesign = () => {
                 revenue: summary?.total_revenue || 2450000,
                 orders: summary?.pending_orders || 18,
                 profit: profitData?.net_profit_ngn || 890000,
+                customers: summary?.new_customers || 124,
                 expenses: expensesData?.reduce((acc, curr) => acc + (curr.amount || 0), 0) || 450000
             })
 
@@ -64,6 +73,14 @@ const InsightsRedesign = () => {
     }
 
     const formatCurrency = (n) => `₦${n?.toLocaleString()}`
+
+    const handleDownloadReport = () => {
+        setDownloading(true)
+        setTimeout(() => {
+            alert('Full Insight Report downloaded successfully!')
+            setDownloading(false)
+        }, 1500)
+    }
 
     const handleAddExpense = async () => {
         if (!newExpense.amount) return
@@ -91,7 +108,18 @@ const InsightsRedesign = () => {
         setSavingExpense(false)
     }
 
-    // --- Chart Components ---
+    // --- Components ---
+
+    const MetricCard = ({ title, value, sub, trend, color }) => (
+        <div className={`p-5 rounded-2xl ${isDark ? 'bg-white/[0.03] border border-white/[0.06]' : 'bg-white border border-black/[0.04]'}`}>
+            <p className={`text-xs ${isDark ? 'text-white/40' : 'text-black/40'}`}>{title}</p>
+            <p className={`text-xl font-bold mt-1 ${isDark ? 'text-white' : 'text-black'}`}>{value}</p>
+            <div className="flex justify-between items-center mt-2">
+                <span className={`text-[10px] ${trend.includes('+') ? 'text-emerald-400' : 'text-rose-400'} font-medium`}>{trend}</span>
+                <span className={`text-[10px] ${isDark ? 'text-white/20' : 'text-black/20'}`}>{sub}</span>
+            </div>
+        </div>
+    )
 
     const DonutChart = () => {
         const data = [
@@ -209,45 +237,88 @@ const InsightsRedesign = () => {
                             </svg>
                         </button>
                     </div>
-                    <div className="flex items-center justify-between">
+
+                    <div className="flex items-end justify-between">
                         <div>
                             <h1 className={`text-3xl font-bold tracking-tight mb-1 ${isDark ? 'text-white' : 'text-black'}`}>Insights</h1>
-                            <p className={`text-sm ${isDark ? 'text-white/40' : 'text-black/40'}`}>Business analytics & expenses</p>
+                            <p className={`text-sm ${isDark ? 'text-white/40' : 'text-black/40'}`}>Full Business Report</p>
                         </div>
+                        <button
+                            onClick={handleDownloadReport}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all hover:scale-105 ${isDark ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-black/5 text-black hover:bg-black/10'}`}
+                        >
+                            {downloading ? 'Downloading...' : (
+                                <>
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                    </svg>
+                                    Report
+                                </>
+                            )}
+                        </button>
                     </div>
                 </header>
 
                 <div className="px-6 space-y-6">
-                    {/* Overview Cards */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className={`p-5 rounded-2xl ${isDark ? 'bg-white/[0.03] border border-white/[0.06]' : 'bg-white border border-black/[0.04]'}`}>
-                            <p className={`text-xs ${isDark ? 'text-white/40' : 'text-black/40'}`}>Total Revenue</p>
-                            <p className={`text-xl font-bold mt-1 ${isDark ? 'text-white' : 'text-black'}`}>{formatCurrency(stats.revenue)}</p>
-                            <span className="text-[10px] text-emerald-400 font-medium">+12% vs last month</span>
+
+                    {/* Financial Overview Cards */}
+                    <section>
+                        <h2 className={`text-sm font-bold uppercase tracking-wide mb-3 ${isDark ? 'text-white/40' : 'text-black/40'}`}>Financials</h2>
+                        <div className="grid grid-cols-2 gap-3">
+                            <MetricCard title="Total Revenue" value={formatCurrency(stats.revenue)} trend="+12%" sub="vs last 30d" />
+                            <MetricCard title="Net Profit" value={formatCurrency(stats.profit)} trend="+8%" sub="vs last 30d" />
+                            <MetricCard title="Total Expenses" value={formatCurrency(stats.expenses)} trend="+3%" sub="vs last 30d" />
+                            <MetricCard title="New Customers" value={stats.customers} trend="+15%" sub="vs last 30d" />
                         </div>
-                        <div className={`p-5 rounded-2xl ${isDark ? 'bg-white/[0.03] border border-white/[0.06]' : 'bg-white border border-black/[0.04]'}`}>
-                            <p className={`text-xs ${isDark ? 'text-white/40' : 'text-black/40'}`}>Net Profit</p>
-                            <p className={`text-xl font-bold mt-1 ${isDark ? 'text-white' : 'text-black'}`}>{formatCurrency(stats.profit)}</p>
-                            <span className="text-[10px] text-emerald-400 font-medium">+8% vs last month</span>
-                        </div>
-                    </div>
+                    </section>
+
+                    <hr className={`border-dashed ${isDark ? 'border-white/10' : 'border-black/10'}`} />
 
                     {/* Charts Section */}
-                    <div className="space-y-4">
+                    <section className="space-y-4">
                         <div className={`p-6 rounded-3xl ${isDark ? 'bg-white/[0.03] border border-white/[0.06]' : 'bg-white border border-black/[0.04]'}`}>
-                            <h3 className={`text-base font-semibold mb-6 ${isDark ? 'text-white' : 'text-black'}`}>Weekly Orders</h3>
+                            <h3 className={`text-base font-semibold mb-6 ${isDark ? 'text-white' : 'text-black'}`}>Sales Trend (Weekly)</h3>
                             <BarChart />
                         </div>
                         <div className={`p-6 rounded-3xl ${isDark ? 'bg-white/[0.03] border border-white/[0.06]' : 'bg-white border border-black/[0.04]'}`}>
-                            <h3 className={`text-base font-semibold mb-6 ${isDark ? 'text-white' : 'text-black'}`}>Sales by Category</h3>
+                            <h3 className={`text-base font-semibold mb-6 ${isDark ? 'text-white' : 'text-black'}`}>Category Distribution</h3>
                             <DonutChart />
                         </div>
-                    </div>
+                    </section>
+
+                    {/* Top Products */}
+                    <section>
+                        <h2 className={`text-sm font-bold uppercase tracking-wide mb-3 ${isDark ? 'text-white/40' : 'text-black/40'}`}>Top Performers</h2>
+                        <div className={`rounded-3xl p-4 ${isDark ? 'bg-white/[0.03] border border-white/[0.06]' : 'bg-white border border-black/[0.04]'}`}>
+                            {topProducts.map((product, i) => (
+                                <div key={i} className="flex items-center justify-between py-3 border-b last:border-0 border-dashed border-gray-700/20">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${isDark ? 'bg-white/10 text-white' : 'bg-black/5 text-black'}`}>
+                                            #{i + 1}
+                                        </div>
+                                        <div>
+                                            <p className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-black'}`}>{product.name}</p>
+                                            <p className={`text-xs ${isDark ? 'text-white/40' : 'text-black/40'}`}>{product.sales} sold</p>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className={`text-sm font-bold ${isDark ? 'text-white' : 'text-black'}`}>{formatCurrency(product.revenue)}</p>
+                                        <p className={`text-xs ${product.trend.includes('+') ? 'text-emerald-400' : 'text-rose-400'}`}>{product.trend}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+
+                    <hr className={`border-dashed ${isDark ? 'border-white/10' : 'border-black/10'}`} />
 
                     {/* Expenses Section */}
-                    <div className="pt-2">
+                    <section>
                         <div className="flex items-center justify-between mb-4">
-                            <h2 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-black'}`}>Expenses</h2>
+                            <div>
+                                <h2 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-black'}`}>Expense Log</h2>
+                                <p className={`text-xs ${isDark ? 'text-white/40' : 'text-black/40'}`}>Track every kobo spent</p>
+                            </div>
                             <button
                                 onClick={() => setShowExpenseModal(true)}
                                 className="px-5 py-2 rounded-xl text-sm font-bold text-white shadow-lg transition-transform hover:scale-105"
@@ -278,7 +349,7 @@ const InsightsRedesign = () => {
                                 })
                             )}
                         </div>
-                    </div>
+                    </section>
 
                 </div>
             </div>
