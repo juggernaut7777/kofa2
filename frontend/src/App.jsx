@@ -50,6 +50,11 @@ function App() {
                 <LayoutRedesign><InsightsRedesign /></LayoutRedesign>
               </PrivateRoute>
             } />
+            <Route path="/expenses" element={
+              <PrivateRoute>
+                <LayoutRedesign><ExpensesRedesign /></LayoutRedesign>
+              </PrivateRoute>
+            } />
             <Route path="/settings" element={
               <PrivateRoute>
                 <LayoutRedesign><SettingsRedesign /></LayoutRedesign>

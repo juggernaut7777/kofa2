@@ -205,7 +205,7 @@ const DashboardRedesign = () => {
                     <h2 className={`text-sm font-bold uppercase tracking-wide mb-3 ${isDark ? 'text-white/40' : 'text-black/40'}`}>Quick Actions</h2>
                     <div className="grid grid-cols-3 gap-3">
                         <button
-                            onClick={() => navigate('/products')}
+                            onClick={() => navigate('/products', { state: { action: 'add' } })}
                             className={`flex flex-col items-center justify-center p-4 rounded-2xl gap-2 transition-all hover:scale-[1.02] ${isDark ? 'bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06]' : 'bg-white border border-black/[0.04] hover:bg-black/[0.02]'}`}
                         >
                             <div className="w-10 h-10 rounded-full flex items-center justify-center bg-indigo-500/10 text-indigo-500">
@@ -215,7 +215,7 @@ const DashboardRedesign = () => {
                         </button>
 
                         <button
-                            onClick={() => navigate('/insights')}
+                            onClick={() => navigate('/expenses', { state: { action: 'add' } })}
                             className={`flex flex-col items-center justify-center p-4 rounded-2xl gap-2 transition-all hover:scale-[1.02] ${isDark ? 'bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06]' : 'bg-white border border-black/[0.04] hover:bg-black/[0.02]'}`}
                         >
                             <div className="w-10 h-10 rounded-full flex items-center justify-center bg-pink-500/10 text-pink-500">
@@ -225,7 +225,7 @@ const DashboardRedesign = () => {
                         </button>
 
                         <button
-                            onClick={() => navigate('/orders')}
+                            onClick={() => navigate('/orders', { state: { action: 'invoice' } })}
                             className={`flex flex-col items-center justify-center p-4 rounded-2xl gap-2 transition-all hover:scale-[1.02] ${isDark ? 'bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06]' : 'bg-white border border-black/[0.04] hover:bg-black/[0.02]'}`}
                         >
                             <div className="w-10 h-10 rounded-full flex items-center justify-center bg-emerald-500/10 text-emerald-500">

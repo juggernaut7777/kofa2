@@ -20,10 +20,6 @@ const InsightsRedesign = () => {
 
     const [loading, setLoading] = useState(true)
     const [stats, setStats] = useState({ revenue: 0, profit: 0, expenses: 0, customers: 0 })
-    const [expenses, setExpenses] = useState([])
-    const [showExpenseModal, setShowExpenseModal] = useState(false)
-    const [newExpense, setNewExpense] = useState({ category: 'inventory', amount: '', description: '' })
-    const [savingExpense, setSavingExpense] = useState(false)
     const [downloading, setDownloading] = useState(false)
 
     // Mock Top Products
@@ -31,15 +27,6 @@ const InsightsRedesign = () => {
         { name: 'Nike Air Max', sales: 45, revenue: 1200000, trend: '+12%' },
         { name: 'Adidas Yeezy', sales: 32, revenue: 950000, trend: '+5%' },
         { name: 'Vintage Tote', sales: 28, revenue: 420000, trend: '-2%' },
-    ]
-
-    const expenseCategories = [
-        { id: 'inventory', label: 'Inventory', icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg> },
-        { id: 'delivery', label: 'Delivery', icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg> },
-        { id: 'marketing', label: 'Marketing', icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" /></svg> },
-        { id: 'utilities', label: 'Utilities', icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg> },
-        { id: 'rent', label: 'Rent', icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg> },
-        { id: 'other', label: 'Other', icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" /></svg> },
     ]
 
     useEffect(() => { loadData() }, [])
@@ -59,12 +46,6 @@ const InsightsRedesign = () => {
                 customers: summary?.new_customers || 124,
                 expenses: expensesData?.reduce((acc, curr) => acc + (curr.amount || 0), 0) || 450000
             })
-
-            setExpenses(Array.isArray(expensesData) ? expensesData : [
-                { id: 1, category: 'inventory', amount: 150000, description: 'Restocked Sneakers', date: '2024-01-08' },
-                { id: 2, category: 'delivery', amount: 25000, description: 'Dispatch Riders', date: '2024-01-07' },
-                { id: 3, category: 'marketing', amount: 50000, description: 'Instagram Ads', date: '2024-01-05' },
-            ])
         } catch (e) {
             setLoading(false)
         } finally {
@@ -80,32 +61,6 @@ const InsightsRedesign = () => {
             alert('Full Insight Report downloaded successfully!')
             setDownloading(false)
         }, 1500)
-    }
-
-    const handleAddExpense = async () => {
-        if (!newExpense.amount) return
-        setSavingExpense(true)
-        try {
-            await apiCall(API_ENDPOINTS.ADD_EXPENSE, {
-                method: 'POST',
-                body: JSON.stringify({
-                    category: newExpense.category,
-                    amount: parseFloat(newExpense.amount),
-                    description: newExpense.description,
-                    date: new Date().toISOString()
-                })
-            })
-            alert('Expense added!')
-            setShowExpenseModal(false)
-            setNewExpense({ category: 'inventory', amount: '', description: '' })
-            loadData()
-        } catch (e) {
-            alert('Expense added locally!')
-            setExpenses([{ id: Date.now(), ...newExpense, amount: parseFloat(newExpense.amount), date: new Date().toISOString() }, ...expenses])
-            setShowExpenseModal(false)
-            setNewExpense({ category: 'inventory', amount: '', description: '' })
-        }
-        setSavingExpense(false)
     }
 
     // --- Components ---
@@ -310,114 +265,8 @@ const InsightsRedesign = () => {
                         </div>
                     </section>
 
-                    <hr className={`border-dashed ${isDark ? 'border-white/10' : 'border-black/10'}`} />
-
-                    {/* Expenses Section */}
-                    <section>
-                        <div className="flex items-center justify-between mb-4">
-                            <div>
-                                <h2 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-black'}`}>Expense Log</h2>
-                                <p className={`text-xs ${isDark ? 'text-white/40' : 'text-black/40'}`}>Track every kobo spent</p>
-                            </div>
-                            <button
-                                onClick={() => setShowExpenseModal(true)}
-                                className="px-5 py-2 rounded-xl text-sm font-bold text-white shadow-lg transition-transform hover:scale-105"
-                                style={{ background: `linear-gradient(135deg, ${colors.violet}, ${colors.indigo})` }}
-                            >
-                                + Add Expense
-                            </button>
-                        </div>
-
-                        <div className={`rounded-3xl p-2 ${isDark ? 'bg-white/[0.02]' : 'bg-black/[0.02]'}`}>
-                            {expenses.length === 0 ? (
-                                <p className={`text-center py-6 text-sm ${isDark ? 'text-white/40' : 'text-black/40'}`}>No expenses recorded yet</p>
-                            ) : (
-                                expenses.map((expense, i) => {
-                                    const cat = expenseCategories.find(c => c.id === expense.category) || expenseCategories[5]
-                                    return (
-                                        <div key={i} className="flex items-center gap-4 p-4 mb-1 rounded-2xl transition-colors hover:bg-white/5">
-                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isDark ? 'bg-white/10' : 'bg-white'}`}>
-                                                {cat.icon}
-                                            </div>
-                                            <div className="flex-1">
-                                                <p className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-black'}`}>{expense.description || cat.label}</p>
-                                                <p className={`text-xs ${isDark ? 'text-white/40' : 'text-black/40'}`}>{new Date(expense.date).toLocaleDateString()}</p>
-                                            </div>
-                                            <span className={`text-sm font-bold ${isDark ? 'text-white' : 'text-black'}`}>- {formatCurrency(expense.amount)}</span>
-                                        </div>
-                                    )
-                                })
-                            )}
-                        </div>
-                    </section>
-
                 </div>
             </div>
-
-            {/* Expense Modal */}
-            {showExpenseModal && (
-                <div className="fixed inset-0 z-50 flex items-end justify-center">
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowExpenseModal(false)}></div>
-                    <div className={`relative w-full max-w-md rounded-t-3xl overflow-hidden ${isDark ? 'bg-[#151520]' : 'bg-white'}`}>
-                        <div className="w-full flex justify-center pt-3">
-                            <div className={`w-12 h-1.5 rounded-full ${isDark ? 'bg-white/20' : 'bg-black/20'}`}></div>
-                        </div>
-                        <div className="p-6">
-                            <h3 className={`text-xl font-bold mb-6 ${isDark ? 'text-white' : 'text-black'}`}>Add New Expense</h3>
-
-                            <div className="space-y-4">
-                                <div>
-                                    <label className={`block text-xs font-semibold uppercase tracking-wide mb-2 ${isDark ? 'text-white/40' : 'text-black/40'}`}>Amount</label>
-                                    <input
-                                        type="number"
-                                        value={newExpense.amount}
-                                        onChange={e => setNewExpense({ ...newExpense, amount: e.target.value })}
-                                        placeholder="0.00"
-                                        className={`w-full text-2xl font-bold bg-transparent border-b px-2 py-2 focus:outline-none ${isDark ? 'text-white border-white/20' : 'text-black border-black/20'}`}
-                                        autoFocus
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className={`block text-xs font-semibold uppercase tracking-wide mb-2 ${isDark ? 'text-white/40' : 'text-black/40'}`}>Category</label>
-                                    <div className="grid grid-cols-3 gap-2">
-                                        {expenseCategories.map(cat => (
-                                            <button
-                                                key={cat.id}
-                                                onClick={() => setNewExpense({ ...newExpense, category: cat.id })}
-                                                className={`p-3 rounded-xl flex flex-col items-center gap-1 transition-all ${newExpense.category === cat.id ? 'bg-white/10 ring-2 ring-indigo-500' : 'bg-black/5 dark:bg-white/5'}`}
-                                            >
-                                                <div className="w-6 h-6">{cat.icon}</div>
-                                                <span className="text-[10px]">{cat.label}</span>
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className={`block text-xs font-semibold uppercase tracking-wide mb-2 ${isDark ? 'text-white/40' : 'text-black/40'}`}>Description</label>
-                                    <input
-                                        type="text"
-                                        value={newExpense.description}
-                                        onChange={e => setNewExpense({ ...newExpense, description: e.target.value })}
-                                        placeholder="What was this for?"
-                                        className={`w-full rounded-xl px-4 py-3 border transition-all focus:outline-none ${isDark ? 'bg-white/[0.03] border-white/[0.06] text-white' : 'bg-black/[0.02] border-black/[0.04] text-black'}`}
-                                    />
-                                </div>
-
-                                <button
-                                    onClick={handleAddExpense}
-                                    disabled={!newExpense.amount || savingExpense}
-                                    className="w-full py-4 rounded-xl text-white font-bold text-lg shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] disabled:opacity-50 mt-4"
-                                    style={{ background: `linear-gradient(135deg, ${colors.violet}, ${colors.indigo})` }}
-                                >
-                                    {savingExpense ? 'Saving...' : 'Add Expense'}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
 
             <style jsx>{`
                 .no-scrollbar::-webkit-scrollbar { display: none; }

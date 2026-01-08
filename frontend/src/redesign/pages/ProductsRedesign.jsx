@@ -1,5 +1,5 @@
 import { useState, useEffect, useContext, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { apiCall, API_ENDPOINTS } from '../../config/api'
 import { ThemeContext } from '../../context/ThemeContext'
 
@@ -13,6 +13,7 @@ const colors = {
 
 const ProductsRedesign = () => {
     const navigate = useNavigate()
+    const location = useLocation()
     const { theme } = useContext(ThemeContext)
     const isDark = theme === 'dark'
     const imageInputRef = useRef(null)
@@ -35,6 +36,15 @@ const ProductsRedesign = () => {
     const categories = ['All', 'Textiles', 'Electronics', 'Beauty', 'Fashion', 'Food', 'Other']
 
     useEffect(() => { loadProducts() }, [])
+
+    // Handle Deep Link Action
+    useEffect(() => {
+        if (location.state?.action === 'add') {
+            setShowAddModal(true)
+            // Clear state
+            navigate(location.pathname, { replace: true, state: {} })
+        }
+    }, [location, navigate])
 
     const loadProducts = async () => {
         setLoading(true)
@@ -80,7 +90,7 @@ const ProductsRedesign = () => {
                     price: parseFloat(newProduct.price),
                     stock: parseInt(newProduct.stock) || 0,
                     category: newProduct.category || 'General',
-                    image_url: imagePreview
+                    image_url: imagePreview // In real app, upload first then send URL
                 })
             })
             await loadProducts()
@@ -98,34 +108,8 @@ const ProductsRedesign = () => {
         setSelectedImage(null)
     }
 
-    const handleDeleteProduct = async (id) => {
-        if (!confirm('Delete this product?')) return
-        try {
-            await apiCall(API_ENDPOINTS.DELETE_PRODUCT(id), { method: 'DELETE' })
-            await loadProducts()
-        } catch (e) {
-            setProducts(products.filter(p => p.id !== id))
-        }
-        setShowProductDetail(null)
-    }
-
-    const handleRestock = async (product) => {
-        const qty = prompt(`Add stock for ${product.name}. Current: ${product.stock}`, '10')
-        if (!qty || isNaN(parseInt(qty))) return
-        const addQty = parseInt(qty)
-        try {
-            await apiCall(API_ENDPOINTS.RESTOCK_PRODUCT(product.id), {
-                method: 'POST',
-                body: JSON.stringify({ quantity: addQty })
-            })
-            await loadProducts()
-        } catch (e) {
-            setProducts(products.map(p => p.id === product.id ? { ...p, stock: p.stock + addQty } : p))
-        }
-    }
-
     const filteredProducts = products.filter(p => {
-        const matchesSearch = p.name?.toLowerCase().includes(searchQuery.toLowerCase())
+        const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase())
         const matchesCategory = selectedCategory === 'All' || p.category === selectedCategory
         return matchesSearch && matchesCategory
     })
@@ -134,8 +118,8 @@ const ProductsRedesign = () => {
         return (
             <div className={`min-h-screen flex items-center justify-center ${isDark ? 'bg-[#0a0a14]' : 'bg-[#fafaff]'}`}>
                 <div className="relative w-16 h-16">
-                    <div className="absolute inset-0 rounded-full border-2 border-white/10"></div>
-                    <div className="absolute inset-0 rounded-full border-2 border-transparent animate-spin" style={{ borderTopColor: colors.violet }}></div>
+                    <div className={`absolute inset-0 rounded-full border-2 border-[${colors.lavender}]/30`}></div>
+                    <div className={`absolute inset-0 rounded-full border-2 border-transparent border-t-[${colors.violet}] animate-spin`}></div>
                 </div>
             </div>
         )
@@ -146,8 +130,7 @@ const ProductsRedesign = () => {
 
             {/* Ambient Gradient */}
             <div className="fixed inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute -top-40 -right-40 w-96 h-96 rounded-full blur-[120px]" style={{ background: isDark ? `${colors.indigo}40` : `${colors.lavender}30` }}></div>
-                <div className="absolute bottom-40 -left-40 w-80 h-80 rounded-full blur-[100px]" style={{ background: isDark ? `${colors.violet}20` : `${colors.muted}20` }}></div>
+                <div className={`absolute top-20 -left-20 w-60 h-60 rounded-full blur-[100px] ${isDark ? `bg-[${colors.violet}]/20` : `bg-[${colors.lavender}]/20`}`}></div>
             </div>
 
             <div className="relative max-w-md mx-auto pb-28">
@@ -160,348 +143,194 @@ const ProductsRedesign = () => {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 19l-7-7 7-7" />
                             </svg>
                         </button>
-                        <button onClick={loadProducts} className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all hover:scale-105 ${isDark ? 'bg-white/5' : 'bg-black/5'}`}>
-                            <svg className={`w-5 h-5 ${isDark ? 'text-white/70' : 'text-black/70'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                            </svg>
-                        </button>
+
+                        {/* View Toggle */}
+                        <div className={`flex items-center p-1 rounded-xl ${isDark ? 'bg-white/10' : 'bg-black/5'}`}>
+                            <button onClick={() => setViewMode('grid')} className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-white shadow text-black' : 'text-gray-400'}`}>
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
+                            </button>
+                            <button onClick={() => setViewMode('list')} className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-white shadow text-black' : 'text-gray-400'}`}>
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+                            </button>
+                        </div>
                     </div>
 
-                    <div className="flex items-end justify-between">
+                    <div className="flex items-end justify-between mb-6">
                         <div>
-                            <h1 className={`text-3xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-black'}`}>Products</h1>
-                            <p className={`text-sm mt-1 ${isDark ? 'text-white/40' : 'text-black/40'}`}>{products.length} items in catalog</p>
+                            <h1 className={`text-3xl font-bold tracking-tight mb-1 ${isDark ? 'text-white' : 'text-black'}`}>Products</h1>
+                            <p className={`text-sm ${isDark ? 'text-white/40' : 'text-black/40'}`}>{filteredProducts.length} items in stock</p>
                         </div>
                         <button
                             onClick={() => setShowAddModal(true)}
-                            className="w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-xl transition-all hover:scale-105 active:scale-95"
-                            style={{ background: `linear-gradient(135deg, ${colors.violet}, ${colors.indigo})`, boxShadow: `0 8px 24px ${colors.indigo}60` }}
+                            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white shadow-lg transition-transform hover:scale-105"
+                            style={{ background: `linear-gradient(135deg, ${colors.violet}, ${colors.indigo})` }}
                         >
-                            <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                            </svg>
+                            + New
                         </button>
+                    </div>
+
+                    {/* Search & Categories */}
+                    <div className="space-y-4">
+                        <div className="relative">
+                            <input
+                                type="text"
+                                value={searchQuery}
+                                onChange={e => setSearchQuery(e.target.value)}
+                                placeholder="Search inventory..."
+                                className={`w-full h-12 pl-12 pr-4 rounded-xl transition-all focus:outline-none ${isDark ? 'bg-white/5 text-white placeholder-white/30 focus:bg-white/10' : 'bg-black/5 text-black placeholder-black/30 focus:bg-black/10'}`}
+                            />
+                            <svg className={`absolute left-4 top-3.5 w-5 h-5 ${isDark ? 'text-white/30' : 'text-black/30'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </div>
+
+                        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
+                            {categories.map(cat => (
+                                <button
+                                    key={cat}
+                                    onClick={() => setSelectedCategory(cat)}
+                                    className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${selectedCategory === cat ? 'text-white' : isDark ? 'bg-white/5 text-white/50' : 'bg-black/5 text-black/50'}`}
+                                    style={selectedCategory === cat ? { background: `linear-gradient(135deg, ${colors.violet}, ${colors.indigo})` } : {}}
+                                >
+                                    {cat}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 </header>
 
-                {/* Search + View Toggle */}
-                <div className="px-6 pt-2 flex items-center gap-3">
-                    <div className={`flex-1 flex items-center rounded-2xl h-12 border backdrop-blur-xl transition-all ${isDark ? 'bg-white/[0.03] border-white/[0.06]' : 'bg-white border-black/[0.04]'}`}>
-                        <svg className={`ml-4 w-5 h-5 ${isDark ? 'text-white/30' : 'text-black/30'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                        <input
-                            type="text"
-                            placeholder="Search products..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className={`flex-1 bg-transparent border-none focus:outline-none px-3 text-sm ${isDark ? 'text-white placeholder-white/30' : 'text-black placeholder-black/30'}`}
-                        />
-                    </div>
-
-                    {/* View Toggle */}
-                    <div className={`flex items-center rounded-xl border ${isDark ? 'bg-white/[0.03] border-white/[0.06]' : 'bg-white border-black/[0.04]'}`}>
-                        <button
-                            onClick={() => setViewMode('grid')}
-                            className={`p-2.5 rounded-l-xl transition-all ${viewMode === 'grid' ? 'text-white' : isDark ? 'text-white/40' : 'text-black/40'}`}
-                            style={viewMode === 'grid' ? { background: `linear-gradient(135deg, ${colors.violet}, ${colors.indigo})` } : {}}
-                        >
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
-                            </svg>
-                        </button>
-                        <button
-                            onClick={() => setViewMode('list')}
-                            className={`p-2.5 rounded-r-xl transition-all ${viewMode === 'list' ? 'text-white' : isDark ? 'text-white/40' : 'text-black/40'}`}
-                            style={viewMode === 'list' ? { background: `linear-gradient(135deg, ${colors.violet}, ${colors.indigo})` } : {}}
-                        >
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h16M4 12h16M4 18h16" />
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-
-                {/* Category Pills */}
-                <div className="flex gap-2 px-6 pt-4 overflow-x-auto no-scrollbar">
-                    {categories.map(cat => (
-                        <button
-                            key={cat}
-                            onClick={() => setSelectedCategory(cat)}
-                            className={`px-4 h-9 rounded-xl whitespace-nowrap text-sm font-medium transition-all hover:scale-105 ${selectedCategory === cat
-                                ? 'text-white shadow-lg'
-                                : isDark ? 'bg-white/[0.03] text-white/50 border border-white/[0.06]' : 'bg-white text-black/50 border border-black/[0.04]'
-                                }`}
-                            style={selectedCategory === cat ? { background: `linear-gradient(135deg, ${colors.violet}, ${colors.indigo})`, boxShadow: `0 4px 12px ${colors.indigo}40` } : {}}
-                        >
-                            {cat}
-                        </button>
-                    ))}
-                </div>
-
-                {/* Product Grid */}
-                {filteredProducts.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-20 px-6">
-                        <div className={`w-24 h-24 rounded-3xl flex items-center justify-center mb-4 ${isDark ? 'bg-white/[0.03]' : 'bg-black/[0.02]'}`}>
-                            <svg className="w-12 h-12" style={{ color: colors.muted }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                            </svg>
+                <div className="px-6 pb-6">
+                    {filteredProducts.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-20 text-center">
+                            <span className="text-4xl mb-3">🔍</span>
+                            <p className={`text-sm ${isDark ? 'text-white/40' : 'text-black/40'}`}>No products found</p>
                         </div>
-                        <p className={`text-lg font-semibold mb-2 ${isDark ? 'text-white' : 'text-black'}`}>No products found</p>
-                        <p className={`text-sm text-center mb-6 ${isDark ? 'text-white/40' : 'text-black/40'}`}>
-                            {searchQuery ? 'Try a different search' : 'Add your first product'}
-                        </p>
-                        <button onClick={() => setShowAddModal(true)} className="px-6 py-3 rounded-xl text-white font-semibold shadow-lg transition-all hover:scale-105" style={{ background: `linear-gradient(135deg, ${colors.violet}, ${colors.indigo})` }}>
-                            + Add Product
-                        </button>
-                    </div>
-                ) : viewMode === 'grid' ? (
-                    <div className="grid grid-cols-2 gap-4 p-6">
-                        {filteredProducts.map((product) => (
-                            <div
-                                key={product.id}
-                                onClick={() => setShowProductDetail(product)}
-                                className={`group rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 hover:scale-[1.02] ${isDark ? 'bg-white/[0.03] border border-white/[0.06]' : 'bg-white border border-black/[0.04]'}`}
-                                style={{ boxShadow: isDark ? 'none' : '0 4px 12px rgba(0,0,0,0.04)' }}
-                            >
-                                {/* Image */}
-                                <div className="relative aspect-square overflow-hidden">
-                                    {product.image_url ? (
-                                        <img src={product.image_url} alt={product.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                                    ) : (
-                                        <div className={`w-full h-full flex items-center justify-center ${isDark ? 'bg-white/[0.02]' : 'bg-black/[0.02]'}`}>
-                                            <svg className="w-12 h-12" style={{ color: colors.muted, opacity: 0.3 }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                                            </svg>
+                    ) : (
+                        viewMode === 'grid' ? (
+                            <div className="grid grid-cols-2 gap-4">
+                                {filteredProducts.map(product => (
+                                    <div key={product.id} className={`group relative rounded-2xl overflow-hidden aspect-[4/5] ${isDark ? 'bg-white/[0.03]' : 'bg-black/[0.03]'}`}>
+                                        <div className="absolute inset-0 bg-gray-200">
+                                            {product.image_url && <img src={product.image_url} alt={product.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" loading="lazy" />}
                                         </div>
-                                    )}
-
-                                    {/* Low Stock Badge */}
-                                    {product.stock <= 3 && (
-                                        <div className="absolute top-2 left-2 px-2 py-1 rounded-lg text-white text-[10px] font-semibold" style={{ background: 'linear-gradient(135deg, #ef4444, #dc2626)' }}>
-                                            Low Stock
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Info */}
-                                <div className="p-3">
-                                    <p className={`text-sm font-medium leading-tight line-clamp-2 ${isDark ? 'text-white' : 'text-black'}`}>{product.name}</p>
-                                    <div className="flex items-center justify-between mt-2">
-                                        <p className="text-base font-bold" style={{ color: colors.violet }}>{formatCurrency(product.price)}</p>
-                                        <div className="flex items-center gap-1.5">
-                                            <span className={`w-1.5 h-1.5 rounded-full ${product.stock <= 3 ? 'bg-red-500' : 'bg-emerald-500'}`}></span>
-                                            <span className={`text-xs ${isDark ? 'text-white/40' : 'text-black/40'}`}>{product.stock}</span>
+                                        <div className={`absolute inset-x-0 bottom-0 p-3 backdrop-blur-md transition-all ${isDark ? 'bg-black/60' : 'bg-white/80'}`}>
+                                            <p className={`text-sm font-semibold truncate ${isDark ? 'text-white' : 'text-black'}`}>{product.name}</p>
+                                            <p className={`text-xs ${isDark ? 'text-white/60' : 'text-black/60'}`}>{formatCurrency(product.price)}</p>
                                         </div>
                                     </div>
-                                </div>
+                                ))}
                             </div>
-                        ))}
-                    </div>
-                ) : (
-                    /* List View */
-                    <div className="px-6 space-y-3 pb-6">
-                        {filteredProducts.map((product) => (
-                            <div
-                                key={product.id}
-                                onClick={() => setShowProductDetail(product)}
-                                className={`flex items-center gap-4 p-4 rounded-2xl cursor-pointer transition-all duration-300 hover:scale-[1.01] ${isDark ? 'bg-white/[0.03] border border-white/[0.06]' : 'bg-white border border-black/[0.04]'}`}
-                            >
-                                {/* Image */}
-                                <div className="relative w-20 h-20 rounded-xl overflow-hidden flex-shrink-0">
-                                    {product.image_url ? (
-                                        <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
-                                    ) : (
-                                        <div className={`w-full h-full flex items-center justify-center ${isDark ? 'bg-white/[0.02]' : 'bg-black/[0.02]'}`}>
-                                            <svg className="w-8 h-8" style={{ color: colors.muted, opacity: 0.3 }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                                            </svg>
+                        ) : (
+                            <div className="space-y-3">
+                                {filteredProducts.map(product => (
+                                    <div key={product.id} className={`flex items-center gap-4 p-3 rounded-2xl ${isDark ? 'bg-white/[0.03] border border-white/[0.06]' : 'bg-white border border-black/[0.04]'}`}>
+                                        <div className="w-16 h-16 rounded-xl bg-gray-200 overflow-hidden flex-shrink-0">
+                                            {product.image_url && <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" loading="lazy" />}
                                         </div>
-                                    )}
-                                    {product.stock <= 3 && (
-                                        <div className="absolute top-1 left-1 w-2 h-2 bg-red-500 rounded-full"></div>
-                                    )}
-                                </div>
-
-                                {/* Info */}
-                                <div className="flex-1 min-w-0">
-                                    <p className={`font-semibold text-sm ${isDark ? 'text-white' : 'text-black'} truncate`}>{product.name}</p>
-                                    <div className="flex items-center gap-3 mt-1">
-                                        <span className={`text-xs px-2 py-0.5 rounded-md ${isDark ? 'bg-white/[0.05] text-white/50' : 'bg-black/[0.03] text-black/50'}`}>
-                                            {product.category || 'General'}
-                                        </span>
-                                        <span className={`text-xs ${isDark ? 'text-white/40' : 'text-black/40'}`}>
-                                            Stock: {product.stock}
-                                        </span>
+                                        <div className="flex-1 min-w-0">
+                                            <p className={`font-semibold truncate ${isDark ? 'text-white' : 'text-black'}`}>{product.name}</p>
+                                            <p className={`text-xs ${isDark ? 'text-white/40' : 'text-black/40'}`}>{product.category} • {product.stock} left</p>
+                                        </div>
+                                        <span className={`font-bold ${isDark ? 'text-white' : 'text-black'}`}>{formatCurrency(product.price)}</span>
                                     </div>
-                                </div>
-
-                                {/* Price */}
-                                <p className="text-lg font-bold" style={{ color: colors.violet }}>{formatCurrency(product.price)}</p>
+                                ))}
                             </div>
-                        ))}
-                    </div>
-                )}
+                        )
+                    )}
+                </div>
+
             </div>
-
-            {/* Product Detail Modal */}
-            {showProductDetail && (
-                <div className="fixed inset-0 z-50 flex items-end justify-center">
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowProductDetail(null)}></div>
-                    <div className={`relative w-full max-w-md rounded-t-3xl overflow-hidden ${isDark ? 'bg-[#0a0a14]' : 'bg-white'}`}>
-                        {/* Hero Image */}
-                        <div className="relative h-64">
-                            {showProductDetail.image_url ? (
-                                <img src={showProductDetail.image_url} alt="" className="w-full h-full object-cover" />
-                            ) : (
-                                <div className={`w-full h-full flex items-center justify-center ${isDark ? 'bg-white/[0.02]' : 'bg-black/[0.02]'}`}>
-                                    <svg className="w-20 h-20" style={{ color: colors.muted, opacity: 0.2 }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                                    </svg>
-                                </div>
-                            )}
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
-                            <button onClick={() => setShowProductDetail(null)} className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white hover:bg-white/30 transition-all">
-                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                            <div className="absolute bottom-4 left-4 right-4">
-                                <span className="px-2 py-1 bg-white/20 backdrop-blur-md rounded-lg text-white text-xs font-medium">{showProductDetail.category}</span>
-                                <h2 className="text-xl font-bold text-white mt-2">{showProductDetail.name}</h2>
-                            </div>
-                        </div>
-
-                        {/* Details */}
-                        <div className="p-6">
-                            <div className="flex items-center justify-between mb-6">
-                                <p className="text-3xl font-bold" style={{ color: colors.violet }}>{formatCurrency(showProductDetail.price)}</p>
-                                <div className="flex items-center gap-2">
-                                    <span className={`w-2.5 h-2.5 rounded-full ${showProductDetail.stock <= 3 ? 'bg-red-500' : 'bg-emerald-500'}`}></span>
-                                    <span className={`font-medium ${isDark ? 'text-white' : 'text-black'}`}>{showProductDetail.stock} in stock</span>
-                                </div>
-                            </div>
-
-                            {/* Actions */}
-                            <div className="grid grid-cols-2 gap-3">
-                                <button
-                                    onClick={() => handleRestock(showProductDetail)}
-                                    className={`flex items-center justify-center gap-2 py-3.5 rounded-xl font-medium transition-all hover:scale-[1.02] ${isDark ? 'bg-white/[0.05]' : 'bg-black/[0.03]'}`}
-                                    style={{ color: colors.violet }}
-                                >
-                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
-                                    </svg>
-                                    Restock
-                                </button>
-                                <button
-                                    onClick={() => handleDeleteProduct(showProductDetail.id)}
-                                    className="flex items-center justify-center gap-2 py-3.5 rounded-xl font-medium bg-red-500/10 text-red-500 transition-all hover:scale-[1.02]"
-                                >
-                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                    </svg>
-                                    Delete
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {/* Add Product Modal */}
             {showAddModal && (
                 <div className="fixed inset-0 z-50 flex items-end justify-center">
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={resetForm}></div>
-                    <div className={`relative w-full max-w-md rounded-t-3xl overflow-hidden ${isDark ? 'bg-[#0a0a14]' : 'bg-white'}`}>
-                        <div className="w-full flex justify-center pt-3">
+                    <div className={`relative w-full max-w-md h-[85vh] rounded-t-3xl overflow-hidden flex flex-col ${isDark ? 'bg-[#151520]' : 'bg-white'}`}>
+                        <div className="w-full flex justify-center pt-3 pb-2 flex-shrink-0">
                             <div className={`w-12 h-1.5 rounded-full ${isDark ? 'bg-white/20' : 'bg-black/20'}`}></div>
                         </div>
 
-                        <div className={`px-6 py-4 flex items-center justify-between border-b ${isDark ? 'border-white/[0.06]' : 'border-black/[0.04]'}`}>
-                            <button onClick={resetForm} className="text-red-500 font-medium">Cancel</button>
-                            <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-black'}`}>New Product</h3>
-                            <button onClick={handleAddProduct} disabled={saving} className="font-medium disabled:opacity-50" style={{ color: colors.violet }}>
-                                {saving ? '...' : 'Save'}
-                            </button>
-                        </div>
+                        <div className="flex-1 overflow-y-auto px-6 pb-6">
+                            <h3 className={`text-2xl font-bold mb-6 ${isDark ? 'text-white' : 'text-black'}`}>New Product</h3>
 
-                        <div className="p-6 max-h-[60vh] overflow-y-auto space-y-5">
-                            {/* Image Upload */}
-                            <div className="flex justify-center">
-                                <input type="file" ref={imageInputRef} onChange={handleImageSelect} accept="image/*" className="hidden" />
-                                <button
+                            <div className="space-y-6">
+                                {/* Image Upload */}
+                                <div
                                     onClick={() => imageInputRef.current?.click()}
-                                    className={`w-32 h-32 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-2 overflow-hidden transition-all hover:scale-105 ${isDark ? 'border-white/10 bg-white/[0.02]' : 'border-black/10 bg-black/[0.02]'}`}
+                                    className={`relative aspect-video rounded-2xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden ${imagePreview
+                                            ? 'border-transparent'
+                                            : isDark ? 'border-white/20 hover:border-white/40 bg-white/5' : 'border-black/20 hover:border-black/40 bg-black/5'
+                                        }`}
                                 >
                                     {imagePreview ? (
                                         <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
                                     ) : (
                                         <>
-                                            <svg className="w-8 h-8" style={{ color: colors.muted }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                            </svg>
-                                            <span className={`text-xs font-medium ${isDark ? 'text-white/40' : 'text-black/40'}`}>Add Photo</span>
+                                            <svg className={`w-8 h-8 mb-2 ${isDark ? 'text-white/40' : 'text-black/40'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                            <span className={`text-xs font-semibold ${isDark ? 'text-white/40' : 'text-black/40'}`}>Tap to upload image</span>
                                         </>
                                     )}
-                                </button>
-                            </div>
-
-                            {/* Form */}
-                            <div>
-                                <label className={`block text-xs font-semibold uppercase tracking-wide mb-2 ${isDark ? 'text-white/40' : 'text-black/40'}`}>Product Name *</label>
-                                <input
-                                    type="text"
-                                    placeholder="e.g. Premium Wireless Headphones"
-                                    value={newProduct.name}
-                                    onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
-                                    className={`w-full rounded-xl px-4 py-3.5 border transition-all focus:outline-none ${isDark ? 'bg-white/[0.03] border-white/[0.06] text-white placeholder-white/30 focus:border-white/20' : 'bg-black/[0.02] border-black/[0.04] text-black placeholder-black/30 focus:border-black/10'}`}
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className={`block text-xs font-semibold uppercase tracking-wide mb-2 ${isDark ? 'text-white/40' : 'text-black/40'}`}>Price (₦) *</label>
-                                    <input
-                                        type="number"
-                                        placeholder="0"
-                                        value={newProduct.price}
-                                        onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
-                                        className={`w-full rounded-xl px-4 py-3.5 border transition-all focus:outline-none ${isDark ? 'bg-white/[0.03] border-white/[0.06] text-white' : 'bg-black/[0.02] border-black/[0.04] text-black'}`}
-                                    />
+                                    <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
                                 </div>
-                                <div>
-                                    <label className={`block text-xs font-semibold uppercase tracking-wide mb-2 ${isDark ? 'text-white/40' : 'text-black/40'}`}>Stock</label>
-                                    <input
-                                        type="number"
-                                        placeholder="0"
-                                        value={newProduct.stock}
-                                        onChange={(e) => setNewProduct({ ...newProduct, stock: e.target.value })}
-                                        className={`w-full rounded-xl px-4 py-3.5 border transition-all focus:outline-none ${isDark ? 'bg-white/[0.03] border-white/[0.06] text-white' : 'bg-black/[0.02] border-black/[0.04] text-black'}`}
-                                    />
+
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className={`block text-xs font-semibold uppercase tracking-wide mb-2 ${isDark ? 'text-white/40' : 'text-black/40'}`}>Name</label>
+                                        <input type="text" value={newProduct.name} onChange={e => setNewProduct({ ...newProduct, name: e.target.value })} className={`w-full rounded-xl px-4 py-3 border transition-all focus:outline-none ${isDark ? 'bg-white/[0.03] border-white/[0.06] text-white' : 'bg-black/[0.02] border-black/[0.04] text-black'}`} />
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className={`block text-xs font-semibold uppercase tracking-wide mb-2 ${isDark ? 'text-white/40' : 'text-black/40'}`}>Price (₦)</label>
+                                            <input type="number" value={newProduct.price} onChange={e => setNewProduct({ ...newProduct, price: e.target.value })} className={`w-full rounded-xl px-4 py-3 border transition-all focus:outline-none ${isDark ? 'bg-white/[0.03] border-white/[0.06] text-white' : 'bg-black/[0.02] border-black/[0.04] text-black'}`} />
+                                        </div>
+                                        <div>
+                                            <label className={`block text-xs font-semibold uppercase tracking-wide mb-2 ${isDark ? 'text-white/40' : 'text-black/40'}`}>Stock</label>
+                                            <input type="number" value={newProduct.stock} onChange={e => setNewProduct({ ...newProduct, stock: e.target.value })} className={`w-full rounded-xl px-4 py-3 border transition-all focus:outline-none ${isDark ? 'bg-white/[0.03] border-white/[0.06] text-white' : 'bg-black/[0.02] border-black/[0.04] text-black'}`} />
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className={`block text-xs font-semibold uppercase tracking-wide mb-2 ${isDark ? 'text-white/40' : 'text-black/40'}`}>Category</label>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            {categories.filter(c => c !== 'All').map(cat => (
+                                                <button
+                                                    key={cat}
+                                                    onClick={() => setNewProduct({ ...newProduct, category: cat })}
+                                                    className={`py-2 rounded-lg text-xs font-medium transition-all ${newProduct.category === cat ? 'bg-indigo-500 text-white' : isDark ? 'bg-white/5 text-white/60' : 'bg-black/5 text-black/60'}`}
+                                                >
+                                                    {cat}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className={`block text-xs font-semibold uppercase tracking-wide mb-2 ${isDark ? 'text-white/40' : 'text-black/40'}`}>Description</label>
+                                        <textarea rows="3" value={newProduct.description} onChange={e => setNewProduct({ ...newProduct, description: e.target.value })} className={`w-full rounded-xl px-4 py-3 border transition-all focus:outline-none resize-none ${isDark ? 'bg-white/[0.03] border-white/[0.06] text-white' : 'bg-black/[0.02] border-black/[0.04] text-black'}`}></textarea>
+                                    </div>
                                 </div>
                             </div>
+                        </div>
 
-                            <div>
-                                <label className={`block text-xs font-semibold uppercase tracking-wide mb-2 ${isDark ? 'text-white/40' : 'text-black/40'}`}>Category</label>
-                                <select
-                                    value={newProduct.category}
-                                    onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })}
-                                    className={`w-full rounded-xl px-4 py-3.5 border transition-all focus:outline-none ${isDark ? 'bg-white/[0.03] border-white/[0.06] text-white' : 'bg-black/[0.02] border-black/[0.04] text-black'}`}
-                                >
-                                    <option value="">Select category...</option>
-                                    {categories.filter(c => c !== 'All').map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                                </select>
-                            </div>
+                        <div className={`p-6 border-t ${isDark ? 'border-white/10' : 'border-black/5'} bg-inherit`}>
+                            <button
+                                onClick={handleAddProduct}
+                                disabled={saving}
+                                className="w-full py-4 rounded-xl text-white font-bold text-lg shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] disabled:opacity-50"
+                                style={{ background: `linear-gradient(135deg, ${colors.violet}, ${colors.indigo})` }}
+                            >
+                                {saving ? 'Creating Product...' : 'Create Product'}
+                            </button>
                         </div>
                     </div>
                 </div>
             )}
 
             <style jsx>{`
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-      `}</style>
+                .no-scrollbar::-webkit-scrollbar { display: none; }
+                .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+            `}</style>
         </div>
     )
 }
