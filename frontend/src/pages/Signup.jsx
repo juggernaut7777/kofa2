@@ -1,6 +1,14 @@
-import { useState } from 'react'
+import { useState, useContext } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { ThemeContext } from '../context/ThemeContext'
+
+// Moonlight Color Palette
+const colors = {
+    lavender: '#CCCCFF',
+    violet: '#5C5C99',
+    indigo: '#292966',
+}
 
 const Signup = () => {
     const [formData, setFormData] = useState({
@@ -12,6 +20,8 @@ const Signup = () => {
     })
     const [error, setError] = useState('')
     const [isLoading, setIsLoading] = useState(false)
+    const { theme } = useContext(ThemeContext)
+    const isDark = theme === 'dark'
 
     const { signup } = useAuth()
     const navigate = useNavigate()
@@ -59,45 +69,60 @@ const Signup = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 flex items-center justify-center px-4 py-12">
-            <div className="max-w-md w-full">
+        <div className={`min-h-screen flex items-center justify-center px-4 py-12 font-['SF_Pro_Display',-apple-system,sans-serif] ${isDark ? 'bg-[#0a0a14]' : 'bg-[#fafaff]'}`}>
+
+            {/* Ambient Gradient */}
+            <div className="fixed inset-0 overflow-hidden pointer-events-none">
+                <div className={`absolute top-10 -right-20 w-80 h-80 rounded-full blur-[120px] ${isDark ? 'bg-[#5C5C99]/30' : 'bg-[#CCCCFF]/40'}`}></div>
+                <div className={`absolute bottom-40 -left-20 w-60 h-60 rounded-full blur-[100px] ${isDark ? 'bg-[#292966]/40' : 'bg-[#CCCCFF]/30'}`}></div>
+            </div>
+
+            <div className="relative max-w-md w-full">
                 {/* Logo */}
-                <div className="text-center mb-8">
-                    <Link to="/" className="inline-flex items-center">
-                        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-3 rounded-xl">
-                            <span className="text-white font-bold text-2xl">KOFA</span>
+                <div className="text-center mb-6">
+                    <Link to="/" className="inline-flex items-center justify-center">
+                        <div className="relative">
+                            <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${colors.violet}, ${colors.indigo})` }}>
+                                <span className="text-white font-black text-xl tracking-tight">K</span>
+                            </div>
+                            <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-lg bg-[#CCCCFF] flex items-center justify-center">
+                                <span className="text-[#292966] text-[10px] font-bold">✓</span>
+                            </div>
                         </div>
                     </Link>
-                    <h1 className="text-3xl font-bold text-gray-900 mt-6 mb-2">Start Your Free Trial</h1>
-                    <p className="text-gray-600">Create your account in 2 minutes</p>
+                    <h1 className={`text-2xl font-bold mt-5 mb-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>Start Your Free Trial</h1>
+                    <p className={`text-sm ${isDark ? 'text-white/50' : 'text-gray-500'}`}>Create your account in 2 minutes</p>
                 </div>
 
                 {/* Features Badge */}
-                <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4 mb-6">
-                    <div className="flex items-center justify-center space-x-6 text-sm">
-                        <span className="flex items-center text-green-700">
-                            <span className="mr-1">✓</span> 50 Free Products
+                <div className={`rounded-2xl p-4 mb-5 ${isDark ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-200'}`}>
+                    <div className="flex items-center justify-center gap-4 text-xs font-medium">
+                        <span className="flex items-center gap-1 text-emerald-500">
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                            50 Free Products
                         </span>
-                        <span className="flex items-center text-green-700">
-                            <span className="mr-1">✓</span> AI Chatbot
+                        <span className="flex items-center gap-1 text-emerald-500">
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                            AI Chatbot
                         </span>
-                        <span className="flex items-center text-green-700">
-                            <span className="mr-1">✓</span> No Card Required
+                        <span className="flex items-center gap-1 text-emerald-500">
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                            No Card
                         </span>
                     </div>
                 </div>
 
                 {/* Signup Form */}
-                <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
-                    <form onSubmit={handleSubmit} className="space-y-5">
+                <div className={`rounded-3xl p-6 backdrop-blur-xl ${isDark ? 'bg-white/[0.03] border border-white/[0.06]' : 'bg-white/80 border border-black/[0.04] shadow-xl'}`}>
+                    <form onSubmit={handleSubmit} className="space-y-4">
                         {error && (
-                            <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg text-sm">
+                            <div className="bg-rose-500/10 border border-rose-500/20 text-rose-400 px-4 py-3 rounded-xl text-sm">
                                 {error}
                             </div>
                         )}
 
                         <div>
-                            <label htmlFor="businessName" className="block text-sm font-medium text-gray-700 mb-2">
+                            <label htmlFor="businessName" className={`block text-xs font-semibold uppercase tracking-wide mb-1.5 ${isDark ? 'text-white/40' : 'text-gray-500'}`}>
                                 Business Name *
                             </label>
                             <input
@@ -106,85 +131,103 @@ const Signup = () => {
                                 type="text"
                                 value={formData.businessName}
                                 onChange={handleChange}
-                                className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                className={`w-full px-4 py-3 rounded-xl border-2 transition-all focus:outline-none ${isDark
+                                    ? 'bg-white/[0.03] border-white/10 text-white placeholder:text-white/30 focus:border-[#5C5C99]'
+                                    : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-[#5C5C99]'
+                                    }`}
                                 placeholder="Sarah's Fashion Hub"
                             />
                         </div>
 
-                        <div>
-                            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                                Email Address *
-                            </label>
-                            <input
-                                id="email"
-                                name="email"
-                                type="email"
-                                value={formData.email}
-                                onChange={handleChange}
-                                className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                                placeholder="you@example.com"
-                            />
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label htmlFor="email" className={`block text-xs font-semibold uppercase tracking-wide mb-1.5 ${isDark ? 'text-white/40' : 'text-gray-500'}`}>
+                                    Email *
+                                </label>
+                                <input
+                                    id="email"
+                                    name="email"
+                                    type="email"
+                                    value={formData.email}
+                                    onChange={handleChange}
+                                    className={`w-full px-4 py-3 rounded-xl border-2 transition-all focus:outline-none ${isDark
+                                        ? 'bg-white/[0.03] border-white/10 text-white placeholder:text-white/30 focus:border-[#5C5C99]'
+                                        : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-[#5C5C99]'
+                                        }`}
+                                    placeholder="you@example.com"
+                                />
+                            </div>
+                            <div>
+                                <label htmlFor="phone" className={`block text-xs font-semibold uppercase tracking-wide mb-1.5 ${isDark ? 'text-white/40' : 'text-gray-500'}`}>
+                                    Phone *
+                                </label>
+                                <input
+                                    id="phone"
+                                    name="phone"
+                                    type="tel"
+                                    value={formData.phone}
+                                    onChange={handleChange}
+                                    className={`w-full px-4 py-3 rounded-xl border-2 transition-all focus:outline-none ${isDark
+                                        ? 'bg-white/[0.03] border-white/10 text-white placeholder:text-white/30 focus:border-[#5C5C99]'
+                                        : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-[#5C5C99]'
+                                        }`}
+                                    placeholder="08012345678"
+                                />
+                            </div>
                         </div>
 
-                        <div>
-                            <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
-                                Phone Number *
-                            </label>
-                            <input
-                                id="phone"
-                                name="phone"
-                                type="tel"
-                                value={formData.phone}
-                                onChange={handleChange}
-                                className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                                placeholder="08012345678"
-                            />
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label htmlFor="password" className={`block text-xs font-semibold uppercase tracking-wide mb-1.5 ${isDark ? 'text-white/40' : 'text-gray-500'}`}>
+                                    Password *
+                                </label>
+                                <input
+                                    id="password"
+                                    name="password"
+                                    type="password"
+                                    value={formData.password}
+                                    onChange={handleChange}
+                                    className={`w-full px-4 py-3 rounded-xl border-2 transition-all focus:outline-none ${isDark
+                                        ? 'bg-white/[0.03] border-white/10 text-white placeholder:text-white/30 focus:border-[#5C5C99]'
+                                        : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-[#5C5C99]'
+                                        }`}
+                                    placeholder="••••••••"
+                                />
+                            </div>
+                            <div>
+                                <label htmlFor="confirmPassword" className={`block text-xs font-semibold uppercase tracking-wide mb-1.5 ${isDark ? 'text-white/40' : 'text-gray-500'}`}>
+                                    Confirm *
+                                </label>
+                                <input
+                                    id="confirmPassword"
+                                    name="confirmPassword"
+                                    type="password"
+                                    value={formData.confirmPassword}
+                                    onChange={handleChange}
+                                    className={`w-full px-4 py-3 rounded-xl border-2 transition-all focus:outline-none ${isDark
+                                        ? 'bg-white/[0.03] border-white/10 text-white placeholder:text-white/30 focus:border-[#5C5C99]'
+                                        : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-[#5C5C99]'
+                                        }`}
+                                    placeholder="••••••••"
+                                />
+                            </div>
                         </div>
 
-                        <div>
-                            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                                Password *
-                            </label>
-                            <input
-                                id="password"
-                                name="password"
-                                type="password"
-                                value={formData.password}
-                                onChange={handleChange}
-                                className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                                placeholder="••••••••"
-                            />
-                        </div>
-
-                        <div>
-                            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
-                                Confirm Password *
-                            </label>
-                            <input
-                                id="confirmPassword"
-                                name="confirmPassword"
-                                type="password"
-                                value={formData.confirmPassword}
-                                onChange={handleChange}
-                                className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                                placeholder="••••••••"
-                            />
-                        </div>
-
-                        <div className="flex items-start">
-                            <input type="checkbox" className="w-4 h-4 text-blue-600 rounded mt-1" required />
-                            <span className="ml-2 text-sm text-gray-600">
+                        <div className="flex items-start gap-2">
+                            <input type="checkbox" className="w-4 h-4 mt-0.5 rounded accent-[#5C5C99]" required />
+                            <span className={`text-xs ${isDark ? 'text-white/50' : 'text-gray-600'}`}>
                                 I agree to the{' '}
-                                <a href="#" className="text-blue-600 hover:text-blue-700">Terms of Service</a>
+                                <a href="#" className="underline" style={{ color: colors.violet }}>Terms</a>
                                 {' '}and{' '}
-                                <a href="#" className="text-blue-600 hover:text-blue-700">Privacy Policy</a>
+                                <a href="#" className="underline" style={{ color: colors.violet }}>Privacy Policy</a>
                             </span>
                         </div>
 
                         <button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 px-6 rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full py-4 px-6 rounded-xl font-semibold text-white transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                            style={{ background: `linear-gradient(135deg, ${colors.violet}, ${colors.indigo})` }}
                         >
                             {isLoading ? (
                                 <span className="flex items-center justify-center">
@@ -200,10 +243,10 @@ const Signup = () => {
                         </button>
                     </form>
 
-                    <div className="mt-6 text-center">
-                        <p className="text-gray-600">
+                    <div className="mt-5 text-center">
+                        <p className={`text-sm ${isDark ? 'text-white/50' : 'text-gray-600'}`}>
                             Already have an account?{' '}
-                            <Link to="/login" className="text-blue-600 hover:text-blue-700 font-semibold">
+                            <Link to="/login" className="font-semibold hover:underline" style={{ color: colors.violet }}>
                                 Sign In
                             </Link>
                         </p>
@@ -211,8 +254,8 @@ const Signup = () => {
                 </div>
 
                 {/* Back to home */}
-                <div className="mt-8 text-center">
-                    <Link to="/" className="text-gray-500 hover:text-gray-700 text-sm">
+                <div className="mt-6 text-center">
+                    <Link to="/" className={`text-sm transition-colors ${isDark ? 'text-white/40 hover:text-white/70' : 'text-gray-500 hover:text-gray-700'}`}>
                         ← Back to home
                     </Link>
                 </div>

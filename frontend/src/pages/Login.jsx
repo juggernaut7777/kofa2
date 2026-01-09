@@ -1,12 +1,22 @@
-import { useState } from 'react'
+import { useState, useContext } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { ThemeContext } from '../context/ThemeContext'
+
+// Moonlight Color Palette
+const colors = {
+    lavender: '#CCCCFF',
+    violet: '#5C5C99',
+    indigo: '#292966',
+}
 
 const Login = () => {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [error, setError] = useState('')
     const [isLoading, setIsLoading] = useState(false)
+    const { theme } = useContext(ThemeContext)
+    const isDark = theme === 'dark'
 
     const { login } = useAuth()
     const navigate = useNavigate()
@@ -37,30 +47,42 @@ const Login = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 flex items-center justify-center px-4">
-            <div className="max-w-md w-full">
+        <div className={`min-h-screen flex items-center justify-center px-4 font-['SF_Pro_Display',-apple-system,sans-serif] ${isDark ? 'bg-[#0a0a14]' : 'bg-[#fafaff]'}`}>
+
+            {/* Ambient Gradient */}
+            <div className="fixed inset-0 overflow-hidden pointer-events-none">
+                <div className={`absolute top-20 -left-20 w-80 h-80 rounded-full blur-[120px] ${isDark ? 'bg-[#5C5C99]/30' : 'bg-[#CCCCFF]/40'}`}></div>
+                <div className={`absolute bottom-20 -right-20 w-60 h-60 rounded-full blur-[100px] ${isDark ? 'bg-[#292966]/40' : 'bg-[#CCCCFF]/30'}`}></div>
+            </div>
+
+            <div className="relative max-w-md w-full">
                 {/* Logo */}
                 <div className="text-center mb-8">
-                    <Link to="/" className="inline-flex items-center">
-                        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-3 rounded-xl">
-                            <span className="text-white font-bold text-2xl">KOFA</span>
+                    <Link to="/" className="inline-flex items-center justify-center">
+                        <div className="relative">
+                            <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${colors.violet}, ${colors.indigo})` }}>
+                                <span className="text-white font-black text-2xl tracking-tight">K</span>
+                            </div>
+                            <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-lg bg-[#CCCCFF] flex items-center justify-center">
+                                <span className="text-[#292966] text-xs font-bold">✓</span>
+                            </div>
                         </div>
                     </Link>
-                    <h1 className="text-3xl font-bold text-gray-900 mt-6 mb-2">Welcome back</h1>
-                    <p className="text-gray-600">Sign in to manage your business</p>
+                    <h1 className={`text-3xl font-bold mt-6 mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>Welcome back</h1>
+                    <p className={`${isDark ? 'text-white/50' : 'text-gray-500'}`}>Sign in to manage your business</p>
                 </div>
 
                 {/* Login Form */}
-                <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
-                    <form onSubmit={handleSubmit} className="space-y-6">
+                <div className={`rounded-3xl p-8 backdrop-blur-xl ${isDark ? 'bg-white/[0.03] border border-white/[0.06]' : 'bg-white/80 border border-black/[0.04] shadow-xl'}`}>
+                    <form onSubmit={handleSubmit} className="space-y-5">
                         {error && (
-                            <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg text-sm">
+                            <div className="bg-rose-500/10 border border-rose-500/20 text-rose-400 px-4 py-3 rounded-xl text-sm">
                                 {error}
                             </div>
                         )}
 
                         <div>
-                            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                            <label htmlFor="email" className={`block text-xs font-semibold uppercase tracking-wide mb-2 ${isDark ? 'text-white/40' : 'text-gray-500'}`}>
                                 Email or Phone
                             </label>
                             <input
@@ -68,13 +90,16 @@ const Login = () => {
                                 type="text"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                className={`w-full px-4 py-3.5 rounded-xl border-2 transition-all focus:outline-none ${isDark
+                                    ? 'bg-white/[0.03] border-white/10 text-white placeholder:text-white/30 focus:border-[#5C5C99]'
+                                    : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-[#5C5C99]'
+                                    }`}
                                 placeholder="you@example.com"
                             />
                         </div>
 
                         <div>
-                            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                            <label htmlFor="password" className={`block text-xs font-semibold uppercase tracking-wide mb-2 ${isDark ? 'text-white/40' : 'text-gray-500'}`}>
                                 Password
                             </label>
                             <input
@@ -82,17 +107,20 @@ const Login = () => {
                                 type="password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                className={`w-full px-4 py-3.5 rounded-xl border-2 transition-all focus:outline-none ${isDark
+                                    ? 'bg-white/[0.03] border-white/10 text-white placeholder:text-white/30 focus:border-[#5C5C99]'
+                                    : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-[#5C5C99]'
+                                    }`}
                                 placeholder="••••••••"
                             />
                         </div>
 
                         <div className="flex items-center justify-between">
-                            <label className="flex items-center">
-                                <input type="checkbox" className="w-4 h-4 text-blue-600 rounded" />
-                                <span className="ml-2 text-sm text-gray-600">Remember me</span>
+                            <label className="flex items-center cursor-pointer">
+                                <input type="checkbox" className={`w-4 h-4 rounded ${isDark ? 'accent-[#5C5C99]' : 'accent-[#5C5C99]'}`} />
+                                <span className={`ml-2 text-sm ${isDark ? 'text-white/60' : 'text-gray-600'}`}>Remember me</span>
                             </label>
-                            <a href="#" className="text-sm text-blue-600 hover:text-blue-700">
+                            <a href="#" className="text-sm font-medium" style={{ color: colors.violet }}>
                                 Forgot password?
                             </a>
                         </div>
@@ -100,7 +128,8 @@ const Login = () => {
                         <button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 px-6 rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full py-4 px-6 rounded-xl font-semibold text-white transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                            style={{ background: `linear-gradient(135deg, ${colors.violet}, ${colors.indigo})` }}
                         >
                             {isLoading ? (
                                 <span className="flex items-center justify-center">
@@ -117,9 +146,9 @@ const Login = () => {
                     </form>
 
                     <div className="mt-6 text-center">
-                        <p className="text-gray-600">
+                        <p className={`${isDark ? 'text-white/50' : 'text-gray-600'}`}>
                             Don't have an account?{' '}
-                            <Link to="/signup" className="text-blue-600 hover:text-blue-700 font-semibold">
+                            <Link to="/signup" className="font-semibold hover:underline" style={{ color: colors.violet }}>
                                 Start Free Trial
                             </Link>
                         </p>
@@ -128,7 +157,7 @@ const Login = () => {
 
                 {/* Back to home */}
                 <div className="mt-8 text-center">
-                    <Link to="/" className="text-gray-500 hover:text-gray-700 text-sm">
+                    <Link to="/" className={`text-sm transition-colors ${isDark ? 'text-white/40 hover:text-white/70' : 'text-gray-500 hover:text-gray-700'}`}>
                         ← Back to home
                     </Link>
                 </div>
