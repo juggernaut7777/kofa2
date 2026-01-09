@@ -175,8 +175,8 @@ const SettingsRedesign = () => {
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
                             className={`flex flex-1 items-center justify-center gap-2 pb-3 text-sm font-medium border-b-2 transition-all ${activeTab === tab.id
-                                    ? `text-[${colors.violet}] border-[${colors.violet}]`
-                                    : 'border-transparent text-gray-500'
+                                ? `text-[${colors.violet}] border-[${colors.violet}]`
+                                : 'border-transparent text-gray-500'
                                 }`}
                             style={activeTab === tab.id ? { color: colors.violet, borderColor: colors.violet } : {}}
                         >
@@ -305,10 +305,10 @@ const SettingsRedesign = () => {
                                     <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                         <div
                                             className={`max-w-[85%] p-3.5 rounded-2xl text-sm leading-relaxed ${msg.role === 'user'
-                                                    ? 'text-white rounded-tr-sm'
-                                                    : isDark
-                                                        ? 'bg-white/10 text-white rounded-tl-sm'
-                                                        : 'bg-gray-100 text-black rounded-tl-sm'
+                                                ? 'text-white rounded-tr-sm'
+                                                : isDark
+                                                    ? 'bg-white/10 text-white rounded-tl-sm'
+                                                    : 'bg-gray-100 text-black rounded-tl-sm'
                                                 }`}
                                             style={msg.role === 'user' ? { background: `linear-gradient(135deg, ${colors.violet}, ${colors.indigo})` } : {}}
                                         >
@@ -348,7 +348,7 @@ const SettingsRedesign = () => {
                 )}
             </div>
 
-            <style jsx>{`
+            <style>{`
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>

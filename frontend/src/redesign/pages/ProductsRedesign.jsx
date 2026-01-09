@@ -50,11 +50,11 @@ const ProductsRedesign = () => {
         setLoading(true)
         try {
             const data = await apiCall(API_ENDPOINTS.PRODUCTS)
-            // Normalize product data - API might use different field names
+            // Normalize product data - backend uses price_ngn and stock_level
             const normalized = (Array.isArray(data) ? data : []).map(p => ({
                 ...p,
-                price: p.price || p.selling_price || p.unit_price || p.amount || 0,
-                stock: p.stock ?? p.quantity ?? p.inventory ?? 0,
+                price: p.price_ngn || p.price || p.selling_price || p.unit_price || p.amount || 0,
+                stock: p.stock_level ?? p.stock ?? p.quantity ?? p.inventory ?? 0,
                 category: p.category || p.type || 'General'
             }))
             setProducts(normalized)
@@ -335,7 +335,7 @@ const ProductsRedesign = () => {
                 </div>
             )}
 
-            <style jsx>{`
+            <style>{`
                 .no-scrollbar::-webkit-scrollbar { display: none; }
                 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
             `}</style>
