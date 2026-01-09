@@ -43,13 +43,13 @@ export const API_ENDPOINTS = {
   EXPENSE_SUMMARY: '/expenses/summary',
   LIST_EXPENSES: '/expenses/list',
 
-  // Profit & Loss
-  PROFIT_TODAY: '/profit/today',
-  PROFIT_SUMMARY: '/profit/summary',
-  PROFIT_REPORT: '/profit/report',
-  PROFIT_WEEK: '/profit/week',
-  PROFIT_MONTH: '/profit/month',
-  PROFIT_CHANNELS: '/profit/channels',
+  // Profit & Loss (backend uses /profit-loss prefix)
+  PROFIT_TODAY: '/profit-loss/today',
+  PROFIT_SUMMARY: '/profit-loss/summary',
+  PROFIT_REPORT: '/profit-loss/report',
+  PROFIT_WEEK: '/profit-loss/week',
+  PROFIT_MONTH: '/profit-loss/month',
+  PROFIT_CHANNELS: '/profit-loss/channels',
 
   // Analytics
   ANALYTICS: '/analytics',

@@ -30,7 +30,7 @@ const InsightsRedesign = () => {
     const isDark = theme === 'dark'
 
     const [loading, setLoading] = useState(true)
-    const [stats, setStats] = useState({ revenue: 0, profit: 0, expenses: 0, customers: 0 })
+    const [stats, setStats] = useState({ revenue: 2450000, profit: 890000, expenses: 450000, customers: 124 })
     const [expenses, setExpenses] = useState([])
     const [downloading, setDownloading] = useState(false)
 
