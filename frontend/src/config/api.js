@@ -1,5 +1,5 @@
-// API Configuration - Points to live Heroku backend
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://kofa-backend-david-0a6d58175f07.herokuapp.com';
+// API Configuration - Points to Azure VM backend (faster than Heroku!)
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://134.112.17.54:8000';
 
 export const API_ENDPOINTS = {
   // Products
