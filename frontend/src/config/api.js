@@ -91,6 +91,9 @@ export const API_ENDPOINTS = {
   TROUBLESHOOTING_GUIDES: '/support/troubleshooting',
   FAQ: '/support/faq',
 
+  // Business AI Assistant
+  BUSINESS_AI: '/business-ai',
+
   // Health check
   HEALTH: '/health'
 };

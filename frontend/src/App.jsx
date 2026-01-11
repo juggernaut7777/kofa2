@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
 import PrivateRoute from './components/PrivateRoute'
+import BusinessAI from './components/BusinessAI/BusinessAI'
 
 // Redesigned pages (new Stitch UI)
 import {
@@ -62,6 +63,9 @@ function App() {
               </PrivateRoute>
             } />
           </Routes>
+
+          {/* Business AI Assistant - Available on all pages */}
+          <BusinessAI />
         </Router>
       </ThemeProvider>
     </AuthProvider>
