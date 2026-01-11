@@ -49,6 +49,7 @@ from .intent import IntentRecognizer, Intent
 from .payment import PaymentManager
 from .response_formatter import ResponseFormatter, ResponseStyle
 from .conversation import conversation_manager
+from .cache import get_cache, set_cache, invalidate_cache  # Database query caching
 from .services import vendor_state
 from .services.push_notifications import push_service, PushNotification
 from .services.bulk_operations import bulk_service
@@ -285,8 +286,21 @@ async def health_check():
 
 @router.get("/products")
 async def get_products():
-    """Get all products from inventory."""
-    return inventory_manager.list_products()
+    """Get all products from inventory. CACHED for 60 seconds to reduce I/O costs."""
+    cache_key = "products:all"
+    
+    # Check cache first (fast, in-memory)
+    cached = get_cache(cache_key)
+    if cached is not None:
+        return cached
+    
+    # Cache miss - fetch from database
+    products = inventory_manager.list_products()
+    
+    # Store in cache for 60 seconds
+    set_cache(cache_key, products, ttl_seconds=60)
+    
+    return products
 
 @router.post("/orders", response_model=OrderResponse)
 async def create_order(request: OrderRequest):
