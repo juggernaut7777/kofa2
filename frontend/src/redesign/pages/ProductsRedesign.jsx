@@ -9,6 +9,9 @@ const colors = {
     muted: '#A3A3CC',
     violet: '#5C5C99',
     indigo: '#292966',
+    success: '#10B981',
+    warning: '#F59E0B',
+    danger: '#EF4444'
 }
 
 const ProductsRedesign = () => {
@@ -23,25 +26,27 @@ const ProductsRedesign = () => {
     const [saving, setSaving] = useState(false)
     const [searchQuery, setSearchQuery] = useState('')
     const [selectedCategory, setSelectedCategory] = useState('All')
-    const [viewMode, setViewMode] = useState('grid') // 'grid' or 'list'
     const [showAddModal, setShowAddModal] = useState(false)
-    const [showProductDetail, setShowProductDetail] = useState(null)
+    const [showRestockModal, setShowRestockModal] = useState(null)
+    const [editProduct, setEditProduct] = useState(null)
+    const [selectedProducts, setSelectedProducts] = useState([])
     const [imagePreview, setImagePreview] = useState(null)
     const [selectedImage, setSelectedImage] = useState(null)
+    const [sortBy, setSortBy] = useState('name') // name, stock, price
 
     const [newProduct, setNewProduct] = useState({
-        name: '', price: '', stock: '', category: '', description: ''
+        name: '', price: '', stock: '', category: '', description: '', sku: ''
     })
 
-    const categories = ['All', 'Textiles', 'Electronics', 'Beauty', 'Fashion', 'Food', 'Other']
+    const [restockAmount, setRestockAmount] = useState('')
+
+    const categories = ['All', 'General', 'Supplies', 'Equipment', 'Materials', 'Other']
 
     useEffect(() => { loadProducts() }, [])
 
-    // Handle Deep Link Action
     useEffect(() => {
         if (location.state?.action === 'add') {
             setShowAddModal(true)
-            // Clear state
             navigate(location.pathname, { replace: true, state: {} })
         }
     }, [location, navigate])
@@ -50,21 +55,16 @@ const ProductsRedesign = () => {
         setLoading(true)
         try {
             const data = await apiCall(API_ENDPOINTS.PRODUCTS)
-            // Normalize product data - backend uses price_ngn and stock_level
             const normalized = (Array.isArray(data) ? data : []).map(p => ({
                 ...p,
                 price: p.price_ngn || p.price || p.selling_price || p.unit_price || p.amount || 0,
                 stock: p.stock_level ?? p.stock ?? p.quantity ?? p.inventory ?? 0,
-                category: p.category || p.type || 'General'
+                category: p.category || p.type || 'General',
+                sku: p.sku || p.product_id || p.id
             }))
             setProducts(normalized)
         } catch (e) {
-            setProducts([
-                { id: 1, name: 'Ankara Fabric Pattern Royal Blue', price: 12000, stock: 24, category: 'Textiles', image_url: 'https://images.unsplash.com/photo-1594032194509-0f8f7ad0b6a7?w=400' },
-                { id: 2, name: 'Premium Wireless Earbuds Pro', price: 45000, stock: 8, category: 'Electronics', image_url: 'https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=400' },
-                { id: 3, name: 'Luxury Face Serum Collection', price: 28000, stock: 3, category: 'Beauty', image_url: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=400' },
-                { id: 4, name: 'Designer Sneakers Limited', price: 89000, stock: 5, category: 'Fashion', image_url: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400' },
-            ])
+            setProducts([])
         } finally {
             setLoading(false)
         }
@@ -72,9 +72,13 @@ const ProductsRedesign = () => {
 
     const formatCurrency = (n) => {
         if (n == null || isNaN(n)) return '₦0'
-        if (n >= 1000000) return `₦${(n / 1000000).toFixed(1)}M`
-        if (n >= 1000) return `₦${Math.round(n / 1000)}K`
-        return `₦${n}`
+        return `₦${n.toLocaleString()}`
+    }
+
+    const getStockStatus = (stock) => {
+        if (stock === 0) return { label: 'Out of Stock', color: colors.danger, bg: isDark ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.1)' }
+        if (stock < 10) return { label: 'Low Stock', color: colors.warning, bg: isDark ? 'rgba(245, 158, 11, 0.1)' : 'rgba(245, 158, 11, 0.1)' }
+        return { label: 'In Stock', color: colors.success, bg: isDark ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.1)' }
     }
 
     const handleImageSelect = (e) => {
@@ -98,247 +102,597 @@ const ProductsRedesign = () => {
                     price: parseFloat(newProduct.price),
                     stock: parseInt(newProduct.stock) || 0,
                     category: newProduct.category || 'General',
-                    image_url: imagePreview // In real app, upload first then send URL
+                    description: newProduct.description,
+                    sku: newProduct.sku || `SKU${Date.now()}`
                 })
             })
-            await loadProducts()
+            setShowAddModal(false)
+            setNewProduct({ name: '', price: '', stock: '', category: '', description: '', sku: '' })
+            setImagePreview(null)
+            loadProducts()
         } catch (e) {
-            setProducts([...products, { id: Date.now(), ...newProduct, price: parseFloat(newProduct.price), stock: parseInt(newProduct.stock) || 0, image_url: imagePreview }])
+            alert('Failed to add product')
+        } finally {
+            setSaving(false)
         }
-        resetForm()
-        setSaving(false)
     }
 
-    const resetForm = () => {
-        setShowAddModal(false)
-        setNewProduct({ name: '', price: '', stock: '', category: '', description: '' })
-        setImagePreview(null)
-        setSelectedImage(null)
+    const handleRestock = async () => {
+        if (!restockAmount || restockAmount <= 0) { alert('Enter valid amount'); return }
+        setSaving(true)
+        try {
+            await apiCall(API_ENDPOINTS.RESTOCK_PRODUCT(showRestockModal.id), {
+                method: 'POST',
+                body: JSON.stringify({ quantity: parseInt(restockAmount) })
+            })
+            setShowRestockModal(null)
+            setRestockAmount('')
+            loadProducts()
+        } catch (e) {
+            alert('Failed to restock')
+        } finally {
+            setSaving(false)
+        }
     }
 
-    const filteredProducts = products.filter(p => {
-        const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase())
-        const matchesCategory = selectedCategory === 'All' || p.category === selectedCategory
-        return matchesSearch && matchesCategory
-    })
-
-    if (loading) {
-        return (
-            <div className={`min-h-screen flex items-center justify-center ${isDark ? 'bg-[#0a0a14]' : 'bg-[#fafaff]'}`}>
-                <div className="relative w-16 h-16">
-                    <div className={`absolute inset-0 rounded-full border-2 border-[${colors.lavender}]/30`}></div>
-                    <div className={`absolute inset-0 rounded-full border-2 border-transparent border-t-[${colors.violet}] animate-spin`}></div>
-                </div>
-            </div>
-        )
+    const handleDelete = async (id) => {
+        if (!confirm('Delete this product?')) return
+        try {
+            await apiCall(API_ENDPOINTS.DELETE_PRODUCT(id), { method: 'DELETE' })
+            loadProducts()
+        } catch (e) {
+            alert('Failed to delete')
+        }
     }
+
+    const filteredProducts = products
+        .filter(p => selectedCategory === 'All' || p.category === selectedCategory)
+        .filter(p => p.name?.toLowerCase().includes(searchQuery.toLowerCase()))
+        .sort((a, b) => {
+            if (sortBy === 'stock') return a.stock - b.stock
+            if (sortBy === 'price') return b.price - a.price
+            return a.name?.localeCompare(b.name)
+        })
+
+    const lowStockCount = products.filter(p => p.stock > 0 && p.stock < 10).length
+    const outOfStockCount = products.filter(p => p.stock === 0).length
 
     return (
-        <div className={`min-h-screen font-['SF_Pro_Display',-apple-system,sans-serif] ${isDark ? 'bg-[#0a0a14]' : 'bg-[#fafaff]'}`}>
-
-            {/* Ambient Gradient */}
-            <div className="fixed inset-0 overflow-hidden pointer-events-none">
-                <div className={`absolute top-20 -left-20 w-60 h-60 rounded-full blur-[100px] ${isDark ? `bg-[${colors.violet}]/20` : `bg-[${colors.lavender}]/20`}`}></div>
-            </div>
-
-            <div className="relative max-w-md mx-auto pb-28">
-
-                {/* Header */}
-                <header className={`sticky top-0 z-30 px-6 pt-5 pb-4 ${isDark ? 'bg-[#0a0a14]/70' : 'bg-[#fafaff]/70'} backdrop-blur-2xl`}>
-                    <div className="flex items-center justify-between mb-5">
-                        <button onClick={() => navigate('/dashboard')} className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all hover:scale-105 ${isDark ? 'bg-white/5' : 'bg-black/5'}`}>
-                            <svg className={`w-5 h-5 ${isDark ? 'text-white/70' : 'text-black/70'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 19l-7-7 7-7" />
-                            </svg>
-                        </button>
-
-                        {/* View Toggle */}
-                        <div className={`flex items-center p-1 rounded-xl ${isDark ? 'bg-white/10' : 'bg-black/5'}`}>
-                            <button onClick={() => setViewMode('grid')} className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-white shadow text-black' : 'text-gray-400'}`}>
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
-                            </button>
-                            <button onClick={() => setViewMode('list')} className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-white shadow text-black' : 'text-gray-400'}`}>
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
-                            </button>
-                        </div>
+        <div style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto' }}>
+            {/* Header */}
+            <div style={{ marginBottom: '32px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <div>
+                        <h1 style={{ fontSize: '28px', fontWeight: '700', color: isDark ? '#FFF' : '#1F2937', margin: 0 }}>
+                            Inventory Management
+                        </h1>
+                        <p style={{ fontSize: '14px', color: colors.muted, margin: '4px 0 0 0' }}>
+                            Manage your product stock levels and pricing
+                        </p>
                     </div>
-
-                    <div className="flex items-end justify-between mb-6">
-                        <div>
-                            <h1 className={`text-3xl font-bold tracking-tight mb-1 ${isDark ? 'text-white' : 'text-black'}`}>Products</h1>
-                            <p className={`text-sm ${isDark ? 'text-white/40' : 'text-black/40'}`}>{filteredProducts.length} items in stock</p>
-                        </div>
-                        <button
-                            onClick={() => setShowAddModal(true)}
-                            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white shadow-lg transition-transform hover:scale-105"
-                            style={{ background: `linear-gradient(135deg, ${colors.violet}, ${colors.indigo})` }}
-                        >
-                            + New
-                        </button>
-                    </div>
-
-                    {/* Search & Categories */}
-                    <div className="space-y-4">
-                        <div className="relative">
-                            <input
-                                type="text"
-                                value={searchQuery}
-                                onChange={e => setSearchQuery(e.target.value)}
-                                placeholder="Search inventory..."
-                                className={`w-full h-12 pl-12 pr-4 rounded-xl transition-all focus:outline-none ${isDark ? 'bg-white/5 text-white placeholder-white/30 focus:bg-white/10' : 'bg-black/5 text-black placeholder-black/30 focus:bg-black/10'}`}
-                            />
-                            <svg className={`absolute left-4 top-3.5 w-5 h-5 ${isDark ? 'text-white/30' : 'text-black/30'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
-                        </div>
-
-                        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
-                            {categories.map(cat => (
-                                <button
-                                    key={cat}
-                                    onClick={() => setSelectedCategory(cat)}
-                                    className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${selectedCategory === cat ? 'text-white' : isDark ? 'bg-white/5 text-white/50' : 'bg-black/5 text-black/50'}`}
-                                    style={selectedCategory === cat ? { background: `linear-gradient(135deg, ${colors.violet}, ${colors.indigo})` } : {}}
-                                >
-                                    {cat}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                </header>
-
-                <div className="px-6 pb-6">
-                    {filteredProducts.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-20 text-center">
-                            <span className="text-4xl mb-3">🔍</span>
-                            <p className={`text-sm ${isDark ? 'text-white/40' : 'text-black/40'}`}>No products found</p>
-                        </div>
-                    ) : (
-                        viewMode === 'grid' ? (
-                            <div className="grid grid-cols-2 gap-4">
-                                {filteredProducts.map(product => (
-                                    <div key={product.id} className={`group relative rounded-2xl overflow-hidden aspect-[4/5] ${isDark ? 'bg-white/[0.03]' : 'bg-black/[0.03]'}`}>
-                                        <div className="absolute inset-0 bg-gray-200">
-                                            {product.image_url && <img src={product.image_url} alt={product.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" loading="lazy" />}
-                                        </div>
-                                        <div className={`absolute inset-x-0 bottom-0 p-3 backdrop-blur-md transition-all ${isDark ? 'bg-black/60' : 'bg-white/80'}`}>
-                                            <p className={`text-sm font-semibold truncate ${isDark ? 'text-white' : 'text-black'}`}>{product.name}</p>
-                                            <p className={`text-xs ${isDark ? 'text-white/60' : 'text-black/60'}`}>{formatCurrency(product.price)}</p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="space-y-3">
-                                {filteredProducts.map(product => (
-                                    <div key={product.id} className={`flex items-center gap-4 p-3 rounded-2xl ${isDark ? 'bg-white/[0.03] border border-white/[0.06]' : 'bg-white border border-black/[0.04]'}`}>
-                                        <div className="w-16 h-16 rounded-xl bg-gray-200 overflow-hidden flex-shrink-0">
-                                            {product.image_url && <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" loading="lazy" />}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className={`font-semibold truncate ${isDark ? 'text-white' : 'text-black'}`}>{product.name}</p>
-                                            <p className={`text-xs ${isDark ? 'text-white/40' : 'text-black/40'}`}>{product.category} • {product.stock} left</p>
-                                        </div>
-                                        <span className={`font-bold ${isDark ? 'text-white' : 'text-black'}`}>{formatCurrency(product.price)}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        )
-                    )}
+                    <button
+                        onClick={() => setShowAddModal(true)}
+                        style={{
+                            background: `linear-gradient(135deg, ${colors.violet}, ${colors.indigo})`,
+                            color: '#FFF',
+                            border: 'none',
+                            padding: '12px 24px',
+                            borderRadius: '12px',
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            boxShadow: `0 4px 12px ${colors.violet}33`,
+                            transition: 'all 0.3s ease'
+                        }}
+                        onMouseEnter={e => e.target.style.transform = 'translateY(-2px)'}
+                        onMouseLeave={e => e.target.style.transform = 'translateY(0)'}
+                    >
+                        <span style={{ fontSize: '18px' }}>+</span> Add Product
+                    </button>
                 </div>
 
+                {/* Stock Alerts */}
+                {(lowStockCount > 0 || outOfStockCount > 0) && (
+                    <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
+                        {lowStockCount > 0 && (
+                            <div style={{
+                                padding: '12px 16px',
+                                borderRadius: '12px',
+                                background: isDark ? 'rgba(245, 158, 11, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+                                border: `1px solid ${colors.warning}`,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px'
+                            }}>
+                                <span style={{ fontSize: '20px' }}>⚠️</span>
+                                <span style={{ fontSize: '14px', color: colors.warning, fontWeight: '600' }}>
+                                    {lowStockCount} item{lowStockCount > 1 ? 's' : ''} low on stock
+                                </span>
+                            </div>
+                        )}
+                        {outOfStockCount > 0 && (
+                            <div style={{
+                                padding: '12px 16px',
+                                borderRadius: '12px',
+                                background: isDark ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                border: `1px solid ${colors.danger}`,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px'
+                            }}>
+                                <span style={{ fontSize: '20px' }}>🚫</span>
+                                <span style={{ fontSize: '14px', color: colors.danger, fontWeight: '600' }}>
+                                    {outOfStockCount} item{outOfStockCount > 1 ? 's' : ''} out of stock
+                                </span>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
+
+            {/* Filters & Search */}
+            <div style={{
+                background: isDark ? '#1F2937' : '#FFF',
+                borderRadius: '16px',
+                padding: '20px',
+                marginBottom: '24px',
+                boxShadow: isDark ? '0 4px 6px rgba(0, 0, 0, 0.3)' : '0 4px 6px rgba(0, 0, 0, 0.05)'
+            }}>
+                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <input
+                        type="text"
+                        placeholder="Search products..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        style={{
+                            flex: '1',
+                            minWidth: '200px',
+                            padding: '12px 16px',
+                            borderRadius: '12px',
+                            border: isDark ? `1px solid ${colors.violet}33` : '1px solid #E5E7EB',
+                            background: isDark ? '#111827' : '#F9FAFB',
+                            color: isDark ? '#FFF' : '#1F2937',
+                            fontSize: '14px'
+                        }}
+                    />
+                    <select
+                        value={selectedCategory}
+                        onChange={(e) => setSelectedCategory(e.target.value)}
+                        style={{
+                            padding: '12px 16px',
+                            borderRadius: '12px',
+                            border: isDark ? `1px solid ${colors.violet}33` : '1px solid #E5E7EB',
+                            background: isDark ? '#111827' : '#F9FAFB',
+                            color: isDark ? '#FFF' : '#1F2937',
+                            fontSize: '14px'
+                        }}
+                    >
+                        {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                    </select>
+                    <select
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value)}
+                        style={{
+                            padding: '12px 16px',
+                            borderRadius: '12px',
+                            border: isDark ? `1px solid ${colors.violet}33` : '1px solid #E5E7EB',
+                            background: isDark ? '#111827' : '#F9FAFB',
+                            color: isDark ? '#FFF' : '#1F2937',
+                            fontSize: '14px'
+                        }}
+                    >
+                        <option value="name">Sort by Name</option>
+                        <option value="stock">Sort by Stock</option>
+                        <option value="price">Sort by Price</option>
+                    </select>
+                </div>
+            </div>
+
+            {/* Inventory Table */}
+            {loading ? (
+                <div style={{ textAlign: 'center', padding: '60px', color: colors.muted }}>
+                    <div style={{ fontSize: '16px' }}>Loading inventory...</div>
+                </div>
+            ) : filteredProducts.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '60px', color: colors.muted }}>
+                    <div style={{ fontSize: '48px', marginBottom: '16px' }}>📦</div>
+                    <div style={{ fontSize: '16px' }}>No products found</div>
+                </div>
+            ) : (
+                <div style={{
+                    background: isDark ? '#1F2937' : '#FFF',
+                    borderRadius: '16px',
+                    overflow: 'hidden',
+                    boxShadow: isDark ? '0 4px 6px rgba(0, 0, 0, 0.3)' : '0 4px 6px rgba(0, 0, 0, 0.05)'
+                }}>
+                    {/* Table Header */}
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: '40px 2fr 120px 100px 120px 120px 140px 120px',
+                        gap: '16px',
+                        padding: '16px 20px',
+                        background: isDark ? '#111827' : '#F9FAFB',
+                        borderBottom: isDark ? '1px solid #374151' : '1px solid #E5E7EB',
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        color: colors.muted,
+                        textTransform: 'uppercase'
+                    }}>
+                        <div></div>
+                        <div>Product Name</div>
+                        <div>SKU</div>
+                        <div>Stock</div>
+                        <div>Price</div>
+                        <div>Category</div>
+                        <div>Status</div>
+                        <div style={{ textAlign: 'center' }}>Actions</div>
+                    </div>
+
+                    {/* Table Rows */}
+                    {filteredProducts.map((product, idx) => {
+                        const status = getStockStatus(product.stock)
+                        return (
+                            <div
+                                key={product.id}
+                                style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: '40px 2fr 120px 100px 120px 120px 140px 120px',
+                                    gap: '16px',
+                                    padding: '16px 20px',
+                                    borderBottom: idx < filteredProducts.length - 1 ? (isDark ? '1px solid #374151' : '1px solid #E5E7EB') : 'none',
+                                    alignItems: 'center',
+                                    transition: 'background 0.2s ease',
+                                    cursor: 'pointer'
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.background = isDark ? '#374151' : '#F3F4F6'}
+                                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                            >
+                                <div style={{ color: colors.muted, fontSize: '12px' }}>{idx + 1}</div>
+                                <div style={{
+                                    fontSize: '14px',
+                                    fontWeight: '600',
+                                    color: isDark ? '#FFF' : '#1F2937'
+                                }}>
+                                    {product.name}
+                                </div>
+                                <div style={{ fontSize: '12px', color: colors.muted, fontFamily: 'monospace' }}>
+                                    {product.sku}
+                                </div>
+                                <div style={{
+                                    fontSize: '14px',
+                                    fontWeight: '600',
+                                    color: status.color
+                                }}>
+                                    {product.stock} units
+                                </div>
+                                <div style={{ fontSize: '14px', fontWeight: '600', color: isDark ? '#FFF' : '#1F2937' }}>
+                                    {formatCurrency(product.price)}
+                                </div>
+                                <div style={{
+                                    fontSize: '12px',
+                                    padding: '4px 8px',
+                                    borderRadius: '6px',
+                                    background: isDark ? colors.violet + '22' : colors.violet + '11',
+                                    color: colors.violet,
+                                    width: 'fit-content'
+                                }}>
+                                    {product.category}
+                                </div>
+                                <div>
+                                    <span style={{
+                                        fontSize: '12px',
+                                        padding: '6px 12px',
+                                        borderRadius: '8px',
+                                        background: status.bg,
+                                        color: status.color,
+                                        fontWeight: '600',
+                                        display: 'inline-block'
+                                    }}>
+                                        {status.label}
+                                    </span>
+                                </div>
+                                <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                                    <button
+                                        onClick={() => setShowRestockModal(product)}
+                                        style={{
+                                            padding: '8px 12px',
+                                            borderRadius: '8px',
+                                            border: 'none',
+                                            background: isDark ? colors.success + '22' : colors.success + '11',
+                                            color: colors.success,
+                                            fontSize: '12px',
+                                            fontWeight: '600',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s ease'
+                                        }}
+                                        onMouseEnter={e => e.target.style.background = colors.success + '33'}
+                                        onMouseLeave={e => e.target.style.background = isDark ? colors.success + '22' : colors.success + '11'}
+                                    >
+                                        Restock
+                                    </button>
+                                    <button
+                                        onClick={() => handleDelete(product.id)}
+                                        style={{
+                                            padding: '8px 12px',
+                                            borderRadius: '8px',
+                                            border: 'none',
+                                            background: isDark ? colors.danger + '22' : colors.danger + '11',
+                                            color: colors.danger,
+                                            fontSize: '12px',
+                                            fontWeight: '600',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s ease'
+                                        }}
+                                        onMouseEnter={e => e.target.style.background = colors.danger + '33'}
+                                        onMouseLeave={e => e.target.style.background = isDark ? colors.danger + '22' : colors.danger + '11'}
+                                    >
+                                        Delete
+                                    </button>
+                                </div>
+                            </div>
+                        )
+                    })}
+                </div>
+            )}
 
             {/* Add Product Modal */}
             {showAddModal && (
-                <div className="fixed inset-0 z-50 flex items-end justify-center">
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={resetForm}></div>
-                    <div className={`relative w-full max-w-md h-[85vh] rounded-t-3xl overflow-hidden flex flex-col ${isDark ? 'bg-[#151520]' : 'bg-white'}`}>
-                        <div className="w-full flex justify-center pt-3 pb-2 flex-shrink-0">
-                            <div className={`w-12 h-1.5 rounded-full ${isDark ? 'bg-white/20' : 'bg-black/20'}`}></div>
-                        </div>
-
-                        <div className="flex-1 overflow-y-auto px-6 pb-6">
-                            <h3 className={`text-2xl font-bold mb-6 ${isDark ? 'text-white' : 'text-black'}`}>New Product</h3>
-
-                            <div className="space-y-6">
-                                {/* Image Upload */}
-                                <div
-                                    onClick={() => imageInputRef.current?.click()}
-                                    className={`relative aspect-video rounded-2xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden ${imagePreview
-                                        ? 'border-transparent'
-                                        : isDark ? 'border-white/20 hover:border-white/40 bg-white/5' : 'border-black/20 hover:border-black/40 bg-black/5'
-                                        }`}
-                                >
-                                    {imagePreview ? (
-                                        <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
-                                    ) : (
-                                        <>
-                                            <svg className={`w-8 h-8 mb-2 ${isDark ? 'text-white/40' : 'text-black/40'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                                            <span className={`text-xs font-semibold ${isDark ? 'text-white/40' : 'text-black/40'}`}>Tap to upload image</span>
-                                        </>
-                                    )}
-                                    <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
-                                </div>
-
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className={`block text-xs font-semibold uppercase tracking-wide mb-2 ${isDark ? 'text-white/40' : 'text-black/40'}`}>Name</label>
-                                        <input type="text" value={newProduct.name} onChange={e => setNewProduct({ ...newProduct, name: e.target.value })} className={`w-full rounded-xl px-4 py-3 border transition-all focus:outline-none ${isDark ? 'bg-white/[0.03] border-white/[0.06] text-white' : 'bg-black/[0.02] border-black/[0.04] text-black'}`} />
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className={`block text-xs font-semibold uppercase tracking-wide mb-2 ${isDark ? 'text-white/40' : 'text-black/40'}`}>Price (₦)</label>
-                                            <input type="number" value={newProduct.price} onChange={e => setNewProduct({ ...newProduct, price: e.target.value })} className={`w-full rounded-xl px-4 py-3 border transition-all focus:outline-none ${isDark ? 'bg-white/[0.03] border-white/[0.06] text-white' : 'bg-black/[0.02] border-black/[0.04] text-black'}`} />
-                                        </div>
-                                        <div>
-                                            <label className={`block text-xs font-semibold uppercase tracking-wide mb-2 ${isDark ? 'text-white/40' : 'text-black/40'}`}>Stock</label>
-                                            <input type="number" value={newProduct.stock} onChange={e => setNewProduct({ ...newProduct, stock: e.target.value })} className={`w-full rounded-xl px-4 py-3 border transition-all focus:outline-none ${isDark ? 'bg-white/[0.03] border-white/[0.06] text-white' : 'bg-black/[0.02] border-black/[0.04] text-black'}`} />
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <label className={`block text-xs font-semibold uppercase tracking-wide mb-2 ${isDark ? 'text-white/40' : 'text-black/40'}`}>Category</label>
-                                        <div className="grid grid-cols-3 gap-2">
-                                            {categories.filter(c => c !== 'All').map(cat => (
-                                                <button
-                                                    key={cat}
-                                                    onClick={() => setNewProduct({ ...newProduct, category: cat })}
-                                                    className={`py-2 rounded-lg text-xs font-medium transition-all ${newProduct.category === cat ? 'bg-indigo-500 text-white' : isDark ? 'bg-white/5 text-white/60' : 'bg-black/5 text-black/60'}`}
-                                                >
-                                                    {cat}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <label className={`block text-xs font-semibold uppercase tracking-wide mb-2 ${isDark ? 'text-white/40' : 'text-black/40'}`}>Description</label>
-                                        <textarea rows="3" value={newProduct.description} onChange={e => setNewProduct({ ...newProduct, description: e.target.value })} className={`w-full rounded-xl px-4 py-3 border transition-all focus:outline-none resize-none ${isDark ? 'bg-white/[0.03] border-white/[0.06] text-white' : 'bg-black/[0.02] border-black/[0.04] text-black'}`}></textarea>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className={`p-6 border-t ${isDark ? 'border-white/10' : 'border-black/5'} bg-inherit`}>
-                            <button
-                                onClick={handleAddProduct}
-                                disabled={saving}
-                                className="w-full py-4 rounded-xl text-white font-bold text-lg shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] disabled:opacity-50"
-                                style={{ background: `linear-gradient(135deg, ${colors.violet}, ${colors.indigo})` }}
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: 'rgba(0, 0, 0, 0.7)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000,
+                    padding: '20px'
+                }}
+                    onClick={() => setShowAddModal(false)}
+                >
+                    <div
+                        style={{
+                            background: isDark ? '#1F2937' : '#FFF',
+                            borderRadius: '20px',
+                            padding: '32px',
+                            maxWidth: '500px',
+                            width: '100%',
+                            maxHeight: '90vh',
+                            overflowY: 'auto',
+                            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)'
+                        }}
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <h2 style={{ fontSize: '24px', fontWeight: '700', color: isDark ? '#FFF' : '#1F2937', marginBottom: '24px' }}>
+                            Add New Product
+                        </h2>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            <input
+                                type="text"
+                                placeholder="Product Name *"
+                                value={newProduct.name}
+                                onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
+                                style={{
+                                    padding: '12px 16px',
+                                    borderRadius: '12px',
+                                    border: isDark ? `1px solid ${colors.violet}33` : '1px solid #E5E7EB',
+                                    background: isDark ? '#111827' : '#F9FAFB',
+                                    color: isDark ? '#FFF' : '#1F2937',
+                                    fontSize: '14px'
+                                }}
+                            />
+                            <input
+                                type="text"
+                                placeholder="SKU (auto-generated if empty)"
+                                value={newProduct.sku}
+                                onChange={(e) => setNewProduct({ ...newProduct, sku: e.target.value })}
+                                style={{
+                                    padding: '12px 16px',
+                                    borderRadius: '12px',
+                                    border: isDark ? `1px solid ${colors.violet}33` : '1px solid #E5E7EB',
+                                    background: isDark ? '#111827' : '#F9FAFB',
+                                    color: isDark ? '#FFF' : '#1F2937',
+                                    fontSize: '14px'
+                                }}
+                            />
+                            <input
+                                type="number"
+                                placeholder="Price (₦) *"
+                                value={newProduct.price}
+                                onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
+                                style={{
+                                    padding: '12px 16px',
+                                    borderRadius: '12px',
+                                    border: isDark ? `1px solid ${colors.violet}33` : '1px solid #E5E7EB',
+                                    background: isDark ? '#111827' : '#F9FAFB',
+                                    color: isDark ? '#FFF' : '#1F2937',
+                                    fontSize: '14px'
+                                }}
+                            />
+                            <input
+                                type="number"
+                                placeholder="Initial Stock"
+                                value={newProduct.stock}
+                                onChange={(e) => setNewProduct({ ...newProduct, stock: e.target.value })}
+                                style={{
+                                    padding: '12px 16px',
+                                    borderRadius: '12px',
+                                    border: isDark ? `1px solid ${colors.violet}33` : '1px solid #E5E7EB',
+                                    background: isDark ? '#111827' : '#F9FAFB',
+                                    color: isDark ? '#FFF' : '#1F2937',
+                                    fontSize: '14px'
+                                }}
+                            />
+                            <select
+                                value={newProduct.category}
+                                onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })}
+                                style={{
+                                    padding: '12px 16px',
+                                    borderRadius: '12px',
+                                    border: isDark ? `1px solid ${colors.violet}33` : '1px solid #E5E7EB',
+                                    background: isDark ? '#111827' : '#F9FAFB',
+                                    color: isDark ? '#FFF' : '#1F2937',
+                                    fontSize: '14px'
+                                }}
                             >
-                                {saving ? 'Creating Product...' : 'Create Product'}
-                            </button>
+                                <option value="">Select Category</option>
+                                {categories.filter(c => c !== 'All').map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                            </select>
+                            <textarea
+                                placeholder="Description (optional)"
+                                value={newProduct.description}
+                                onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
+                                rows={3}
+                                style={{
+                                    padding: '12px 16px',
+                                    borderRadius: '12px',
+                                    border: isDark ? `1px solid ${colors.violet}33` : '1px solid #E5E7EB',
+                                    background: isDark ? '#111827' : '#F9FAFB',
+                                    color: isDark ? '#FFF' : '#1F2937',
+                                    fontSize: '14px',
+                                    fontFamily: 'inherit',
+                                    resize: 'vertical'
+                                }}
+                            />
+                            <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+                                <button
+                                    onClick={handleAddProduct}
+                                    disabled={saving}
+                                    style={{
+                                        flex: 1,
+                                        padding: '14px',
+                                        borderRadius: '12px',
+                                        border: 'none',
+                                        background: `linear-gradient(135deg, ${colors.violet}, ${colors.indigo})`,
+                                        color: '#FFF',
+                                        fontSize: '14px',
+                                        fontWeight: '600',
+                                        cursor: saving ? 'not-allowed' : 'pointer',
+                                        opacity: saving ? 0.6 : 1
+                                    }}
+                                >
+                                    {saving ? 'Adding...' : 'Add Product'}
+                                </button>
+                                <button
+                                    onClick={() => setShowAddModal(false)}
+                                    style={{
+                                        flex: 1,
+                                        padding: '14px',
+                                        borderRadius: '12px',
+                                        border: isDark ? '1px solid #374151' : '1px solid #E5E7EB',
+                                        background: 'transparent',
+                                        color: isDark ? '#FFF' : '#1F2937',
+                                        fontSize: '14px',
+                                        fontWeight: '600',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    Cancel
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
             )}
 
-            <style>{`
-                .no-scrollbar::-webkit-scrollbar { display: none; }
-                .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-            `}</style>
+            {/* Restock Modal */}
+            {showRestockModal && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: 'rgba(0, 0, 0, 0.7)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000
+                }}
+                    onClick={() => setShowRestockModal(null)}
+                >
+                    <div
+                        style={{
+                            background: isDark ? '#1F2937' : '#FFF',
+                            borderRadius: '20px',
+                            padding: '32px',
+                            maxWidth: '400px',
+                            width: '100%',
+                            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)'
+                        }}
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <h2 style={{ fontSize: '20px', fontWeight: '700', color: isDark ? '#FFF' : '#1F2937', marginBottom: '8px' }}>
+                            Restock Product
+                        </h2>
+                        <p style={{ fontSize: '14px', color: colors.muted, marginBottom: '24px' }}>
+                            {showRestockModal.name}
+                        </p>
+                        <div style={{ marginBottom: '16px' }}>
+                            <div style={{ fontSize: '12px', color: colors.muted, marginBottom: '4px' }}>
+                                Current Stock: <span style={{ fontWeight: '600', color: isDark ? '#FFF' : '#1F2937' }}>{showRestockModal.stock} units</span>
+                            </div>
+                        </div>
+                        <input
+                            type="number"
+                            placeholder="Add quantity"
+                            value={restockAmount}
+                            onChange={(e) => setRestockAmount(e.target.value)}
+                            style={{
+                                width: '100%',
+                                padding: '12px 16px',
+                                borderRadius: '12px',
+                                border: isDark ? `1px solid ${colors.violet}33` : '1px solid #E5E7EB',
+                                background: isDark ? '#111827' : '#F9FAFB',
+                                color: isDark ? '#FFF' : '#1F2937',
+                                fontSize: '14px',
+                                marginBottom: '20px'
+                            }}
+                        />
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                            <button
+                                onClick={handleRestock}
+                                disabled={saving}
+                                style={{
+                                    flex: 1,
+                                    padding: '14px',
+                                    borderRadius: '12px',
+                                    border: 'none',
+                                    background: colors.success,
+                                    color: '#FFF',
+                                    fontSize: '14px',
+                                    fontWeight: '600',
+                                    cursor: saving ? 'not-allowed' : 'pointer',
+                                    opacity: saving ? 0.6 : 1
+                                }}
+                            >
+                                {saving ? 'Updating...' : 'Confirm Restock'}
+                            </button>
+                            <button
+                                onClick={() => setShowRestockModal(null)}
+                                style={{
+                                    flex: 1,
+                                    padding: '14px',
+                                    borderRadius: '12px',
+                                    border: isDark ? '1px solid #374151' : '1px solid #E5E7EB',
+                                    background: 'transparent',
+                                    color: isDark ? '#FFF' : '#1F2937',
+                                    fontSize: '14px',
+                                    fontWeight: '600',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

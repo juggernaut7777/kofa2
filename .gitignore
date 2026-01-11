@@ -37,6 +37,7 @@ env/
 
 # Environment variables
 .env
+.env.txt
 
 # Testing
 .pytest_cache/

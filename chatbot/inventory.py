@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
+from contextlib import contextmanager
 from .database import SessionLocal
 from .models import Product as ProductModel, User as UserModel
 import uuid
@@ -43,6 +44,7 @@ class InventoryManager:
     """
     Manages product inventory using Azure SQL with SQLAlchemy.
     All operations use database sessions for persistence.
+    PERFORMANCE OPTIMIZED: Uses context managers for efficient session management.
     """
 
     def __init__(self, user_id: str = DEFAULT_USER_ID):
@@ -53,19 +55,27 @@ class InventoryManager:
             user_id: Vendor/user ID (defaults to default vendor for single-vendor mode)
         """
         self.user_id = user_id
-        self._db: Optional[Session] = None
 
-    def _get_db(self) -> Session:
-        """Get database session (creates new if needed)."""
-        if self._db is None:
-            self._db = SessionLocal()
-        return self._db
-
-    def _close_db(self):
-        """Close database session."""
-        if self._db:
-            self._db.close()
-            self._db = None
+    @contextmanager
+    def _get_db_session(self):
+        """
+        Context manager for database sessions - PERFORMANCE OPTIMIZED.
+        Automatically handles commit/rollback and cleanup.
+        
+        Usage:
+            with self._get_db_session() as db:
+                # Use db session
+                pass
+        """
+        db = SessionLocal()
+        try:
+            yield db
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
 
     def _log_debug(self, message: str, data: dict = None):
         """Log debug information to the debug log file."""
@@ -193,8 +203,7 @@ class InventoryManager:
         Search for a product by name or voice tag.
         Returns the first matching product as a Product object.
         """
-        db = self._get_db()
-        try:
+        with self._get_db_session() as db:
             query_lower = query.lower()
 
             # Search by name (case-insensitive)
@@ -218,13 +227,10 @@ class InventoryManager:
                         return self._dict_to_product(self._model_to_dict(prod))
 
             return None
-        finally:
-            self._close_db()
 
     def get_product_by_name(self, name: str) -> Optional[dict]:
         """Finds a product by name (case-insensitive partial match or voice tag)."""
-        db = self._get_db()
-        try:
+        with self._get_db_session() as db:
             name_lower = name.lower()
             query_words = name_lower.split()
 
@@ -271,13 +277,10 @@ class InventoryManager:
                         return self._model_to_dict(prod)
 
             return None
-        finally:
-            self._close_db()
 
     def get_product_by_id(self, product_id: str) -> Optional[dict]:
         """Get a product by its ID."""
-        db = self._get_db()
-        try:
+        with self._get_db_session() as db:
             product = db.query(ProductModel).filter(
                 ProductModel.id == product_id,
                 ProductModel.user_id == self.user_id
@@ -286,13 +289,10 @@ class InventoryManager:
             if product:
                 return self._model_to_dict(product)
             return None
-        finally:
-            self._close_db()
 
     def check_stock(self, product_id: str) -> int:
         """Check the stock level for a product by ID."""
-        db = self._get_db()
-        try:
+        with self._get_db_session() as db:
             product = db.query(ProductModel).filter(
                 ProductModel.id == product_id,
                 ProductModel.user_id == self.user_id
@@ -301,8 +301,6 @@ class InventoryManager:
             if product:
                 return int(product.stock_level)
             return 0
-        finally:
-            self._close_db()
 
     def decrement_stock(self, product_id: str, quantity: int) -> bool:
         """
@@ -317,46 +315,42 @@ class InventoryManager:
         })
         # #endregion
 
-        db = self._get_db()
-        try:
-            # Use SQLAlchemy ORM to find and update the product
-            from .models import Product as ProductModel
-            
-            product = db.query(ProductModel).filter(
-                ProductModel.id == product_id,
-                ProductModel.stock_level >= quantity
-            ).first()
-            
-            if not product:
-                # Either product doesn't exist or insufficient stock
-                self._log_debug("decrement_stock failed - no matching product", {
+        with self._get_db_session() as db:
+            try:
+                # Use SQLAlchemy ORM to find and update the product
+                from .models import Product as ProductModel
+                
+                product = db.query(ProductModel).filter(
+                    ProductModel.id == product_id,
+                    ProductModel.stock_level >= quantity
+                ).first()
+                
+                if not product:
+                    # Either product doesn't exist or insufficient stock
+                    self._log_debug("decrement_stock failed - no matching product", {
+                        "product_id": product_id,
+                        "quantity": quantity
+                    })
+                    return False
+                
+                # Decrement stock
+                product.stock_level = product.stock_level - quantity
+                
+                self._log_debug("decrement_stock completed", {
                     "product_id": product_id,
-                    "quantity": quantity
+                    "success": True,
+                    "new_stock": product.stock_level
                 })
-                return False
-            
-            # Decrement stock
-            product.stock_level = product.stock_level - quantity
-            db.commit()
-            
-            self._log_debug("decrement_stock completed", {
-                "product_id": product_id,
-                "success": True,
-                "new_stock": product.stock_level
-            })
-            
-            return True
+                
+                return True
 
-        except Exception as e:
-            db.rollback()
-            self._log_debug("decrement_stock error", {
-                "product_id": product_id,
-                "error": str(e)
-            })
-            logger.error(f"Error in decrement_stock for product {product_id}: {e}")
-            return False
-        finally:
-            self._close_db()
+            except Exception as e:
+                self._log_debug("decrement_stock error", {
+                    "product_id": product_id,
+                    "error": str(e)
+                })
+                logger.error(f"Error in decrement_stock for product {product_id}: {e}")
+                return False
 
     def _decrement_stock_fallback(self, product_id: str, quantity: int) -> bool:
         """
@@ -397,8 +391,7 @@ class InventoryManager:
 
     def update_stock(self, product_id: str, quantity_delta: int) -> Optional[dict]:
         """Updates stock level (positive for restock, negative for sale)."""
-        db = self._get_db()
-        try:
+        with self._get_db_session() as db:
             product = db.query(ProductModel).filter(
                 ProductModel.id == product_id,
                 ProductModel.user_id == self.user_id
@@ -408,20 +401,14 @@ class InventoryManager:
                 return None
 
             product.stock_level = max(0, product.stock_level + quantity_delta)
-            db.commit()
+            db.flush()
             db.refresh(product)
 
             return {"stock_level": int(product.stock_level)}
-        except Exception as e:
-            db.rollback()
-            return None
-        finally:
-            self._close_db()
 
     def update_product_fields(self, product_id: str, updates: dict) -> Optional[dict]:
         """Update product fields (name, price, stock, description, etc.)."""
-        db = self._get_db()
-        try:
+        with self._get_db_session() as db:
             product = db.query(ProductModel).filter(
                 ProductModel.id == product_id,
                 ProductModel.user_id == self.user_id
@@ -447,49 +434,37 @@ class InventoryManager:
             if "image_url" in updates:
                 product.image_url = updates["image_url"]
 
-            db.commit()
+            db.flush()
             db.refresh(product)
 
             return self._model_to_dict(product)
-        except Exception as e:
-            db.rollback()
-            return None
-        finally:
-            self._close_db()
 
     def delete_product(self, product_id: str) -> bool:
         """Delete a product from inventory."""
-        db = self._get_db()
-        try:
-            product = db.query(ProductModel).filter(
-                ProductModel.id == product_id,
-                ProductModel.user_id == self.user_id
-            ).first()
+        with self._get_db_session() as db:
+            try:
+                product = db.query(ProductModel).filter(
+                    ProductModel.id == product_id,
+                    ProductModel.user_id == self.user_id
+                ).first()
 
-            if not product:
+                if not product:
+                    return False
+
+                db.delete(product)
+                return True
+            except Exception as e:
+                logger.error(f"Error deleting product {product_id}: {e}")
                 return False
 
-            db.delete(product)
-            db.commit()
-            return True
-        except Exception as e:
-            db.rollback()
-            logger.error(f"Error deleting product {product_id}: {e}")
-            return False
-        finally:
-            self._close_db()
-
     def list_products(self) -> List[dict]:
-        """List all products."""
-        db = self._get_db()
-        try:
+        """List all products - PERFORMANCE OPTIMIZED."""
+        with self._get_db_session() as db:
             products = db.query(ProductModel).filter(
                 ProductModel.user_id == self.user_id
             ).all()
 
             return [self._model_to_dict(p) for p in products]
-        finally:
-            self._close_db()
 
     def create_order(self, customer_phone: str, items: List[Dict], total_amount_ngn: float) -> Optional[Order]:
         """Create a new order (legacy method - kept for compatibility)."""
@@ -500,15 +475,15 @@ class InventoryManager:
     def smart_search_products(self, query: str) -> List[dict]:
         """
         Smart product search that ALWAYS tries to find matching products.
-        Uses multiple strategies to avoid false "not found" responses.
+        Uses multiple strategies to avoid false \"not found\" responses.
+        PERFORMANCE OPTIMIZED: Uses context manager for session handling.
         
         Returns: List of matching products (may be empty only if truly nothing matches)
         """
         from fuzzywuzzy import fuzz
         from .conversation import expand_query_with_synonyms, get_all_synonyms
 
-        db = self._get_db()
-        try:
+        with self._get_db_session() as db:
             query_lower = query.lower().strip()
             query_words = query_lower.split()
 
@@ -640,8 +615,6 @@ class InventoryManager:
                                     results.append(prod_dict)
 
             return results
-        finally:
-            self._close_db()
 
     def find_product_by_selection(self, selection: str, product_list: List[dict]) -> Optional[dict]:
         """
