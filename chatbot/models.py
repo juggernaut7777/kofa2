@@ -1,10 +1,16 @@
-"""SQLAlchemy database models for KOFA Commerce Engine."""
-from sqlalchemy import Column, String, Integer, Float, DateTime, ForeignKey, Text, JSON, CheckConstraint
-from sqlalchemy.dialects.mssql import UNIQUEIDENTIFIER
+"""SQLAlchemy database models for KOFA Commerce Engine.
+Compatible with both MySQL and SQL Server.
+"""
+from sqlalchemy import Column, String, Integer, Float, DateTime, ForeignKey, Text, CheckConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
 import uuid
+import os
+
+# Use String(36) for UUIDs - works with both MySQL and SQL Server
+# UNIQUEIDENTIFIER is SQL Server specific
+GUID = String(36)
 
 Base = declarative_base()
 
@@ -13,7 +19,7 @@ class User(Base):
     """User/Vendor model for merchants."""
     __tablename__ = "users"
     
-    id = Column(UNIQUEIDENTIFIER, primary_key=True, default=lambda: str(uuid.uuid4()))
+    id = Column(GUID, primary_key=True, default=lambda: str(uuid.uuid4()))
     phone = Column(String(20), unique=True, nullable=False, index=True)
     email = Column(String(255), nullable=True)
     business_name = Column(String(255), nullable=True)
@@ -36,8 +42,8 @@ class Product(Base):
     """Product inventory model."""
     __tablename__ = "products"
     
-    id = Column(UNIQUEIDENTIFIER, primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(UNIQUEIDENTIFIER, ForeignKey("users.id"), nullable=False, index=True)
+    id = Column(GUID, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(GUID, ForeignKey("users.id"), nullable=False, index=True)
     name = Column(String(255), nullable=False)
     price_ngn = Column(Float, nullable=False)
     stock_level = Column(Integer, default=0, nullable=False)
@@ -57,8 +63,8 @@ class Order(Base):
     """Order model for customer purchases."""
     __tablename__ = "orders"
     
-    id = Column(UNIQUEIDENTIFIER, primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(UNIQUEIDENTIFIER, ForeignKey("users.id"), nullable=False, index=True)
+    id = Column(GUID, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(GUID, ForeignKey("users.id"), nullable=False, index=True)
     customer_phone = Column(String(20), nullable=False, index=True)
     total_amount = Column(Float, nullable=False)
     status = Column(String(20), nullable=False, default="pending", index=True)
@@ -86,9 +92,9 @@ class OrderItem(Base):
     """Order items linking orders to products."""
     __tablename__ = "order_items"
     
-    id = Column(UNIQUEIDENTIFIER, primary_key=True, default=lambda: str(uuid.uuid4()))
-    order_id = Column(UNIQUEIDENTIFIER, ForeignKey("orders.id"), nullable=False, index=True)
-    product_id = Column(UNIQUEIDENTIFIER, ForeignKey("products.id"), nullable=False)
+    id = Column(GUID, primary_key=True, default=lambda: str(uuid.uuid4()))
+    order_id = Column(GUID, ForeignKey("orders.id"), nullable=False, index=True)
+    product_id = Column(GUID, ForeignKey("products.id"), nullable=False)
     product_name = Column(String(255), nullable=False)  # Denormalized for historical accuracy
     quantity = Column(Integer, nullable=False)
     price = Column(Float, nullable=False)  # Price at time of order
