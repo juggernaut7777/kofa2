@@ -15,3 +15,4 @@ pymssql
 sqlalchemy
 pymysql
 cryptography
+opencensus-ext-azure
