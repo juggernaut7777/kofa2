@@ -1,0 +1,54 @@
+name: Deploy KOFA Backend to Azure VM
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'chatbot/**'
+      - 'requirements.txt'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Deploy to Azure VM via SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: 134.112.17.54
+          username: ${{ secrets.VM_USERNAME }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          port: 22
+          script: |
+            echo "🚀 Starting deployment..."
+            cd ~/kofa
+            
+            # Pull latest changes
+            echo "📥 Pulling latest code..."
+            git pull origin main
+            
+            # Install dependencies (if requirements.txt changed)
+            echo "📦 Installing dependencies..."
+            pip install -r requirements.txt --upgrade
+            
+            # Restart backend service
+            echo "🔄 Restarting backend..."
+            sudo systemctl restart kofa-backend
+            
+            # Verify service is running
+            sleep 3
+            if systemctl is-active --quiet kofa-backend; then
+              echo "✅ Deployment successful!"
+            else
+              echo "❌ Deployment failed - service not running"
+              exit 1
+            fi
+            
+      - name: Notify deployment status
+        if: always()
+        run: |
+          if [ ${{ job.status }} == 'success' ]; then
+            echo "✅ KOFA Backend deployed successfully to Azure VM"
+          else
+            echo "❌ Deployment failed"
+          fi

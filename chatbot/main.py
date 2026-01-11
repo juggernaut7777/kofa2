@@ -214,6 +214,23 @@ class MessageResponse(BaseModel):
     product: Optional[dict] = None
     payment_link: Optional[str] = None
 
+
+# ===== BUSINESS AI MODELS =====
+class BusinessAIRequest(BaseModel):
+    """Business AI assistant request."""
+    user_id: str  # Business owner ID
+    message: str  # Natural language command
+    conversation_id: Optional[str] = None  # For context tracking
+
+
+class BusinessAIResponse(BaseModel):
+    """Business AI assistant response."""
+    response: str
+    action_taken: Optional[str] = None
+    action_result: Optional[str] = None
+    products_count: int = 0
+    conversation_id: str
+
 class ProductResponse(BaseModel):
     id: str
     name: str
@@ -383,13 +400,79 @@ async def create_order(request: OrderRequest):
     )
 
 
+# ===== BUSINESS AI ENDPOINT =====
+# Conversation history storage for Business AI
+BUSINESS_AI_CONVERSATIONS: Dict[str, List[Dict]] = {}
+
+@router.post("/business-ai")
+async def business_ai_chat(request: BusinessAIRequest):
+    """
+    Business AI Assistant - Manage your business with natural language.
+    
+    Examples:
+    - "Add 50 peppers at 500 naira each"
+    - "I just sold 2 red shoes"
+    - "Show me low stock items"
+    - "What's my best seller?"
+    - "Generate invoice for 08012345678"
+    
+    Uses FREE Groq AI API (14,400 requests/day)
+    """
+    try:
+        from .ai_brain import process_business_command
+        
+        # Get or create conversation ID
+        conversation_id = request.conversation_id or str(uuid.uuid4())
+        
+        # Get conversation history
+        history = BUSINESS_AI_CONVERSATIONS.get(conversation_id, [])
+        
+        # Process with AI
+        result = await process_business_command(
+            message=request.message,
+            user_id=request.user_id,
+            inventory_manager=inventory_manager,
+            conversation_history=history
+        )
+        
+        # Update conversation history
+        history.append({"role": "user", "content": request.message})
+        history.append({"role": "assistant", "content": result["response"]})
+        
+        # Keep only last 10 messages for context
+        BUSINESS_AI_CONVERSATIONS[conversation_id] = history[-10:]
+        
+        return BusinessAIResponse(
+            response=result["response"],
+            action_taken=result.get("action_taken"),
+            action_result=result.get("action_result"),
+            products_count=result.get("products_count", 0),
+            conversation_id=conversation_id
+        )
+        
+    except ImportError as e:
+        # Fallback if AI module not available
+        return BusinessAIResponse(
+            response=f"AI module not loaded. Please ensure GROQ_API_KEY is set. Error: {str(e)}",
+            conversation_id=request.conversation_id or str(uuid.uuid4())
+        )
+    except Exception as e:
+        logger.error(f"Business AI error: {e}")
+        return BusinessAIResponse(
+            response=f"Sorry, I encountered an error: {str(e)}. Please try again.",
+            conversation_id=request.conversation_id or str(uuid.uuid4())
+        )
+
+
 @router.get("/orders")
 async def get_orders(status: Optional[str] = None):
     """
     Get all orders for merchant dashboard.
     Fetches from database, falling back to ORDERS_STORE + mock demo orders.
+    PERFORMANCE OPTIMIZED: Uses eager loading to prevent N+1 queries.
     """
     from datetime import timedelta
+    from sqlalchemy.orm import joinedload
     
     all_orders = []
     
@@ -400,15 +483,15 @@ async def get_orders(status: Optional[str] = None):
         
         db = SessionLocal()
         try:
-            # Query orders with their items
-            query = db.query(OrderModel)
+            # Query orders with their items - EAGER LOADING to prevent N+1
+            query = db.query(OrderModel).options(joinedload(OrderModel.order_items))
             if status:
                 query = query.filter(OrderModel.status == status.lower())
             
             db_orders = query.order_by(OrderModel.created_at.desc()).all()
             
             for order in db_orders:
-                # Get order items
+                # Get order items (already loaded via joinedload)
                 items = []
                 for item in order.order_items:
                     items.append({
