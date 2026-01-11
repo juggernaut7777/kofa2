@@ -9,11 +9,8 @@ from opencensus.ext.azure.trace_exporter import AzureExporter
 from opencensus.trace.samplers import AlwaysOnSampler
 from opencensus.trace.tracer import Tracer
 
-# Application Insights connection string
-APPINSIGHTS_CONNECTION_STRING = os.getenv(
-    "APPINSIGHTS_CONNECTION_STRING",
-    "InstrumentationKey=de828b35-2c79-4751-b13d-49a8aef8e8b1;IngestionEndpoint=https://polandcentral-0.in.applicationinsights.azure.com/;LiveEndpoint=https://polandcentral.livediagnostics.monitor.azure.com/"
-)
+# Application Insights connection string - MUST be set via environment variable
+APPINSIGHTS_CONNECTION_STRING = os.getenv("APPINSIGHTS_CONNECTION_STRING", "")
 
 # Set up logger with Azure handler
 logger = logging.getLogger(__name__)
