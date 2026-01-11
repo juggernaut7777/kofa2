@@ -20,8 +20,11 @@ const DashboardRedesign = () => {
     const { theme, toggleTheme } = useContext(ThemeContext)
     const isDark = theme === 'dark'
 
-    const [stats, setStats] = useState({ revenue: 2450000, orders: 18, customers: 42, profit: 890000 })
+    // Start with null/0 - NO FAKE DATA!
+    const [stats, setStats] = useState({ revenue: 0, orders: 0, customers: 0, profit: 0 })
     const [recentOrders, setRecentOrders] = useState([])
+    const [products, setProducts] = useState([])
+    const [lowStock, setLowStock] = useState([])
     const [loading, setLoading] = useState(true)
     const [greeting, setGreeting] = useState('')
 
@@ -34,44 +37,49 @@ const DashboardRedesign = () => {
     }, [])
 
     const loadData = async () => {
-        // Load data progressively - don't wait for all APIs
-        // Start with fallback values immediately
-        setLoading(false)
+        try {
+            // Load all data in parallel for speed
+            const [ordersRes, productsRes, profitRes] = await Promise.allSettled([
+                apiCall(API_ENDPOINTS.ORDERS),
+                apiCall(API_ENDPOINTS.PRODUCTS),
+                apiCall(API_ENDPOINTS.PROFIT_SUMMARY)
+            ])
 
-        // Load summary (slowest, but most important)
-        apiCall(API_ENDPOINTS.DASHBOARD_SUMMARY)
-            .then(summary => {
-                if (summary) {
-                    setStats(prev => ({
-                        ...prev,
-                        revenue: summary.total_revenue || prev.revenue,
-                        orders: summary.pending_orders || prev.orders,
-                        customers: summary.new_customers || prev.customers
-                    }))
-                }
-            })
-            .catch(() => { })
+            // Process orders
+            if (ordersRes.status === 'fulfilled' && Array.isArray(ordersRes.value)) {
+                const orders = ordersRes.value
+                setRecentOrders(orders.slice(0, 4))
+                const pendingOrders = orders.filter(o => o.status === 'pending').length
+                const totalRevenue = orders.reduce((sum, o) => sum + (o.total_amount || 0), 0)
+                const uniqueCustomers = new Set(orders.map(o => o.customer_phone)).size
+                setStats(prev => ({
+                    ...prev,
+                    orders: pendingOrders || orders.length,
+                    revenue: totalRevenue,
+                    customers: uniqueCustomers
+                }))
+            }
 
-        // Load orders for recent activity
-        apiCall(API_ENDPOINTS.ORDERS)
-            .then(orders => {
-                if (Array.isArray(orders)) {
-                    setRecentOrders(orders.slice(0, 4))
-                }
-            })
-            .catch(() => { })
+            // Process products
+            if (productsRes.status === 'fulfilled' && Array.isArray(productsRes.value)) {
+                setProducts(productsRes.value)
+                // Calculate low stock items
+                const lowStockItems = productsRes.value.filter(p => p.stock_level < 5)
+                setLowStock(lowStockItems)
+            }
 
-        // Load profit summary (not PROFIT_TODAY which returns 404)
-        apiCall(API_ENDPOINTS.PROFIT_SUMMARY)
-            .then(profit => {
-                if (profit) {
-                    setStats(prev => ({
-                        ...prev,
-                        profit: profit.net_profit_ngn || profit.total_profit || prev.profit
-                    }))
-                }
-            })
-            .catch(() => { })
+            // Process profit
+            if (profitRes.status === 'fulfilled' && profitRes.value) {
+                setStats(prev => ({
+                    ...prev,
+                    profit: profitRes.value.net_profit_ngn || profitRes.value.total_profit || 0
+                }))
+            }
+        } catch (error) {
+            console.error('Dashboard load error:', error)
+        } finally {
+            setLoading(false)
+        }
     }
 
     const formatCurrency = (n) => {
@@ -81,14 +89,32 @@ const DashboardRedesign = () => {
         return `₦${n}`
     }
 
-    // --- Chart Components ---
+    // --- Chart Components (Now using REAL data!) ---
 
     const DonutChart = () => {
-        const data = [
-            { label: 'Shoes', value: 45, color: colors.violet },
-            { label: 'Bags', value: 30, color: colors.lavender },
-            { label: 'Clothing', value: 25, color: colors.indigo },
-        ]
+        // Calculate category distribution from real products
+        const categoryData = products.reduce((acc, product) => {
+            const cat = product.category || 'Other'
+            acc[cat] = (acc[cat] || 0) + 1
+            return acc
+        }, {})
+
+        const total = products.length || 1
+        const chartColors = [colors.violet, colors.lavender, colors.indigo, colors.muted]
+
+        const data = Object.entries(categoryData)
+            .slice(0, 4)
+            .map(([label, count], i) => ({
+                label,
+                value: Math.round((count / total) * 100),
+                color: chartColors[i % chartColors.length]
+            }))
+
+        // Fallback if no products
+        if (data.length === 0) {
+            data.push({ label: 'No products', value: 100, color: colors.muted })
+        }
+
         const size = 100
         const strokeWidth = 12
         const radius = (size - strokeWidth) / 2
@@ -121,8 +147,8 @@ const DashboardRedesign = () => {
                         })}
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <span className={`text-xs ${isDark ? 'text-white/50' : 'text-black/50'}`}>Total</span>
-                        <span className={`text-lg font-bold ${isDark ? 'text-white' : 'text-black'}`}>100%</span>
+                        <span className={`text-xs ${isDark ? 'text-white/50' : 'text-black/50'}`}>Products</span>
+                        <span className={`text-lg font-bold ${isDark ? 'text-white' : 'text-black'}`}>{products.length}</span>
                     </div>
                 </div>
                 <div className="space-y-2">
@@ -138,15 +164,21 @@ const DashboardRedesign = () => {
     }
 
     const BarChart = () => {
-        const data = [
-            { day: 'M', value: 60 },
-            { day: 'T', value: 45 },
-            { day: 'W', value: 80 },
-            { day: 'T', value: 55 },
-            { day: 'F', value: 90 },
-            { day: 'S', value: 70 },
-            { day: 'S', value: 40 },
-        ]
+        // Calculate orders per day from real data
+        const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
+        const ordersByDay = recentOrders.reduce((acc, order) => {
+            const day = new Date(order.created_at).getDay()
+            acc[day] = (acc[day] || 0) + 1
+            return acc
+        }, {})
+
+        const maxOrders = Math.max(...Object.values(ordersByDay), 1)
+
+        const data = days.map((day, i) => ({
+            day,
+            value: ordersByDay[i] ? Math.round((ordersByDay[i] / maxOrders) * 100) : 10
+        }))
+
         return (
             <div className="flex items-end justify-between h-32 w-full gap-2 pt-4">
                 {data.map((item, i) => (
