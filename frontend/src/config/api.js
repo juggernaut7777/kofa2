@@ -1,6 +1,11 @@
 // API Configuration - Points to Azure VM backend (faster than Heroku!)
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://134.112.17.54:8000';
 
+// Import browser-side cache utilities
+import { getCache, setCache, clearCache, CACHE_KEYS } from '../utils/cache';
+
+export { getCache, setCache, clearCache, CACHE_KEYS };
+
 export const API_ENDPOINTS = {
   // Products
   PRODUCTS: '/products',
@@ -133,4 +138,38 @@ export const apiCall = async (endpoint, options = {}) => {
     console.error('API Call Error:', error);
     throw error;
   }
+};
+
+
+/**
+ * Cached API call with stale-while-revalidate strategy.
+ * Returns cached data INSTANTLY, then refreshes in background.
+ * 
+ * @param {string} endpoint - API endpoint
+ * @param {string} cacheKey - Key to store in localStorage
+ * @param {function} onUpdate - Called when fresh data arrives (optional)
+ * @returns {Promise} - Resolves with data (cached or fresh)
+ */
+export const cachedApiCall = async (endpoint, cacheKey, onUpdate = null) => {
+  // Check cache first
+  const cached = getCache(cacheKey);
+
+  if (cached?.data) {
+    // Return cached data immediately
+    // If expired, fetch fresh data in background
+    if (cached.isExpired) {
+      apiCall(endpoint)
+        .then(freshData => {
+          setCache(cacheKey, freshData);
+          if (onUpdate) onUpdate(freshData);
+        })
+        .catch(() => { }); // Silently fail background refresh
+    }
+    return cached.data;
+  }
+
+  // No cache - fetch from API
+  const data = await apiCall(endpoint);
+  setCache(cacheKey, data);
+  return data;
 };
