@@ -8,32 +8,52 @@ export default {
   theme: {
     extend: {
       colors: {
-        // KOFA Brand Primary Colors
-        kofa: {
-          cobalt: '#0047AB',      // Primary brand color
-          navy: '#000080',         // Dark accents, headers
-          sky: '#82C8E5',          // Light accents, highlights
-          steel: '#6D8196',        // Neutral, muted elements
+        // Semantic Backgrounds
+        app: 'var(--bg-app)',
+        surface: {
+          1: 'var(--bg-surface-1)',
+          2: 'var(--bg-surface-2)',
+          3: 'var(--bg-surface-3)',
         },
-        // Status/Indicator Colors
-        success: '#10B981',        // Emerald - positive actions
-        warning: '#F59E0B',        // Amber - alerts
-        danger: '#F43F5E',         // Rose - errors, expenses
-        // Dark mode backgrounds
-        dark: {
-          bg: '#0a0a0f',
-          card: '#12121a',
-          border: '#1e1e2e',
-        }
+
+        // Semantic Text
+        main: 'var(--text-main)',
+        muted: 'var(--text-muted)',
+        dim: 'var(--text-dim)',
+
+        // Semantic Borders
+        border: {
+          subtle: 'var(--border-subtle)',
+          strong: 'var(--border-strong)',
+        },
+
+        // Brand Colors
+        brand: {
+          primary: 'var(--brand-primary)',
+          glow: 'var(--brand-glow)',
+        },
       },
       backgroundImage: {
-        'kofa-gradient': 'linear-gradient(135deg, #0047AB 0%, #000080 100%)',
-        'kofa-gradient-light': 'linear-gradient(135deg, #82C8E5 0%, #0047AB 100%)',
+        'gradient-brand': 'var(--brand-gradient)',
       },
-      boxShadow: {
-        'kofa': '0 4px 20px rgba(0, 71, 171, 0.25)',
-        'kofa-lg': '0 10px 40px rgba(0, 71, 171, 0.3)',
-      }
+      fontFamily: {
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+        mono: ['JetBrains Mono', 'monospace'],
+      },
+      animation: {
+        'fadeIn': 'fadeIn 0.4s ease-out forwards',
+        'slideUp': 'slideUp 0.5s ease-out forwards',
+      },
+      keyframes: {
+        fadeIn: {
+          'from': { opacity: '0' },
+          'to': { opacity: '1' },
+        },
+        slideUp: {
+          'from': { opacity: '0', transform: 'translateY(12px)' },
+          'to': { opacity: '1', transform: 'translateY(0)' },
+        },
+      },
     },
   },
   plugins: [],

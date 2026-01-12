@@ -129,7 +129,7 @@ const SettingsRedesign = () => {
                 <div className="absolute top-20 -right-20 w-60 h-60 rounded-full blur-[100px]" style={{ background: isDark ? `${colors.violet}20` : `${colors.lavender}20` }}></div>
             </div>
 
-            <div className="relative max-w-md mx-auto pb-28">
+            <div className="relative max-w-6xl mx-auto pb-20 px-4 lg:px-0 space-y-6 animate-fadeIn">
                 {/* Header */}
                 <header className={`sticky top-0 z-30 px-6 pt-5 pb-4 ${isDark ? 'bg-[#0a0a14]/70' : 'bg-[#fafaff]/70'} backdrop-blur-2xl`}>
                     <div className="flex items-center justify-between mb-5">

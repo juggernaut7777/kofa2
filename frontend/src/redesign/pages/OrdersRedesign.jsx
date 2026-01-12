@@ -147,51 +147,43 @@ const OrdersRedesign = () => {
     }
 
     return (
-        <div className={`min-h-screen font-['SF_Pro_Display',-apple-system,sans-serif] ${isDark ? 'bg-[#0a0a14]' : 'bg-[#fafaff]'}`}>
+        <div className="min-h-screen font-['SF_Pro_Display',-apple-system,sans-serif]">
 
             {/* Ambient Gradient */}
             <div className="fixed inset-0 overflow-hidden pointer-events-none">
                 <div className={`absolute top-20 -left-20 w-60 h-60 rounded-full blur-[100px] ${isDark ? `bg-[${colors.violet}]/20` : `bg-[${colors.lavender}]/20`}`}></div>
             </div>
 
-            <div className="relative max-w-md mx-auto pb-28">
+            <div className="relative max-w-6xl mx-auto pb-20 px-4 lg:px-0 space-y-6 animate-fadeIn">
 
                 {/* Header */}
-                <header className={`sticky top-0 z-30 px-6 pt-5 pb-2 ${isDark ? 'bg-[#0a0a14]/70' : 'bg-[#fafaff]/70'} backdrop-blur-2xl`}>
-                    <div className="flex items-center justify-between mb-6">
-                        <button onClick={() => navigate('/dashboard')} className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all hover:scale-105 ${isDark ? 'bg-white/5' : 'bg-black/5'}`}>
-                            <svg className={`w-5 h-5 ${isDark ? 'text-white/70' : 'text-black/70'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 19l-7-7 7-7" />
-                            </svg>
-                        </button>
-                        <h1 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-black'}`}>Orders & Invoices</h1>
-                        <div className="w-11"></div>
-                    </div>
-
-                    {/* Hint for Invoice */}
-                    {showInvoiceHint && (
-                        <div className="mb-4 p-3 rounded-xl bg-indigo-500/20 text-indigo-300 text-xs font-semibold text-center animate-pulse">
-                            Select a pending order to generate an invoice
-                        </div>
-                    )}
-
-                    {/* Tabs */}
-                    <div className={`p-1 mx-6 mb-4 rounded-xl flex ${isDark ? 'bg-white/10' : 'bg-black/5'}`}>
-                        {tabs.map(tab => (
-                            <button
-                                key={tab.id}
-                                onClick={() => setActiveTab(tab.id)}
-                                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all ${activeTab === tab.id
-                                    ? (isDark ? 'bg-white/10 text-white shadow-lg' : 'bg-white text-black shadow')
-                                    : (isDark ? 'text-white/40 hover:text-white/60' : 'text-black/40 hover:text-black/60')
-                                    }`}
-                            >
-                                {tab.icon}
-                                {tab.label}
-                            </button>
-                        ))}
-                    </div>
+                <header className="flex items-center justify-between">
+                    <h1 className="text-3xl font-bold text-main">Orders & Invoices</h1>
                 </header>
+
+                {/* Hint for Invoice */}
+                {showInvoiceHint && (
+                    <div className="p-3 rounded-xl bg-indigo-500/20 text-indigo-300 text-xs font-semibold text-center animate-pulse">
+                        Select a pending order to generate an invoice
+                    </div>
+                )}
+
+                {/* Tabs */}
+                <div className="p-1 rounded-xl flex bg-surface-2">
+                    {tabs.map(tab => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id)}
+                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all ${activeTab === tab.id
+                                ? 'bg-surface-1 text-main shadow-lg'
+                                : 'text-muted hover:text-main'
+                                }`}
+                        >
+                            {tab.icon}
+                            {tab.label}
+                        </button>
+                    ))}
+                </div>
 
                 {(loading && orders.length === 0) ? (
                     <div className="flex justify-center py-20">
@@ -319,91 +311,93 @@ const OrdersRedesign = () => {
             </div>
 
             {/* Order Detail Modal */}
-            {showOrderDetail && (
-                <div className="fixed inset-0 z-50 flex items-end justify-center">
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowOrderDetail(null)}></div>
-                    <div className={`relative w-full max-w-md rounded-t-3xl overflow-hidden ${isDark ? 'bg-[#0a0a14]' : 'bg-white'}`}>
-                        <div className="w-full flex justify-center pt-3">
-                            <div className={`w-12 h-1.5 rounded-full ${isDark ? 'bg-white/20' : 'bg-black/20'}`}></div>
-                        </div>
-
-                        <div className="p-6 max-h-[80vh] overflow-y-auto">
-                            {/* Header */}
-                            <div className="flex items-center justify-between mb-6">
-                                <div>
-                                    <p className={`text-xs ${isDark ? 'text-white/50' : 'text-black/50'}`}>{showOrderDetail.id}</p>
-                                    <h3 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-black'}`}>{showOrderDetail.customer_name}</h3>
-                                </div>
-                                <span className={`px-3 py-1.5 rounded-xl text-xs font-semibold uppercase ${getStatusConfig(showOrderDetail.status).bg} ${getStatusConfig(showOrderDetail.status).text}`}>
-                                    {getStatusConfig(showOrderDetail.status).label}
-                                </span>
+            {
+                showOrderDetail && (
+                    <div className="fixed inset-0 z-50 flex items-end justify-center">
+                        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowOrderDetail(null)}></div>
+                        <div className={`relative w-full max-w-md rounded-t-3xl overflow-hidden ${isDark ? 'bg-[#0a0a14]' : 'bg-white'}`}>
+                            <div className="w-full flex justify-center pt-3">
+                                <div className={`w-12 h-1.5 rounded-full ${isDark ? 'bg-white/20' : 'bg-black/20'}`}></div>
                             </div>
 
-                            {/* Customer Info */}
-                            <div className={`p-4 rounded-2xl mb-4 ${isDark ? 'bg-white/[0.03]' : 'bg-black/[0.02]'}`}>
-                                <p className={`text-xs font-semibold uppercase tracking-wide mb-2 ${isDark ? 'text-white/40' : 'text-black/40'}`}>Contact</p>
-                                <div className="flex items-center gap-3">
-                                    <svg className="w-5 h-5" style={{ color: colors.violet }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                                    </svg>
-                                    <p className={isDark ? 'text-white' : 'text-black'}>{showOrderDetail.customer_phone}</p>
-                                </div>
-                            </div>
-
-                            {/* Items */}
-                            <div className={`p-4 rounded-2xl mb-4 ${isDark ? 'bg-white/[0.03]' : 'bg-black/[0.02]'}`}>
-                                <p className={`text-xs font-semibold uppercase tracking-wide mb-3 ${isDark ? 'text-white/40' : 'text-black/40'}`}>Items</p>
-                                {(showOrderDetail.items || []).map((item, i) => (
-                                    <div key={i} className="flex items-center justify-between py-2">
-                                        <div>
-                                            <p className={`font-medium ${isDark ? 'text-white' : 'text-black'}`}>{item.name}</p>
-                                            <p className={`text-xs ${isDark ? 'text-white/50' : 'text-black/50'}`}>x{item.quantity}</p>
-                                        </div>
-                                        <p className={`font-semibold ${isDark ? 'text-white' : 'text-black'}`}>{formatCurrency(item.price)}</p>
+                            <div className="p-6 max-h-[80vh] overflow-y-auto">
+                                {/* Header */}
+                                <div className="flex items-center justify-between mb-6">
+                                    <div>
+                                        <p className={`text-xs ${isDark ? 'text-white/50' : 'text-black/50'}`}>{showOrderDetail.id}</p>
+                                        <h3 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-black'}`}>{showOrderDetail.customer_name}</h3>
                                     </div>
-                                ))}
-                                <div className={`flex items-center justify-between pt-3 mt-2 border-t ${isDark ? 'border-white/10' : 'border-black/10'}`}>
-                                    <p className={`font-semibold ${isDark ? 'text-white' : 'text-black'}`}>Total</p>
-                                    <p className="text-xl font-bold" style={{ color: colors.violet }}>{formatCurrency(showOrderDetail.total_amount)}</p>
+                                    <span className={`px-3 py-1.5 rounded-xl text-xs font-semibold uppercase ${getStatusConfig(showOrderDetail.status).bg} ${getStatusConfig(showOrderDetail.status).text}`}>
+                                        {getStatusConfig(showOrderDetail.status).label}
+                                    </span>
                                 </div>
-                            </div>
 
-                            {/* Actions */}
-                            <div className="space-y-3">
-                                <p className={`text-xs font-semibold uppercase tracking-wide ${isDark ? 'text-white/40' : 'text-black/40'}`}>Actions</p>
+                                {/* Customer Info */}
+                                <div className={`p-4 rounded-2xl mb-4 ${isDark ? 'bg-white/[0.03]' : 'bg-black/[0.02]'}`}>
+                                    <p className={`text-xs font-semibold uppercase tracking-wide mb-2 ${isDark ? 'text-white/40' : 'text-black/40'}`}>Contact</p>
+                                    <div className="flex items-center gap-3">
+                                        <svg className="w-5 h-5" style={{ color: colors.violet }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                        </svg>
+                                        <p className={isDark ? 'text-white' : 'text-black'}>{showOrderDetail.customer_phone}</p>
+                                    </div>
+                                </div>
 
-                                {/* Generate Invoice */}
-                                <button onClick={() => { handleGenerateInvoice(showOrderDetail); setShowOrderDetail(null) }} className={`w-full py-3 rounded-xl font-medium transition-all hover:scale-[1.02] ${isDark ? 'bg-white/[0.05] text-white' : 'bg-black/[0.03] text-black'}`}>
-                                    Generate Invoice
-                                </button>
+                                {/* Items */}
+                                <div className={`p-4 rounded-2xl mb-4 ${isDark ? 'bg-white/[0.03]' : 'bg-black/[0.02]'}`}>
+                                    <p className={`text-xs font-semibold uppercase tracking-wide mb-3 ${isDark ? 'text-white/40' : 'text-black/40'}`}>Items</p>
+                                    {(showOrderDetail.items || []).map((item, i) => (
+                                        <div key={i} className="flex items-center justify-between py-2">
+                                            <div>
+                                                <p className={`font-medium ${isDark ? 'text-white' : 'text-black'}`}>{item.name}</p>
+                                                <p className={`text-xs ${isDark ? 'text-white/50' : 'text-black/50'}`}>x{item.quantity}</p>
+                                            </div>
+                                            <p className={`font-semibold ${isDark ? 'text-white' : 'text-black'}`}>{formatCurrency(item.price)}</p>
+                                        </div>
+                                    ))}
+                                    <div className={`flex items-center justify-between pt-3 mt-2 border-t ${isDark ? 'border-white/10' : 'border-black/10'}`}>
+                                        <p className={`font-semibold ${isDark ? 'text-white' : 'text-black'}`}>Total</p>
+                                        <p className="text-xl font-bold" style={{ color: colors.violet }}>{formatCurrency(showOrderDetail.total_amount)}</p>
+                                    </div>
+                                </div>
 
-                                {/* Update Status */}
-                                <p className={`text-xs font-semibold uppercase tracking-wide pt-2 ${isDark ? 'text-white/40' : 'text-black/40'}`}>Update Status</p>
-                                <div className="grid grid-cols-2 gap-2">
-                                    {['processing', 'shipped', 'delivered', 'cancelled'].filter(s => s !== showOrderDetail.status).map(status => {
-                                        const config = getStatusConfig(status)
-                                        return (
-                                            <button
-                                                key={status}
-                                                onClick={() => handleUpdateStatus(showOrderDetail.id, status)}
-                                                className={`py-3 rounded-xl text-sm font-medium transition-all hover:scale-[1.02] ${config.bg} ${config.text}`}
-                                            >
-                                                {config.icon} {config.label}
-                                            </button>
-                                        )
-                                    })}
+                                {/* Actions */}
+                                <div className="space-y-3">
+                                    <p className={`text-xs font-semibold uppercase tracking-wide ${isDark ? 'text-white/40' : 'text-black/40'}`}>Actions</p>
+
+                                    {/* Generate Invoice */}
+                                    <button onClick={() => { handleGenerateInvoice(showOrderDetail); setShowOrderDetail(null) }} className={`w-full py-3 rounded-xl font-medium transition-all hover:scale-[1.02] ${isDark ? 'bg-white/[0.05] text-white' : 'bg-black/[0.03] text-black'}`}>
+                                        Generate Invoice
+                                    </button>
+
+                                    {/* Update Status */}
+                                    <p className={`text-xs font-semibold uppercase tracking-wide pt-2 ${isDark ? 'text-white/40' : 'text-black/40'}`}>Update Status</p>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {['processing', 'shipped', 'delivered', 'cancelled'].filter(s => s !== showOrderDetail.status).map(status => {
+                                            const config = getStatusConfig(status)
+                                            return (
+                                                <button
+                                                    key={status}
+                                                    onClick={() => handleUpdateStatus(showOrderDetail.id, status)}
+                                                    className={`py-3 rounded-xl text-sm font-medium transition-all hover:scale-[1.02] ${config.bg} ${config.text}`}
+                                                >
+                                                    {config.icon} {config.label}
+                                                </button>
+                                            )
+                                        })}
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             <style>{`
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
-        </div>
+        </div >
     )
 }
 
