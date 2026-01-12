@@ -405,6 +405,9 @@ async def create_order(request: OrderRequest):
         "payment_ref": None,
         "created_at": datetime.now().isoformat()
     }
+    
+    # Invalidate orders cache so new order appears immediately
+    invalidate_cache(prefix="orders:")
         
     return OrderResponse(
         order_id=order_id,

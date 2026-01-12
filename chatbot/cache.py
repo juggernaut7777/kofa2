@@ -1,46 +1,102 @@
 """
-Simple in-memory caching for KOFA backend.
-Caches frequently accessed data like products and orders to reduce database load.
+Redis-backed caching for KOFA backend.
+Uses Heroku Redis for persistent, shared caching with instant invalidation.
+Falls back to in-memory cache if Redis is unavailable.
 """
+import os
 import time
+import json
+import logging
 from typing import Any, Optional, Dict
 from functools import wraps
 
-# Simple in-memory cache with TTL
-_cache: Dict[str, Dict[str, Any]] = {}
+logger = logging.getLogger(__name__)
+
+# Try to connect to Redis
+_redis_client = None
+_redis_available = False
+
+try:
+    import redis
+    redis_url = os.getenv('REDIS_URL')
+    if redis_url:
+        _redis_client = redis.from_url(redis_url, decode_responses=True)
+        # Test connection
+        _redis_client.ping()
+        _redis_available = True
+        logger.info("Redis cache connected successfully")
+except Exception as e:
+    logger.warning(f"Redis not available, using in-memory cache: {e}")
+    _redis_available = False
+
+# Fallback in-memory cache
+_memory_cache: Dict[str, Dict[str, Any]] = {}
 
 
 def get_cache(key: str) -> Optional[Any]:
     """Get value from cache if not expired."""
-    if key in _cache:
-        entry = _cache[key]
+    if _redis_available:
+        try:
+            value = _redis_client.get(key)
+            if value:
+                return json.loads(value)
+        except Exception as e:
+            logger.warning(f"Redis get failed: {e}")
+    
+    # Fallback to memory cache
+    if key in _memory_cache:
+        entry = _memory_cache[key]
         if time.time() < entry['expires']:
             return entry['value']
         else:
-            # Expired, remove it
-            del _cache[key]
+            del _memory_cache[key]
     return None
 
 
 def set_cache(key: str, value: Any, ttl_seconds: int = 60):
     """Set value in cache with TTL."""
-    _cache[key] = {
+    if _redis_available:
+        try:
+            _redis_client.setex(key, ttl_seconds, json.dumps(value, default=str))
+            return
+        except Exception as e:
+            logger.warning(f"Redis set failed: {e}")
+    
+    # Fallback to memory cache
+    _memory_cache[key] = {
         'value': value,
         'expires': time.time() + ttl_seconds
     }
 
 
 def invalidate_cache(key: str = None, prefix: str = None):
-    """Invalidate specific key or all keys with prefix."""
-    global _cache
+    """Invalidate specific key or all keys with prefix. INSTANT with Redis!"""
+    global _memory_cache
+    
+    if _redis_available:
+        try:
+            if key:
+                _redis_client.delete(key)
+            elif prefix:
+                # Find all keys with prefix and delete them
+                keys = _redis_client.keys(f"{prefix}*")
+                if keys:
+                    _redis_client.delete(*keys)
+            else:
+                _redis_client.flushdb()
+            return
+        except Exception as e:
+            logger.warning(f"Redis invalidate failed: {e}")
+    
+    # Fallback to memory cache
     if key:
-        _cache.pop(key, None)
+        _memory_cache.pop(key, None)
     elif prefix:
-        keys_to_delete = [k for k in _cache if k.startswith(prefix)]
+        keys_to_delete = [k for k in _memory_cache if k.startswith(prefix)]
         for k in keys_to_delete:
-            del _cache[k]
+            del _memory_cache[k]
     else:
-        _cache = {}
+        _memory_cache = {}
 
 
 def cached(ttl_seconds: int = 60, key_prefix: str = ""):
@@ -48,18 +104,13 @@ def cached(ttl_seconds: int = 60, key_prefix: str = ""):
     def decorator(func):
         @wraps(func)
         async def async_wrapper(*args, **kwargs):
-            # Create cache key from function name and args
             cache_key = f"{key_prefix}{func.__name__}:{str(args)}:{str(kwargs)}"
             
-            # Check cache
             cached_value = get_cache(cache_key)
             if cached_value is not None:
                 return cached_value
             
-            # Execute function
             result = await func(*args, **kwargs)
-            
-            # Cache result
             set_cache(cache_key, result, ttl_seconds)
             return result
         
@@ -75,7 +126,6 @@ def cached(ttl_seconds: int = 60, key_prefix: str = ""):
             set_cache(cache_key, result, ttl_seconds)
             return result
         
-        # Return appropriate wrapper based on function type
         import asyncio
         if asyncio.iscoroutinefunction(func):
             return async_wrapper
@@ -84,15 +134,30 @@ def cached(ttl_seconds: int = 60, key_prefix: str = ""):
     return decorator
 
 
-# Cache statistics
 def get_cache_stats() -> dict:
     """Get cache statistics."""
+    if _redis_available:
+        try:
+            info = _redis_client.info()
+            return {
+                'backend': 'redis',
+                'connected': True,
+                'used_memory': info.get('used_memory_human', 'unknown'),
+                'total_keys': _redis_client.dbsize()
+            }
+        except Exception:
+            pass
+    
     now = time.time()
-    valid = sum(1 for entry in _cache.values() if entry['expires'] > now)
-    expired = len(_cache) - valid
+    valid = sum(1 for entry in _memory_cache.values() if entry['expires'] > now)
     
     return {
-        'total_keys': len(_cache),
-        'valid_keys': valid,
-        'expired_keys': expired
+        'backend': 'memory',
+        'total_keys': len(_memory_cache),
+        'valid_keys': valid
     }
+
+
+def is_redis_available() -> bool:
+    """Check if Redis is available."""
+    return _redis_available
