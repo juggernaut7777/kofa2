@@ -278,7 +278,7 @@ const InsightsRedesign = () => {
                 <div className={`absolute bottom-40 -right-20 w-60 h-60 rounded-full blur-[100px] ${isDark ? `bg-[${colors.indigo}]/30` : `bg-[${colors.lavender}]/15`}`}></div>
             </div>
 
-            <div className="relative max-w-md mx-auto pb-28">
+            <div className="relative max-w-6xl mx-auto pb-20 px-4 lg:px-0 space-y-6 animate-fadeIn">
 
                 {/* Header */}
                 <header className={`sticky top-0 z-30 px-6 pt-5 pb-4 ${isDark ? 'bg-[#0a0a14]/80' : 'bg-[#fafaff]/80'} backdrop-blur-2xl`}>
