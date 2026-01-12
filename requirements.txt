@@ -16,3 +16,4 @@ sqlalchemy
 pymysql
 cryptography
 opencensus-ext-azure
+redis
