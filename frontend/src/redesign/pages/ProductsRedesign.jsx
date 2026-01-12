@@ -1,6 +1,6 @@
 import { useState, useEffect, useContext, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { apiCall, API_ENDPOINTS } from '../../config/api'
+import { apiCall, cachedApiCall, API_ENDPOINTS, CACHE_KEYS, clearCache } from '../../config/api'
 import { ThemeContext } from '../../context/ThemeContext'
 
 // Moonlight Color Palette
@@ -51,17 +51,27 @@ const ProductsRedesign = () => {
         }
     }, [location, navigate])
 
+    // Helper to normalize product data
+    const normalizeProducts = (data) => {
+        return (Array.isArray(data) ? data : []).map(p => ({
+            ...p,
+            price: p.price_ngn || p.price || p.selling_price || p.unit_price || p.amount || 0,
+            stock: p.stock_level ?? p.stock ?? p.quantity ?? p.inventory ?? 0,
+            category: p.category || p.type || 'General',
+            sku: p.sku || p.product_id || p.id
+        }))
+    }
+
     const loadProducts = async () => {
         setLoading(true)
         try {
-            const data = await apiCall(API_ENDPOINTS.PRODUCTS)
-            const normalized = (Array.isArray(data) ? data : []).map(p => ({
-                ...p,
-                price: p.price_ngn || p.price || p.selling_price || p.unit_price || p.amount || 0,
-                stock: p.stock_level ?? p.stock ?? p.quantity ?? p.inventory ?? 0,
-                category: p.category || p.type || 'General',
-                sku: p.sku || p.product_id || p.id
-            }))
+            // Use cached API call for instant loading!
+            const data = await cachedApiCall(API_ENDPOINTS.PRODUCTS, CACHE_KEYS.PRODUCTS, (freshData) => {
+                // Update with fresh data when it arrives
+                const normalized = normalizeProducts(freshData)
+                setProducts(normalized)
+            })
+            const normalized = normalizeProducts(data)
             setProducts(normalized)
         } catch (e) {
             setProducts([])

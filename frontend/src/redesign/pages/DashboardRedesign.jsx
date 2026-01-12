@@ -1,6 +1,6 @@
 import { useState, useEffect, useContext } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { apiCall, API_ENDPOINTS } from '../../config/api'
+import { apiCall, cachedApiCall, API_ENDPOINTS, CACHE_KEYS } from '../../config/api'
 import { useAuth } from '../../context/AuthContext'
 import { ThemeContext } from '../../context/ThemeContext'
 
@@ -38,11 +38,11 @@ const DashboardRedesign = () => {
 
     const loadData = async () => {
         try {
-            // Load all data in parallel for speed
+            // Load all data in parallel using CACHED API calls (instant if cached!)
             const [ordersRes, productsRes, profitRes] = await Promise.allSettled([
-                apiCall(API_ENDPOINTS.ORDERS),
-                apiCall(API_ENDPOINTS.PRODUCTS),
-                apiCall(API_ENDPOINTS.PROFIT_SUMMARY)
+                cachedApiCall(API_ENDPOINTS.ORDERS, CACHE_KEYS.ORDERS, setRecentOrders),
+                cachedApiCall(API_ENDPOINTS.PRODUCTS, CACHE_KEYS.PRODUCTS, setProducts),
+                cachedApiCall(API_ENDPOINTS.PROFIT_SUMMARY, CACHE_KEYS.PROFIT_SUMMARY)
             ])
 
             // Process orders
