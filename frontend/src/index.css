@@ -2,87 +2,204 @@
 @tailwind components;
 @tailwind utilities;
 
-/* KOFA Brand Design System */
-:root {
-  /* Primary Brand Colors */
-  --kofa-cobalt: #0047AB;
-  --kofa-navy: #000080;
-  --kofa-sky: #82C8E5;
-  --kofa-steel: #6D8196;
+/* 
+  KOFA Design System v2.0 
+  "Midnight Business" - Premium SaaS Aesthetic
+*/
 
-  /* Status Colors */
-  --kofa-success: #10B981;
-  --kofa-warning: #F59E0B;
-  --kofa-danger: #F43F5E;
+@layer base {
+  :root {
+    /* --- LIGHT MODE --- */
+    --bg-app: #FAFBFC;
+    --bg-surface-1: #FFFFFF;
+    --bg-surface-2: #F4F6F8;
+    --bg-surface-3: #E8ECF0;
 
-  /* Light Mode */
-  --bg-primary: #ffffff;
-  --bg-secondary: #f8fafc;
-  --bg-card: #ffffff;
-  --text-primary: #0f172a;
-  --text-secondary: #64748b;
-  --border-color: #e2e8f0;
-}
+    --text-main: #111827;
+    --text-muted: #6B7280;
+    --text-dim: #9CA3AF;
 
-.dark {
-  /* Dark Mode */
-  --bg-primary: #0a0a0f;
-  --bg-secondary: #12121a;
-  --bg-card: #1a1a24;
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --border-color: #2e2e3e;
-}
+    --border-subtle: #E5E7EB;
+    --border-strong: #D1D5DB;
 
-body {
-  margin: 0;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
-  transition: background-color 0.3s ease, color 0.3s ease;
-}
-
-/* Glass effect utilities */
-@layer utilities {
-  .glass {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.18);
+    --brand-primary: #0052CC;
+    --brand-glow: rgba(0, 82, 204, 0.15);
   }
 
-  .glass-dark {
-    background: rgba(10, 10, 15, 0.8);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+  .dark {
+    /* --- DARK MODE --- */
+    --bg-app: #09090B;
+    --bg-surface-1: #111113;
+    --bg-surface-2: #1A1A1F;
+    --bg-surface-3: #252530;
+
+    --text-main: #FAFAFA;
+    --text-muted: #A1A1AA;
+    --text-dim: #71717A;
+
+    --border-subtle: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 255, 255, 0.15);
+
+    --brand-primary: #3B82F6;
+    --brand-glow: rgba(59, 130, 246, 0.2);
   }
 
-  .kofa-gradient-text {
-    background: linear-gradient(135deg, #0047AB 0%, #82C8E5 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+  body {
+    background-color: var(--bg-app);
+    color: var(--text-main);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-tap-highlight-color: transparent;
   }
 
-  .kofa-button {
-    background: linear-gradient(135deg, #0047AB 0%, #000080 100%);
+  ::selection {
+    background-color: var(--brand-primary);
     color: white;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 15px rgba(0, 71, 171, 0.3);
-  }
-
-  .kofa-button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(0, 71, 171, 0.4);
   }
 }
 
-/* Smooth theme transition */
-* {
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+@layer components {
+
+  /* --- Premium Card --- */
+  .premium-card {
+    background-color: var(--bg-surface-1);
+    border: 1px solid var(--border-subtle);
+    border-radius: 1rem;
+    transition: all 0.3s ease-out;
+  }
+
+  .premium-card:hover {
+    border-color: var(--border-strong);
+    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+    transform: translateY(-2px);
+  }
+
+  /* --- Glass Panel --- */
+  .glass-panel {
+    background-color: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .dark .glass-panel {
+    background-color: rgba(17, 17, 19, 0.85);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+  }
+
+  /* --- Premium Input --- */
+  .premium-input {
+    width: 100%;
+    background-color: var(--bg-surface-2);
+    border: 1px solid var(--border-subtle);
+    border-radius: 0.75rem;
+    padding: 0.75rem 1rem;
+    color: var(--text-main);
+    transition: all 0.2s ease;
+  }
+
+  .premium-input::placeholder {
+    color: var(--text-dim);
+  }
+
+  .premium-input:focus {
+    background-color: var(--bg-surface-1);
+    border-color: var(--brand-primary);
+    box-shadow: 0 0 0 3px var(--brand-glow);
+    outline: none;
+  }
+
+  /* --- Stat Card --- */
+  .stat-card {
+    background-color: var(--bg-surface-1);
+    border-radius: 1rem;
+    padding: 1.25rem;
+    border: 1px solid var(--border-subtle);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.3s;
+    background: linear-gradient(135deg, var(--brand-primary) 0%, #60A5FA 100%);
+  }
+
+  .stat-card:hover::before {
+    opacity: 0.05;
+  }
+}
+
+@layer utilities {
+
+  /* Text Gradient */
+  .text-gradient-brand {
+    background: linear-gradient(135deg, var(--brand-primary), #60A5FA);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* Animations */
+  .animate-fadeIn {
+    animation: fadeIn 0.4s ease-out forwards;
+  }
+
+  .animate-slideUp {
+    animation: slideUp 0.5s ease-out forwards;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Glow Effects */
+  .glow-sm {
+    box-shadow: 0 0 12px var(--brand-glow), 0 0 4px var(--brand-glow);
+  }
+
+  .glow-md {
+    box-shadow: 0 0 24px var(--brand-glow), 0 0 8px var(--brand-glow);
+  }
+
+  /* Custom Scrollbar */
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: var(--bg-surface-3);
+    border-radius: 9999px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+  }
 }

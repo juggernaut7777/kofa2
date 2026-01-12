@@ -3,6 +3,9 @@ from fastapi.responses import PlainTextResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, validator
 from typing import Optional, List, Dict
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 import uuid
 from datetime import datetime
 import logging
@@ -78,6 +81,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ===== RATE LIMITING (DoS Protection) =====
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # In‑memory store for demo purposes (User preferences)
 USERS: dict = {}
@@ -285,6 +293,7 @@ async def health_check():
     return {"status": "healthy"}
 
 @router.get("/products")
+@limiter.limit("50/minute")
 async def get_products():
     """Get all products from inventory. CACHED for 60 seconds to reduce I/O costs."""
     cache_key = "products:all"
@@ -422,7 +431,8 @@ async def create_order(request: OrderRequest):
 BUSINESS_AI_CONVERSATIONS: Dict[str, List[Dict]] = {}
 
 @router.post("/business-ai")
-async def business_ai_chat(request: BusinessAIRequest):
+@limiter.limit("10/minute")  # Protect AI credits
+async def business_ai_chat(request: BusinessAIRequest, req: Request):
     """
     Business AI Assistant - Manage your business with natural language.
     

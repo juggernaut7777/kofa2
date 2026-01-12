@@ -1,25 +1,29 @@
 import { useState, useEffect, useContext, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { apiCall, cachedApiCall, API_ENDPOINTS, CACHE_KEYS, clearCache } from '../../config/api'
+import { apiCall, cachedApiCall, API_ENDPOINTS, CACHE_KEYS } from '../../config/api'
 import { ThemeContext } from '../../context/ThemeContext'
-
-// Moonlight Color Palette
-const colors = {
-    lavender: '#CCCCFF',
-    muted: '#A3A3CC',
-    violet: '#5C5C99',
-    indigo: '#292966',
-    success: '#10B981',
-    warning: '#F59E0B',
-    danger: '#EF4444'
-}
+import {
+    Plus,
+    Search,
+    Filter,
+    Trash2,
+    RefreshCw,
+    AlertTriangle,
+    Package,
+    MoreHorizontal,
+    X,
+    Check
+} from 'lucide-react'
+import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card'
+import { Button } from '../../components/ui/Button'
+import { Input } from '../../components/ui/Input'
+import { Badge } from '../../components/ui/Badge'
 
 const ProductsRedesign = () => {
     const navigate = useNavigate()
     const location = useLocation()
     const { theme } = useContext(ThemeContext)
     const isDark = theme === 'dark'
-    const imageInputRef = useRef(null)
 
     const [products, setProducts] = useState([])
     const [loading, setLoading] = useState(true)
@@ -28,16 +32,11 @@ const ProductsRedesign = () => {
     const [selectedCategory, setSelectedCategory] = useState('All')
     const [showAddModal, setShowAddModal] = useState(false)
     const [showRestockModal, setShowRestockModal] = useState(null)
-    const [editProduct, setEditProduct] = useState(null)
-    const [selectedProducts, setSelectedProducts] = useState([])
-    const [imagePreview, setImagePreview] = useState(null)
-    const [selectedImage, setSelectedImage] = useState(null)
-    const [sortBy, setSortBy] = useState('name') // name, stock, price
+    const [sortBy, setSortBy] = useState('name')
 
     const [newProduct, setNewProduct] = useState({
         name: '', price: '', stock: '', category: '', description: '', sku: ''
     })
-
     const [restockAmount, setRestockAmount] = useState('')
 
     const categories = ['All', 'General', 'Supplies', 'Equipment', 'Materials', 'Other']
@@ -65,9 +64,7 @@ const ProductsRedesign = () => {
     const loadProducts = async () => {
         setLoading(true)
         try {
-            // Use cached API call for instant loading!
             const data = await cachedApiCall(API_ENDPOINTS.PRODUCTS, CACHE_KEYS.PRODUCTS, (freshData) => {
-                // Update with fresh data when it arrives
                 const normalized = normalizeProducts(freshData)
                 setProducts(normalized)
             })
@@ -82,23 +79,13 @@ const ProductsRedesign = () => {
 
     const formatCurrency = (n) => {
         if (n == null || isNaN(n)) return '₦0'
-        return `₦${n.toLocaleString()}`
+        return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(n)
     }
 
     const getStockStatus = (stock) => {
-        if (stock === 0) return { label: 'Out of Stock', color: colors.danger, bg: isDark ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.1)' }
-        if (stock < 10) return { label: 'Low Stock', color: colors.warning, bg: isDark ? 'rgba(245, 158, 11, 0.1)' : 'rgba(245, 158, 11, 0.1)' }
-        return { label: 'In Stock', color: colors.success, bg: isDark ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.1)' }
-    }
-
-    const handleImageSelect = (e) => {
-        const file = e.target.files[0]
-        if (!file) return
-        if (file.size > 5 * 1024 * 1024) { alert('Image must be less than 5MB'); return }
-        setSelectedImage(file)
-        const reader = new FileReader()
-        reader.onload = (e) => setImagePreview(e.target.result)
-        reader.readAsDataURL(file)
+        if (stock === 0) return { label: 'Out of Stock', variant: 'danger' }
+        if (stock < 10) return { label: 'Low Stock', variant: 'warning' }
+        return { label: 'In Stock', variant: 'success' }
     }
 
     const handleAddProduct = async () => {
@@ -118,7 +105,6 @@ const ProductsRedesign = () => {
             })
             setShowAddModal(false)
             setNewProduct({ name: '', price: '', stock: '', category: '', description: '', sku: '' })
-            setImagePreview(null)
             loadProducts()
         } catch (e) {
             alert('Failed to add product')
@@ -157,7 +143,7 @@ const ProductsRedesign = () => {
 
     const filteredProducts = products
         .filter(p => selectedCategory === 'All' || p.category === selectedCategory)
-        .filter(p => p.name?.toLowerCase().includes(searchQuery.toLowerCase()))
+        .filter(p => p.name?.toLowerCase().includes(searchQuery.toLowerCase()) || p.sku?.toLowerCase().includes(searchQuery.toLowerCase()))
         .sort((a, b) => {
             if (sortBy === 'stock') return a.stock - b.stock
             if (sortBy === 'price') return b.price - a.price
@@ -168,539 +154,250 @@ const ProductsRedesign = () => {
     const outOfStockCount = products.filter(p => p.stock === 0).length
 
     return (
-        <div style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto' }}>
+        <div className="space-y-6 pb-20 animate-fadeIn">
             {/* Header */}
-            <div style={{ marginBottom: '32px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <div>
-                        <h1 style={{ fontSize: '28px', fontWeight: '700', color: isDark ? '#FFF' : '#1F2937', margin: 0 }}>
-                            Inventory Management
-                        </h1>
-                        <p style={{ fontSize: '14px', color: colors.muted, margin: '4px 0 0 0' }}>
-                            Manage your product stock levels and pricing
-                        </p>
-                    </div>
-                    <button
-                        onClick={() => setShowAddModal(true)}
-                        style={{
-                            background: `linear-gradient(135deg, ${colors.violet}, ${colors.indigo})`,
-                            color: '#FFF',
-                            border: 'none',
-                            padding: '12px 24px',
-                            borderRadius: '12px',
-                            fontSize: '14px',
-                            fontWeight: '600',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            boxShadow: `0 4px 12px ${colors.violet}33`,
-                            transition: 'all 0.3s ease'
-                        }}
-                        onMouseEnter={e => e.target.style.transform = 'translateY(-2px)'}
-                        onMouseLeave={e => e.target.style.transform = 'translateY(0)'}
-                    >
-                        <span style={{ fontSize: '18px' }}>+</span> Add Product
-                    </button>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold text-main">Inventory</h1>
+                    <p className="text-muted mt-1">Manage stock levels and pricing</p>
                 </div>
-
-                {/* Stock Alerts */}
-                {(lowStockCount > 0 || outOfStockCount > 0) && (
-                    <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
-                        {lowStockCount > 0 && (
-                            <div style={{
-                                padding: '12px 16px',
-                                borderRadius: '12px',
-                                background: isDark ? 'rgba(245, 158, 11, 0.1)' : 'rgba(245, 158, 11, 0.1)',
-                                border: `1px solid ${colors.warning}`,
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px'
-                            }}>
-                                <span style={{ fontSize: '20px' }}>⚠️</span>
-                                <span style={{ fontSize: '14px', color: colors.warning, fontWeight: '600' }}>
-                                    {lowStockCount} item{lowStockCount > 1 ? 's' : ''} low on stock
-                                </span>
-                            </div>
-                        )}
-                        {outOfStockCount > 0 && (
-                            <div style={{
-                                padding: '12px 16px',
-                                borderRadius: '12px',
-                                background: isDark ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                                border: `1px solid ${colors.danger}`,
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px'
-                            }}>
-                                <span style={{ fontSize: '20px' }}>🚫</span>
-                                <span style={{ fontSize: '14px', color: colors.danger, fontWeight: '600' }}>
-                                    {outOfStockCount} item{outOfStockCount > 1 ? 's' : ''} out of stock
-                                </span>
-                            </div>
-                        )}
-                    </div>
-                )}
+                <Button icon={<Plus size={18} />} onClick={() => setShowAddModal(true)} className="shadow-lg shadow-brand-glow">
+                    Add Product
+                </Button>
             </div>
 
-            {/* Filters & Search */}
-            <div style={{
-                background: isDark ? '#1F2937' : '#FFF',
-                borderRadius: '16px',
-                padding: '20px',
-                marginBottom: '24px',
-                boxShadow: isDark ? '0 4px 6px rgba(0, 0, 0, 0.3)' : '0 4px 6px rgba(0, 0, 0, 0.05)'
-            }}>
-                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
-                    <input
-                        type="text"
-                        placeholder="Search products..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        style={{
-                            flex: '1',
-                            minWidth: '200px',
-                            padding: '12px 16px',
-                            borderRadius: '12px',
-                            border: isDark ? `1px solid ${colors.violet}33` : '1px solid #E5E7EB',
-                            background: isDark ? '#111827' : '#F9FAFB',
-                            color: isDark ? '#FFF' : '#1F2937',
-                            fontSize: '14px'
-                        }}
-                    />
-                    <select
-                        value={selectedCategory}
-                        onChange={(e) => setSelectedCategory(e.target.value)}
-                        style={{
-                            padding: '12px 16px',
-                            borderRadius: '12px',
-                            border: isDark ? `1px solid ${colors.violet}33` : '1px solid #E5E7EB',
-                            background: isDark ? '#111827' : '#F9FAFB',
-                            color: isDark ? '#FFF' : '#1F2937',
-                            fontSize: '14px'
-                        }}
-                    >
-                        {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                    </select>
-                    <select
-                        value={sortBy}
-                        onChange={(e) => setSortBy(e.target.value)}
-                        style={{
-                            padding: '12px 16px',
-                            borderRadius: '12px',
-                            border: isDark ? `1px solid ${colors.violet}33` : '1px solid #E5E7EB',
-                            background: isDark ? '#111827' : '#F9FAFB',
-                            color: isDark ? '#FFF' : '#1F2937',
-                            fontSize: '14px'
-                        }}
-                    >
-                        <option value="name">Sort by Name</option>
-                        <option value="stock">Sort by Stock</option>
-                        <option value="price">Sort by Price</option>
-                    </select>
-                </div>
-            </div>
-
-            {/* Inventory Table */}
-            {loading ? (
-                <div style={{ textAlign: 'center', padding: '60px', color: colors.muted }}>
-                    <div style={{ fontSize: '16px' }}>Loading inventory...</div>
-                </div>
-            ) : filteredProducts.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '60px', color: colors.muted }}>
-                    <div style={{ fontSize: '48px', marginBottom: '16px' }}>📦</div>
-                    <div style={{ fontSize: '16px' }}>No products found</div>
-                </div>
-            ) : (
-                <div style={{
-                    background: isDark ? '#1F2937' : '#FFF',
-                    borderRadius: '16px',
-                    overflow: 'hidden',
-                    boxShadow: isDark ? '0 4px 6px rgba(0, 0, 0, 0.3)' : '0 4px 6px rgba(0, 0, 0, 0.05)'
-                }}>
-                    {/* Table Header */}
-                    <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: '40px 2fr 120px 100px 120px 120px 140px 120px',
-                        gap: '16px',
-                        padding: '16px 20px',
-                        background: isDark ? '#111827' : '#F9FAFB',
-                        borderBottom: isDark ? '1px solid #374151' : '1px solid #E5E7EB',
-                        fontSize: '12px',
-                        fontWeight: '600',
-                        color: colors.muted,
-                        textTransform: 'uppercase'
-                    }}>
-                        <div></div>
-                        <div>Product Name</div>
-                        <div>SKU</div>
-                        <div>Stock</div>
-                        <div>Price</div>
-                        <div>Category</div>
-                        <div>Status</div>
-                        <div style={{ textAlign: 'center' }}>Actions</div>
-                    </div>
-
-                    {/* Table Rows */}
-                    {filteredProducts.map((product, idx) => {
-                        const status = getStockStatus(product.stock)
-                        return (
-                            <div
-                                key={product.id}
-                                style={{
-                                    display: 'grid',
-                                    gridTemplateColumns: '40px 2fr 120px 100px 120px 120px 140px 120px',
-                                    gap: '16px',
-                                    padding: '16px 20px',
-                                    borderBottom: idx < filteredProducts.length - 1 ? (isDark ? '1px solid #374151' : '1px solid #E5E7EB') : 'none',
-                                    alignItems: 'center',
-                                    transition: 'background 0.2s ease',
-                                    cursor: 'pointer'
-                                }}
-                                onMouseEnter={e => e.currentTarget.style.background = isDark ? '#374151' : '#F3F4F6'}
-                                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                            >
-                                <div style={{ color: colors.muted, fontSize: '12px' }}>{idx + 1}</div>
-                                <div style={{
-                                    fontSize: '14px',
-                                    fontWeight: '600',
-                                    color: isDark ? '#FFF' : '#1F2937'
-                                }}>
-                                    {product.name}
-                                </div>
-                                <div style={{ fontSize: '12px', color: colors.muted, fontFamily: 'monospace' }}>
-                                    {product.sku}
-                                </div>
-                                <div style={{
-                                    fontSize: '14px',
-                                    fontWeight: '600',
-                                    color: status.color
-                                }}>
-                                    {product.stock} units
-                                </div>
-                                <div style={{ fontSize: '14px', fontWeight: '600', color: isDark ? '#FFF' : '#1F2937' }}>
-                                    {formatCurrency(product.price)}
-                                </div>
-                                <div style={{
-                                    fontSize: '12px',
-                                    padding: '4px 8px',
-                                    borderRadius: '6px',
-                                    background: isDark ? colors.violet + '22' : colors.violet + '11',
-                                    color: colors.violet,
-                                    width: 'fit-content'
-                                }}>
-                                    {product.category}
-                                </div>
-                                <div>
-                                    <span style={{
-                                        fontSize: '12px',
-                                        padding: '6px 12px',
-                                        borderRadius: '8px',
-                                        background: status.bg,
-                                        color: status.color,
-                                        fontWeight: '600',
-                                        display: 'inline-block'
-                                    }}>
-                                        {status.label}
-                                    </span>
-                                </div>
-                                <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                                    <button
-                                        onClick={() => setShowRestockModal(product)}
-                                        style={{
-                                            padding: '8px 12px',
-                                            borderRadius: '8px',
-                                            border: 'none',
-                                            background: isDark ? colors.success + '22' : colors.success + '11',
-                                            color: colors.success,
-                                            fontSize: '12px',
-                                            fontWeight: '600',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.2s ease'
-                                        }}
-                                        onMouseEnter={e => e.target.style.background = colors.success + '33'}
-                                        onMouseLeave={e => e.target.style.background = isDark ? colors.success + '22' : colors.success + '11'}
-                                    >
-                                        Restock
-                                    </button>
-                                    <button
-                                        onClick={() => handleDelete(product.id)}
-                                        style={{
-                                            padding: '8px 12px',
-                                            borderRadius: '8px',
-                                            border: 'none',
-                                            background: isDark ? colors.danger + '22' : colors.danger + '11',
-                                            color: colors.danger,
-                                            fontSize: '12px',
-                                            fontWeight: '600',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.2s ease'
-                                        }}
-                                        onMouseEnter={e => e.target.style.background = colors.danger + '33'}
-                                        onMouseLeave={e => e.target.style.background = isDark ? colors.danger + '22' : colors.danger + '11'}
-                                    >
-                                        Delete
-                                    </button>
-                                </div>
-                            </div>
-                        )
-                    })}
+            {/* Alerts */}
+            {(lowStockCount > 0 || outOfStockCount > 0) && (
+                <div className="flex flex-wrap gap-3">
+                    {lowStockCount > 0 && (
+                        <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500">
+                            <AlertTriangle size={18} />
+                            <span className="font-medium">{lowStockCount} items low on stock</span>
+                        </div>
+                    )}
+                    {outOfStockCount > 0 && (
+                        <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500">
+                            <AlertTriangle size={18} />
+                            <span className="font-medium">{outOfStockCount} items out of stock</span>
+                        </div>
+                    )}
                 </div>
             )}
 
-            {/* Add Product Modal */}
+            {/* Filters */}
+            <Card glass className="p-4">
+                <div className="flex flex-col md:flex-row gap-4">
+                    <div className="flex-1 relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" size={18} />
+                        <input
+                            type="text"
+                            placeholder="Search by name or SKU..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="premium-input pl-10 w-full"
+                        />
+                    </div>
+                    <div className="flex gap-4">
+                        <div className="relative">
+                            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" size={18} />
+                            <select
+                                value={selectedCategory}
+                                onChange={(e) => setSelectedCategory(e.target.value)}
+                                className="premium-input pl-10 appearance-none pr-8 cursor-pointer"
+                            >
+                                {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                            </select>
+                        </div>
+                        <select
+                            value={sortBy}
+                            onChange={(e) => setSortBy(e.target.value)}
+                            className="premium-input cursor-pointer"
+                        >
+                            <option value="name">Name</option>
+                            <option value="stock">Stock</option>
+                            <option value="price">Price</option>
+                        </select>
+                    </div>
+                </div>
+            </Card>
+
+            {/* Products Table */}
+            <Card glass className="overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="border-b border-border-subtle bg-surface-2/50 text-xs uppercase text-muted font-semibold tracking-wider">
+                                <th className="p-4">Product</th>
+                                <th className="p-4">SKU</th>
+                                <th className="p-4">Category</th>
+                                <th className="p-4">Stock</th>
+                                <th className="p-4">Price</th>
+                                <th className="p-4">Status</th>
+                                <th className="p-4 text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border-subtle text-sm">
+                            {loading ? (
+                                <tr>
+                                    <td colSpan="7" className="p-12 text-center text-muted">
+                                        Loading inventory...
+                                    </td>
+                                </tr>
+                            ) : filteredProducts.length === 0 ? (
+                                <tr>
+                                    <td colSpan="7" className="p-12 text-center text-muted">
+                                        No products found
+                                    </td>
+                                </tr>
+                            ) : (
+                                filteredProducts.map((product) => {
+                                    const status = getStockStatus(product.stock)
+                                    return (
+                                        <tr key={product.id} className="group hover:bg-surface-2/50 transition-colors">
+                                            <td className="p-4 font-medium text-main">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="h-8 w-8 rounded-lg bg-brand-primary/10 flex items-center justify-center text-brand-primary">
+                                                        <Package size={16} />
+                                                    </div>
+                                                    {product.name}
+                                                </div>
+                                            </td>
+                                            <td className="p-4 text-muted font-mono text-xs">{product.sku}</td>
+                                            <td className="p-4">
+                                                <Badge variant="neutral" size="sm">{product.category}</Badge>
+                                            </td>
+                                            <td className="p-4 font-medium">{product.stock}</td>
+                                            <td className="p-4 font-bold">{formatCurrency(product.price)}</td>
+                                            <td className="p-4">
+                                                <Badge variant={status.variant} size="sm" dot>
+                                                    {status.label}
+                                                </Badge>
+                                            </td>
+                                            <td className="p-4">
+                                                <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => setShowRestockModal(product)}
+                                                        title="Restock"
+                                                    >
+                                                        <RefreshCw size={16} className="text-blue-500" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => handleDelete(product.id)}
+                                                        title="Delete"
+                                                    >
+                                                        <Trash2 size={16} className="text-red-500" />
+                                                    </Button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )
+                                })
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </Card>
+
+            {/* --- Modals --- */}
+
             {showAddModal && (
-                <div style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    background: 'rgba(0, 0, 0, 0.7)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 1000,
-                    padding: '20px'
-                }}
-                    onClick={() => setShowAddModal(false)}
-                >
-                    <div
-                        style={{
-                            background: isDark ? '#1F2937' : '#FFF',
-                            borderRadius: '20px',
-                            padding: '32px',
-                            maxWidth: '500px',
-                            width: '100%',
-                            maxHeight: '90vh',
-                            overflowY: 'auto',
-                            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)'
-                        }}
-                        onClick={e => e.stopPropagation()}
-                    >
-                        <h2 style={{ fontSize: '24px', fontWeight: '700', color: isDark ? '#FFF' : '#1F2937', marginBottom: '24px' }}>
-                            Add New Product
-                        </h2>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                            <input
-                                type="text"
-                                placeholder="Product Name *"
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
+                    <Card glass className="w-full max-w-lg shadow-2xl">
+                        <CardHeader>
+                            <CardTitle>Add New Product</CardTitle>
+                            <Button variant="ghost" size="sm" onClick={() => setShowAddModal(false)}>
+                                <X size={20} />
+                            </Button>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <Input
+                                label="Product Name"
+                                placeholder="e.g., Slim Cut Jeans"
                                 value={newProduct.name}
                                 onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
-                                style={{
-                                    padding: '12px 16px',
-                                    borderRadius: '12px',
-                                    border: isDark ? `1px solid ${colors.violet}33` : '1px solid #E5E7EB',
-                                    background: isDark ? '#111827' : '#F9FAFB',
-                                    color: isDark ? '#FFF' : '#1F2937',
-                                    fontSize: '14px'
-                                }}
                             />
-                            <input
-                                type="text"
-                                placeholder="SKU (auto-generated if empty)"
-                                value={newProduct.sku}
-                                onChange={(e) => setNewProduct({ ...newProduct, sku: e.target.value })}
-                                style={{
-                                    padding: '12px 16px',
-                                    borderRadius: '12px',
-                                    border: isDark ? `1px solid ${colors.violet}33` : '1px solid #E5E7EB',
-                                    background: isDark ? '#111827' : '#F9FAFB',
-                                    color: isDark ? '#FFF' : '#1F2937',
-                                    fontSize: '14px'
-                                }}
-                            />
-                            <input
-                                type="number"
-                                placeholder="Price (₦) *"
-                                value={newProduct.price}
-                                onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
-                                style={{
-                                    padding: '12px 16px',
-                                    borderRadius: '12px',
-                                    border: isDark ? `1px solid ${colors.violet}33` : '1px solid #E5E7EB',
-                                    background: isDark ? '#111827' : '#F9FAFB',
-                                    color: isDark ? '#FFF' : '#1F2937',
-                                    fontSize: '14px'
-                                }}
-                            />
-                            <input
-                                type="number"
-                                placeholder="Initial Stock"
-                                value={newProduct.stock}
-                                onChange={(e) => setNewProduct({ ...newProduct, stock: e.target.value })}
-                                style={{
-                                    padding: '12px 16px',
-                                    borderRadius: '12px',
-                                    border: isDark ? `1px solid ${colors.violet}33` : '1px solid #E5E7EB',
-                                    background: isDark ? '#111827' : '#F9FAFB',
-                                    color: isDark ? '#FFF' : '#1F2937',
-                                    fontSize: '14px'
-                                }}
-                            />
-                            <select
-                                value={newProduct.category}
-                                onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })}
-                                style={{
-                                    padding: '12px 16px',
-                                    borderRadius: '12px',
-                                    border: isDark ? `1px solid ${colors.violet}33` : '1px solid #E5E7EB',
-                                    background: isDark ? '#111827' : '#F9FAFB',
-                                    color: isDark ? '#FFF' : '#1F2937',
-                                    fontSize: '14px'
-                                }}
-                            >
-                                <option value="">Select Category</option>
-                                {categories.filter(c => c !== 'All').map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                            </select>
-                            <textarea
-                                placeholder="Description (optional)"
-                                value={newProduct.description}
-                                onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
-                                rows={3}
-                                style={{
-                                    padding: '12px 16px',
-                                    borderRadius: '12px',
-                                    border: isDark ? `1px solid ${colors.violet}33` : '1px solid #E5E7EB',
-                                    background: isDark ? '#111827' : '#F9FAFB',
-                                    color: isDark ? '#FFF' : '#1F2937',
-                                    fontSize: '14px',
-                                    fontFamily: 'inherit',
-                                    resize: 'vertical'
-                                }}
-                            />
-                            <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
-                                <button
-                                    onClick={handleAddProduct}
-                                    disabled={saving}
-                                    style={{
-                                        flex: 1,
-                                        padding: '14px',
-                                        borderRadius: '12px',
-                                        border: 'none',
-                                        background: `linear-gradient(135deg, ${colors.violet}, ${colors.indigo})`,
-                                        color: '#FFF',
-                                        fontSize: '14px',
-                                        fontWeight: '600',
-                                        cursor: saving ? 'not-allowed' : 'pointer',
-                                        opacity: saving ? 0.6 : 1
-                                    }}
-                                >
-                                    {saving ? 'Adding...' : 'Add Product'}
-                                </button>
-                                <button
-                                    onClick={() => setShowAddModal(false)}
-                                    style={{
-                                        flex: 1,
-                                        padding: '14px',
-                                        borderRadius: '12px',
-                                        border: isDark ? '1px solid #374151' : '1px solid #E5E7EB',
-                                        background: 'transparent',
-                                        color: isDark ? '#FFF' : '#1F2937',
-                                        fontSize: '14px',
-                                        fontWeight: '600',
-                                        cursor: 'pointer'
-                                    }}
-                                >
-                                    Cancel
-                                </button>
+                            <div className="grid grid-cols-2 gap-4">
+                                <Input
+                                    label="Price (₦)"
+                                    type="number"
+                                    placeholder="0.00"
+                                    value={newProduct.price}
+                                    onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
+                                />
+                                <Input
+                                    label="Initial Stock"
+                                    type="number"
+                                    placeholder="0"
+                                    value={newProduct.stock}
+                                    onChange={(e) => setNewProduct({ ...newProduct, stock: e.target.value })}
+                                />
                             </div>
-                        </div>
-                    </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="block text-sm font-medium text-main">Category</label>
+                                    <select
+                                        value={newProduct.category}
+                                        onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })}
+                                        className="premium-input"
+                                    >
+                                        <option value="">Select...</option>
+                                        {categories.filter(c => c !== 'All').map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                                    </select>
+                                </div>
+                                <Input
+                                    label="SKU (Optional)"
+                                    placeholder="Auto-generated"
+                                    value={newProduct.sku}
+                                    onChange={(e) => setNewProduct({ ...newProduct, sku: e.target.value })}
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="block text-sm font-medium text-main">Description</label>
+                                <textarea
+                                    className="premium-input min-h-[80px] resize-y"
+                                    placeholder="Product details..."
+                                    value={newProduct.description}
+                                    onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
+                                />
+                            </div>
+                            <div className="flex justify-end gap-3 mt-4">
+                                <Button variant="secondary" onClick={() => setShowAddModal(false)}>Cancel</Button>
+                                <Button onClick={handleAddProduct} isLoading={saving}>Add Product</Button>
+                            </div>
+                        </CardContent>
+                    </Card>
                 </div>
             )}
 
-            {/* Restock Modal */}
             {showRestockModal && (
-                <div style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    background: 'rgba(0, 0, 0, 0.7)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 1000
-                }}
-                    onClick={() => setShowRestockModal(null)}
-                >
-                    <div
-                        style={{
-                            background: isDark ? '#1F2937' : '#FFF',
-                            borderRadius: '20px',
-                            padding: '32px',
-                            maxWidth: '400px',
-                            width: '100%',
-                            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)'
-                        }}
-                        onClick={e => e.stopPropagation()}
-                    >
-                        <h2 style={{ fontSize: '20px', fontWeight: '700', color: isDark ? '#FFF' : '#1F2937', marginBottom: '8px' }}>
-                            Restock Product
-                        </h2>
-                        <p style={{ fontSize: '14px', color: colors.muted, marginBottom: '24px' }}>
-                            {showRestockModal.name}
-                        </p>
-                        <div style={{ marginBottom: '16px' }}>
-                            <div style={{ fontSize: '12px', color: colors.muted, marginBottom: '4px' }}>
-                                Current Stock: <span style={{ fontWeight: '600', color: isDark ? '#FFF' : '#1F2937' }}>{showRestockModal.stock} units</span>
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
+                    <Card glass className="w-full max-w-sm shadow-2xl">
+                        <CardHeader>
+                            <CardTitle>Restock Product</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="p-3 rounded-lg bg-surface-2">
+                                <p className="font-medium">{showRestockModal.name}</p>
+                                <p className="text-sm text-muted">Current Stock: {showRestockModal.stock}</p>
                             </div>
-                        </div>
-                        <input
-                            type="number"
-                            placeholder="Add quantity"
-                            value={restockAmount}
-                            onChange={(e) => setRestockAmount(e.target.value)}
-                            style={{
-                                width: '100%',
-                                padding: '12px 16px',
-                                borderRadius: '12px',
-                                border: isDark ? `1px solid ${colors.violet}33` : '1px solid #E5E7EB',
-                                background: isDark ? '#111827' : '#F9FAFB',
-                                color: isDark ? '#FFF' : '#1F2937',
-                                fontSize: '14px',
-                                marginBottom: '20px'
-                            }}
-                        />
-                        <div style={{ display: 'flex', gap: '12px' }}>
-                            <button
-                                onClick={handleRestock}
-                                disabled={saving}
-                                style={{
-                                    flex: 1,
-                                    padding: '14px',
-                                    borderRadius: '12px',
-                                    border: 'none',
-                                    background: colors.success,
-                                    color: '#FFF',
-                                    fontSize: '14px',
-                                    fontWeight: '600',
-                                    cursor: saving ? 'not-allowed' : 'pointer',
-                                    opacity: saving ? 0.6 : 1
-                                }}
-                            >
-                                {saving ? 'Updating...' : 'Confirm Restock'}
-                            </button>
-                            <button
-                                onClick={() => setShowRestockModal(null)}
-                                style={{
-                                    flex: 1,
-                                    padding: '14px',
-                                    borderRadius: '12px',
-                                    border: isDark ? '1px solid #374151' : '1px solid #E5E7EB',
-                                    background: 'transparent',
-                                    color: isDark ? '#FFF' : '#1F2937',
-                                    fontSize: '14px',
-                                    fontWeight: '600',
-                                    cursor: 'pointer'
-                                }}
-                            >
-                                Cancel
-                            </button>
-                        </div>
-                    </div>
+                            <Input
+                                label="Quantity to Add"
+                                type="number"
+                                autoFocus
+                                placeholder="0"
+                                value={restockAmount}
+                                onChange={(e) => setRestockAmount(e.target.value)}
+                            />
+                            <div className="flex justify-end gap-3 mt-4">
+                                <Button variant="secondary" onClick={() => setShowRestockModal(null)}>Cancel</Button>
+                                <Button onClick={handleRestock} isLoading={saving}>Confirm</Button>
+                            </div>
+                        </CardContent>
+                    </Card>
                 </div>
             )}
         </div>

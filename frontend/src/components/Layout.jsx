@@ -1,156 +1,151 @@
-import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
-import { useContext } from 'react'
-import { ThemeContext } from '../context/ThemeContext'
+import React, { useContext } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { ThemeContext } from '../context/ThemeContext';
+import {
+  LayoutDashboard,
+  Package,
+  ShoppingCart,
+  BarChart2,
+  Settings,
+  LogOut,
+  Sun,
+  Moon,
+  Menu,
+  Zap
+} from 'lucide-react';
+import { Button } from './ui/Button';
 
 const Layout = ({ children }) => {
-  const location = useLocation()
-  const navigate = useNavigate()
-  const { user, logout } = useAuth()
-  const { theme, toggleTheme } = useContext(ThemeContext)
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useContext(ThemeContext);
 
-  // Streamlined navigation for mobile UX (5 items instead of 8)
   const navItems = [
-    { path: '/dashboard', label: 'Dashboard', icon: '📊' },
-    { path: '/products', label: 'Products', icon: '📦' },
-    { path: '/orders', label: 'Orders', icon: '🛒' },      // Includes Invoices tab
-    { path: '/insights', label: 'Insights', icon: '📈' },  // Analytics + Reports + Expenses
-    { path: '/settings', label: 'Settings', icon: '⚙️' },
-  ]
+    { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/products', label: 'Products', icon: Package },
+    { path: '/orders', label: 'Orders', icon: ShoppingCart },
+    { path: '/insights', label: 'Insights', icon: BarChart2 },
+    { path: '/settings', label: 'Settings', icon: Settings },
+  ];
 
   const handleLogout = () => {
-    logout()
-    navigate('/')
-  }
+    logout();
+    navigate('/');
+  };
 
   return (
-    <div className={`min-h-screen ${theme === 'dark' ? 'bg-dark-bg' : 'bg-slate-50'}`}>
-      {/* Header */}
-      <header className={`sticky top-0 z-50 ${theme === 'dark'
-        ? 'bg-dark-card/95 backdrop-blur-sm border-b border-dark-border'
-        : 'bg-white/95 backdrop-blur-sm shadow-sm'
-        }`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <Link to="/dashboard" className="flex items-center">
-              <div className="bg-kofa-cobalt px-3 py-1.5 rounded-lg">
-                <span className="text-white font-bold">KOFA</span>
-              </div>
-            </Link>
+    <div className="min-h-screen bg-app text-main flex font-sans transition-colors duration-300">
 
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={toggleTheme}
-                className={`p-2 rounded-lg ${theme === 'dark' ? 'bg-dark-border text-kofa-sky' : 'bg-gray-100 text-kofa-steel'
-                  }`}
-              >
-                {theme === 'dark' ? '☀️' : '🌙'}
-              </button>
-
-              {user && (
-                <div className="hidden sm:flex items-center space-x-2">
-                  <span className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-kofa-steel'}`}>
-                    {user.businessName || user.email}
-                  </span>
-                  <span className={`text-xs px-2 py-1 rounded ${theme === 'dark' ? 'bg-kofa-cobalt/30 text-kofa-sky' : 'bg-blue-100 text-kofa-cobalt'
-                    }`}>
-                    {user.plan?.toUpperCase() || 'FREE'}
-                  </span>
-                </div>
-              )}
-
-              <Link to="/subscription" className="hidden sm:block bg-kofa-cobalt text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-kofa-navy">
-                Upgrade
-              </Link>
-
-              <button
-                onClick={handleLogout}
-                className={`hidden sm:block text-sm ${theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-kofa-steel hover:text-kofa-navy'}`}
-              >
-                Logout
-              </button>
-            </div>
+      {/* --- Desktop Sidebar --- */}
+      <aside className="hidden lg:flex flex-col w-64 h-screen fixed left-0 top-0 glass-panel border-r border-border-subtle z-40">
+        {/* Logo Area */}
+        <div className="p-6 flex items-center gap-3">
+          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-brand-primary to-blue-600 flex items-center justify-center shadow-lg shadow-brand-glow">
+            <span className="text-white font-bold text-lg">K</span>
           </div>
+          <span className="font-bold text-xl tracking-tight">KOFA</span>
         </div>
-      </header>
 
-      {/* Mobile Nav */}
-      <nav className={`fixed bottom-0 left-0 right-0 sm:hidden z-50 ${theme === 'dark' ? 'bg-dark-card border-t border-dark-border' : 'bg-white border-t'
-        }`}>
-        <div className="grid grid-cols-5">
-          {navItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`flex flex-col items-center py-2 ${location.pathname === item.path
-                ? 'text-kofa-cobalt'
-                : theme === 'dark' ? 'text-gray-400' : 'text-kofa-steel'
-                }`}
-            >
-              <span className="text-xl">{item.icon}</span>
-              <span className="text-xs mt-1">{item.label}</span>
-            </Link>
-          ))}
-        </div>
-      </nav>
+        {/* Navigation */}
+        <nav className="flex-1 px-4 py-4 space-y-1">
+          {navItems.map((item) => {
+            const isActive = location.pathname === item.path;
+            const Icon = item.icon;
 
-      {/* Desktop Sidebar + Content */}
-      <div className="hidden sm:flex">
-        <aside className={`w-56 min-h-screen fixed left-0 top-16 ${theme === 'dark' ? 'bg-dark-card border-r border-dark-border' : 'bg-white shadow-sm'
-          }`}>
-          <nav className="p-4 space-y-1">
-            {navItems.map((item) => (
+            return (
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center space-x-3 px-4 py-3 rounded-lg ${location.pathname === item.path
-                  ? theme === 'dark'
-                    ? 'bg-kofa-cobalt/20 text-kofa-sky'
-                    : 'bg-blue-50 text-kofa-cobalt'
-                  : theme === 'dark'
-                    ? 'text-gray-400 hover:bg-dark-border hover:text-white'
-                    : 'text-kofa-steel hover:bg-gray-50 hover:text-kofa-navy'
-                  }`}
+                className={`
+                  flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group
+                  ${isActive
+                    ? 'bg-brand-primary/10 text-brand-primary font-medium'
+                    : 'text-muted hover:text-main hover:bg-surface-2'
+                  }
+                `}
               >
-                <span className="text-xl">{item.icon}</span>
-                <span className="font-medium">{item.label}</span>
+                <Icon size={20} className={isActive ? 'text-brand-primary' : 'text-dim group-hover:text-main'} />
+                <span>{item.label}</span>
+                {isActive && (
+                  <div className="ml-auto w-1.5 h-1.5 rounded-full bg-brand-primary shadow-[0_0_8px_var(--brand-primary)]" />
+                )}
               </Link>
-            ))}
-          </nav>
+            );
+          })}
+        </nav>
 
-          {/* Subscription CTA */}
-          <div className="absolute bottom-20 left-4 right-4">
-            <Link
-              to="/subscription"
-              className={`block p-4 rounded-xl text-center ${theme === 'dark' ? 'bg-kofa-cobalt/20 border border-kofa-cobalt/30' : 'bg-blue-50 border border-blue-100'
-                }`}
-            >
-              <span className="text-2xl">💎</span>
-              <p className={`text-sm font-medium mt-2 ${theme === 'dark' ? 'text-kofa-sky' : 'text-kofa-cobalt'}`}>
-                Upgrade Plan
-              </p>
-            </Link>
+        {/* User / Logout */}
+        <div className="p-4 border-t border-border-subtle">
+          <div className="flex items-center gap-3 mb-4 p-3 bg-surface-2/50 rounded-xl border border-border-subtle">
+            <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-bold">
+              {user?.email?.[0]?.toUpperCase() || 'U'}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{user?.businessName || 'Business'}</p>
+              <p className="text-xs text-muted truncate">{user?.email}</p>
+            </div>
           </div>
 
-          <div className="absolute bottom-4 left-4 right-4">
+          <div className="flex gap-2">
+            <button
+              onClick={toggleTheme}
+              className="flex-1 flex items-center justify-center p-2 rounded-lg text-muted hover:bg-surface-2 hover:text-main transition-colors"
+            >
+              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
             <button
               onClick={handleLogout}
-              className={`w-full flex items-center justify-center space-x-2 px-4 py-3 rounded-lg ${theme === 'dark' ? 'text-gray-400 hover:bg-dark-border' : 'text-kofa-steel hover:bg-gray-50'
-                }`}
+              className="flex-1 flex items-center justify-center p-2 rounded-lg text-muted hover:bg-red-500/10 hover:text-red-500 transition-colors"
             >
-              <span>🚪</span>
-              <span>Logout</span>
+              <LogOut size={18} />
             </button>
           </div>
-        </aside>
+        </div>
+      </aside>
 
-        <main className="flex-1 ml-56 pb-8">{children}</main>
-      </div>
+      {/* --- Mobile Header --- */}
+      <header className="lg:hidden fixed top-0 left-0 right-0 h-16 glass-panel z-50 px-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-brand-primary to-blue-600 flex items-center justify-center">
+            <span className="text-white font-bold">K</span>
+          </div>
+          <span className="font-bold text-lg">KOFA</span>
+        </div>
+        <button onClick={toggleTheme} className="p-2 text-muted">
+          {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+        </button>
+      </header>
 
-      {/* Mobile Content */}
-      <main className="sm:hidden pb-20">{children}</main>
+      {/* --- Main Content --- */}
+      <main className="flex-1 lg:ml-64 pt-20 lg:pt-8 px-4 lg:px-8 pb-24 lg:pb-8 min-w-0 overflow-x-hidden">
+        <div className="max-w-6xl mx-auto animate-fadeIn">
+          {children}
+        </div>
+      </main>
+
+      {/* --- Mobile Bottom Nav --- */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 h-16 glass-panel border-t border-border-subtle z-50 flex items-center justify-around px-2">
+        {navItems.map((item) => {
+          const isActive = location.pathname === item.path;
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.path}
+              to={item.path}
+              className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-colors ${isActive ? 'text-brand-primary' : 'text-muted hover:text-main'
+                }`}
+            >
+              <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
+              <span className="text-[10px] font-medium">{item.label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+
     </div>
-  )
-}
+  );
+};
 
-export default Layout
+export default Layout;
