@@ -1,5 +1,5 @@
-// API Configuration - Points to Azure VM backend (faster than Heroku!)
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://134.112.17.54:8000';
+// API Configuration - Points to Heroku EU backend (uses free student credits!)
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://kofa-backend-eu-2bb681b4e51a.herokuapp.com';
 
 // Import browser-side cache utilities
 import { getCache, setCache, clearCache, CACHE_KEYS } from '../utils/cache';
