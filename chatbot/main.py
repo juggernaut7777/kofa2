@@ -483,8 +483,16 @@ async def get_orders(status: Optional[str] = None):
     """
     Get all orders for merchant dashboard.
     Fetches from database, falling back to ORDERS_STORE + mock demo orders.
-    PERFORMANCE OPTIMIZED: Uses eager loading to prevent N+1 queries.
+    PERFORMANCE OPTIMIZED: Uses eager loading + 60-second caching.
     """
+    # Build cache key based on status filter
+    cache_key = f"orders:{status or 'all'}"
+    
+    # Check cache first (fast, in-memory)
+    cached = get_cache(cache_key)
+    if cached is not None:
+        return cached
+    
     from datetime import timedelta
     from sqlalchemy.orm import joinedload
     
@@ -549,6 +557,9 @@ async def get_orders(status: Optional[str] = None):
     
     # Sort by created_at descending
     all_orders.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+    
+    # Store in cache for 60 seconds
+    set_cache(cache_key, all_orders, ttl_seconds=60)
     
     return all_orders
 
