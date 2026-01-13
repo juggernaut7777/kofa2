@@ -2,7 +2,7 @@ import { useState, useEffect, useContext, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { apiCall, cachedApiCall, API_ENDPOINTS, CACHE_KEYS } from '../../config/api'
 import { ThemeContext } from '../../context/ThemeContext'
-import { Plus, Search, ScanLine, Package, AlertTriangle, Upload, X, Minus, RefreshCw } from 'lucide-react'
+import { Plus, Search, ScanLine, Package, Upload, X, RefreshCw, Edit2, Image, Camera } from 'lucide-react'
 
 const ProductsRedesign = () => {
     const navigate = useNavigate()
@@ -10,6 +10,7 @@ const ProductsRedesign = () => {
     const { theme } = useContext(ThemeContext)
     const isDark = theme === 'dark'
     const fileInputRef = useRef(null)
+    const imageInputRef = useRef(null)
 
     const [products, setProducts] = useState([])
     const [loading, setLoading] = useState(true)
@@ -17,10 +18,13 @@ const ProductsRedesign = () => {
     const [searchQuery, setSearchQuery] = useState('')
     const [activeFilter, setActiveFilter] = useState('all')
     const [showAddModal, setShowAddModal] = useState(false)
+    const [editingProduct, setEditingProduct] = useState(null)
+    const [uploadingImage, setUploadingImage] = useState(false)
 
     const [newProduct, setNewProduct] = useState({
-        name: '', price: '', stock: '', category: 'General', description: ''
+        name: '', price: '', stock: '', category: 'General', description: '', image: null
     })
+    const [imagePreview, setImagePreview] = useState(null)
 
     useEffect(() => { loadProducts() }, [])
 
@@ -49,11 +53,8 @@ const ProductsRedesign = () => {
                 setProducts(normalizeProducts(fresh))
             })
             setProducts(normalizeProducts(data))
-        } catch (e) {
-            setProducts([])
-        } finally {
-            setLoading(false)
-        }
+        } catch (e) { setProducts([]) }
+        finally { setLoading(false) }
     }
 
     const formatCurrency = (n) => `₦${parseFloat(n || 0).toLocaleString('en-NG', { minimumFractionDigits: 0 })}`
@@ -64,28 +65,84 @@ const ProductsRedesign = () => {
         return { label: 'In Stock', color: 'green' }
     }
 
-    const handleAddProduct = async () => {
+    const handleImageSelect = (e) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+
+        const reader = new FileReader()
+        reader.onload = (ev) => {
+            setImagePreview(ev.target?.result)
+            setNewProduct({ ...newProduct, image: file })
+        }
+        reader.readAsDataURL(file)
+    }
+
+    const handleSaveProduct = async () => {
         if (!newProduct.name || !newProduct.price) { alert('Please fill name and price'); return }
         setSaving(true)
         try {
-            await apiCall(API_ENDPOINTS.CREATE_PRODUCT, {
-                method: 'POST',
-                body: JSON.stringify({
-                    name: newProduct.name,
-                    price: parseFloat(newProduct.price),
-                    stock_level: parseInt(newProduct.stock) || 0,
-                    category: newProduct.category,
-                    description: newProduct.description
+            const productData = {
+                name: newProduct.name,
+                price: parseFloat(newProduct.price),
+                stock_level: parseInt(newProduct.stock) || 0,
+                category: newProduct.category,
+                description: newProduct.description
+            }
+
+            let productId = editingProduct?.id
+
+            if (editingProduct) {
+                await apiCall(API_ENDPOINTS.UPDATE_PRODUCT(productId), {
+                    method: 'PUT',
+                    body: JSON.stringify(productData)
                 })
-            })
+            } else {
+                const response = await apiCall(API_ENDPOINTS.CREATE_PRODUCT, {
+                    method: 'POST',
+                    body: JSON.stringify(productData)
+                })
+                productId = response.id || response.product_id
+            }
+
+            // Upload image if selected
+            if (newProduct.image && productId) {
+                const formData = new FormData()
+                formData.append('image', newProduct.image)
+
+                try {
+                    await fetch(`${API_ENDPOINTS.UPLOAD_PRODUCT_IMAGE(productId)}`, {
+                        method: 'POST',
+                        body: formData
+                    })
+                } catch (imgErr) {
+                    console.warn('Image upload failed:', imgErr)
+                }
+            }
+
             setShowAddModal(false)
-            setNewProduct({ name: '', price: '', stock: '', category: 'General', description: '' })
+            setEditingProduct(null)
+            setNewProduct({ name: '', price: '', stock: '', category: 'General', description: '', image: null })
+            setImagePreview(null)
             loadProducts()
         } catch (e) {
-            alert('Failed to add product')
+            alert('Failed to save product')
         } finally {
             setSaving(false)
         }
+    }
+
+    const handleEditProduct = (product) => {
+        setEditingProduct(product)
+        setNewProduct({
+            name: product.name,
+            price: product.price.toString(),
+            stock: product.stock.toString(),
+            category: product.category,
+            description: product.description || '',
+            image: null
+        })
+        setImagePreview(product.image)
+        setShowAddModal(true)
     }
 
     const handleRestock = async (productId, amount) => {
@@ -96,9 +153,7 @@ const ProductsRedesign = () => {
                 body: JSON.stringify({ quantity: amount })
             })
             loadProducts()
-        } catch (e) {
-            alert('Failed to restock')
-        }
+        } catch (e) { alert('Failed to restock') }
     }
 
     const handleCSVImport = (e) => {
@@ -129,11 +184,9 @@ const ProductsRedesign = () => {
                         })
                     }
                 }
-                alert('Products imported successfully!')
+                alert('Products imported!')
                 loadProducts()
-            } catch (err) {
-                alert('Failed to import CSV')
-            }
+            } catch (err) { alert('Failed to import CSV') }
         }
         reader.readAsText(file)
         e.target.value = ''
@@ -156,29 +209,15 @@ const ProductsRedesign = () => {
         <div className={`min-h-screen ${isDark ? 'bg-[#0F0F12]' : 'bg-white'}`}>
             {/* Header */}
             <header className={`px-4 pt-4 pb-2 flex items-center justify-between ${isDark ? 'text-white' : ''}`}>
-                <h1 className="text-2xl font-bold">Inventory Ledger</h1>
+                <h1 className="text-2xl font-bold">Inventory</h1>
                 <div className="flex items-center gap-2">
-                    {/* Barcode Scan Button */}
-                    <button
-                        className={`p-2 rounded-lg ${isDark ? 'bg-white/10 hover:bg-white/20' : 'bg-gray-100 hover:bg-gray-200'}`}
-                        title="Scan Barcode"
-                        onClick={() => alert('Barcode scanning requires camera access. Coming soon!')}
-                    >
+                    <button className={`p-2 rounded-lg ${isDark ? 'bg-white/10 hover:bg-white/20' : 'bg-gray-100 hover:bg-gray-200'}`}
+                        title="Scan Barcode" onClick={() => alert('Barcode scanning coming soon!')}>
                         <ScanLine size={20} className="text-[#0095FF]" />
                     </button>
-                    {/* CSV Import */}
-                    <input
-                        type="file"
-                        ref={fileInputRef}
-                        accept=".csv"
-                        onChange={handleCSVImport}
-                        className="hidden"
-                    />
-                    <button
-                        className={`p-2 rounded-lg ${isDark ? 'bg-white/10 hover:bg-white/20' : 'bg-gray-100 hover:bg-gray-200'}`}
-                        title="Import CSV"
-                        onClick={() => fileInputRef.current?.click()}
-                    >
+                    <input type="file" ref={fileInputRef} accept=".csv" onChange={handleCSVImport} className="hidden" />
+                    <button className={`p-2 rounded-lg ${isDark ? 'bg-white/10 hover:bg-white/20' : 'bg-gray-100 hover:bg-gray-200'}`}
+                        title="Import CSV" onClick={() => fileInputRef.current?.click()}>
                         <Upload size={20} className={isDark ? 'text-gray-400' : 'text-gray-500'} />
                     </button>
                 </div>
@@ -186,31 +225,21 @@ const ProductsRedesign = () => {
 
             <p className={`px-4 pb-4 text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Manage stock levels and pricing</p>
 
-            {/* Search Bar */}
+            {/* Search */}
             <div className="px-4 pb-4">
                 <div className={`flex items-center gap-2 px-4 py-3 rounded-xl ${isDark ? 'bg-white/10' : 'bg-gray-100'}`}>
                     <Search size={20} className={isDark ? 'text-gray-500' : 'text-gray-400'} />
-                    <input
-                        type="text"
-                        placeholder="Search products..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className={`flex-1 bg-transparent outline-none text-sm ${isDark ? 'text-white placeholder-gray-500' : 'text-gray-900 placeholder-gray-400'}`}
-                    />
+                    <input type="text" placeholder="Search products..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+                        className={`flex-1 bg-transparent outline-none text-sm ${isDark ? 'text-white placeholder-gray-500' : 'text-gray-900 placeholder-gray-400'}`} />
                 </div>
             </div>
 
-            {/* Filter Pills */}
-            <div className="px-4 pb-4 flex gap-2 overflow-x-auto scrollbar-hide">
+            {/* Filters */}
+            <div className="px-4 pb-4 flex gap-2 overflow-x-auto">
                 {filters.map(filter => (
-                    <button
-                        key={filter.id}
-                        onClick={() => setActiveFilter(filter.id)}
-                        className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${activeFilter === filter.id
-                                ? 'bg-[#0095FF] text-white'
-                                : isDark ? 'bg-white/10 text-gray-300' : 'bg-gray-100 text-gray-600'
-                            }`}
-                    >
+                    <button key={filter.id} onClick={() => setActiveFilter(filter.id)}
+                        className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap ${activeFilter === filter.id ? 'bg-[#0095FF] text-white' : isDark ? 'bg-white/10 text-gray-300' : 'bg-gray-100 text-gray-600'
+                            }`}>
                         {filter.label}
                     </button>
                 ))}
@@ -220,8 +249,7 @@ const ProductsRedesign = () => {
             <div className="px-4 pb-32 space-y-3">
                 {loading ? (
                     <div className={`text-center py-12 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                        <RefreshCw size={24} className="mx-auto animate-spin mb-2" />
-                        Loading products...
+                        <RefreshCw size={24} className="mx-auto animate-spin mb-2" />Loading...
                     </div>
                 ) : filteredProducts.length === 0 ? (
                     <div className={`text-center py-12 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
@@ -229,112 +257,98 @@ const ProductsRedesign = () => {
                         <p>No products found</p>
                         <button onClick={() => setShowAddModal(true)} className="mt-3 text-[#0095FF] font-medium">Add your first product</button>
                     </div>
-                ) : (
-                    filteredProducts.map(product => {
-                        const status = getStockStatus(product.stock)
-                        return (
-                            <div key={product.id} className={`rounded-2xl p-4 ${isDark ? 'bg-[#1A1A1F] border border-white/10' : 'bg-white border border-gray-100 shadow-sm'}`}>
-                                <div className="flex gap-4">
-                                    {/* Product Image */}
-                                    <div className={`w-16 h-16 rounded-xl flex items-center justify-center overflow-hidden flex-shrink-0 ${isDark ? 'bg-white/10' : 'bg-gray-100'}`}>
-                                        {product.image ? (
-                                            <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
-                                        ) : (
-                                            <Package size={24} className={isDark ? 'text-gray-600' : 'text-gray-400'} />
-                                        )}
-                                    </div>
-
-                                    {/* Product Info */}
-                                    <div className="flex-1 min-w-0">
-                                        <h3 className={`font-semibold truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>{product.name}</h3>
-                                        <p className={`text-xs mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{product.category}</p>
-                                        <div className="flex items-center gap-2 mt-2">
-                                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${status.color === 'green' ? 'bg-green-100 text-green-600' :
-                                                    status.color === 'orange' ? 'bg-orange-100 text-orange-600' :
-                                                        'bg-red-100 text-red-600'
-                                                }`}>
-                                                {product.stock} in stock
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    {/* Price & Restock */}
-                                    <div className="flex flex-col items-end justify-between">
-                                        <span className="text-lg font-bold text-[#0095FF]">{formatCurrency(product.price)}</span>
-                                        {product.stock < 10 && (
-                                            <button
-                                                onClick={() => handleRestock(product.id, 10)}
-                                                className="text-xs text-[#0095FF] font-medium border border-[#0095FF] px-2 py-1 rounded-lg hover:bg-blue-50"
-                                            >
-                                                +10 Stock
-                                            </button>
-                                        )}
+                ) : filteredProducts.map(product => {
+                    const status = getStockStatus(product.stock)
+                    return (
+                        <div key={product.id} className={`rounded-2xl p-4 ${isDark ? 'bg-[#1A1A1F] border border-white/10' : 'bg-white border border-gray-100 shadow-sm'}`}>
+                            <div className="flex gap-4">
+                                <div className={`w-16 h-16 rounded-xl flex items-center justify-center overflow-hidden flex-shrink-0 ${isDark ? 'bg-white/10' : 'bg-gray-100'}`}>
+                                    {product.image ? (
+                                        <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <Package size={24} className={isDark ? 'text-gray-600' : 'text-gray-400'} />
+                                    )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <h3 className={`font-semibold truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>{product.name}</h3>
+                                    <p className={`text-xs mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{product.category}</p>
+                                    <div className="flex items-center gap-2 mt-2">
+                                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${status.color === 'green' ? 'bg-green-100 text-green-600' :
+                                                status.color === 'orange' ? 'bg-orange-100 text-orange-600' :
+                                                    'bg-red-100 text-red-600'
+                                            }`}>{product.stock} in stock</span>
                                     </div>
                                 </div>
+                                <div className="flex flex-col items-end justify-between">
+                                    <span className="text-lg font-bold text-[#0095FF]">{formatCurrency(product.price)}</span>
+                                    <button onClick={() => handleEditProduct(product)}
+                                        className={`p-2 rounded-lg ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}>
+                                        <Edit2 size={16} className={isDark ? 'text-gray-500' : 'text-gray-400'} />
+                                    </button>
+                                </div>
                             </div>
-                        )
-                    })
-                )}
+                        </div>
+                    )
+                })}
             </div>
 
-            {/* Add Product FAB */}
-            <button
-                onClick={() => setShowAddModal(true)}
-                className="fixed bottom-24 right-4 w-14 h-14 bg-[#0095FF] text-white rounded-2xl shadow-lg flex items-center justify-center z-30"
-            >
+            {/* FAB */}
+            <button onClick={() => { setEditingProduct(null); setNewProduct({ name: '', price: '', stock: '', category: 'General', description: '', image: null }); setImagePreview(null); setShowAddModal(true) }}
+                className="fixed bottom-24 right-4 w-14 h-14 bg-[#0095FF] text-white rounded-2xl shadow-lg flex items-center justify-center z-30">
                 <Plus size={24} />
             </button>
 
-            {/* Add Product Modal */}
+            {/* Add/Edit Modal */}
             {showAddModal && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center">
-                    <div className={`rounded-t-2xl sm:rounded-2xl w-full max-w-md p-6 ${isDark ? 'bg-[#1A1A1F]' : 'bg-white'}`}>
+                    <div className={`rounded-t-2xl sm:rounded-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto ${isDark ? 'bg-[#1A1A1F]' : 'bg-white'}`}>
                         <div className="flex items-center justify-between mb-6">
-                            <h2 className={`text-xl font-bold ${isDark ? 'text-white' : ''}`}>Add Product</h2>
-                            <button onClick={() => setShowAddModal(false)} className={`p-1 rounded-lg ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}>
+                            <h2 className={`text-xl font-bold ${isDark ? 'text-white' : ''}`}>{editingProduct ? 'Edit Product' : 'Add Product'}</h2>
+                            <button onClick={() => { setShowAddModal(false); setEditingProduct(null) }} className={`p-1 rounded-lg ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}>
                                 <X size={20} className={isDark ? 'text-gray-400' : 'text-gray-500'} />
                             </button>
                         </div>
+
+                        {/* Image Upload */}
+                        <div className="mb-4">
+                            <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Product Image</label>
+                            <input type="file" ref={imageInputRef} accept="image/*" onChange={handleImageSelect} className="hidden" />
+                            <div onClick={() => imageInputRef.current?.click()}
+                                className={`w-full h-32 rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer overflow-hidden ${isDark ? 'border-white/20 hover:border-[#0095FF]' : 'border-gray-200 hover:border-[#0095FF]'
+                                    }`}>
+                                {imagePreview ? (
+                                    <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                                ) : (
+                                    <>
+                                        <Camera size={24} className={isDark ? 'text-gray-500' : 'text-gray-400'} />
+                                        <span className={`text-xs mt-2 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Tap to add photo</span>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+
                         <div className="space-y-4">
                             <div>
-                                <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Product Name</label>
-                                <input
-                                    type="text"
-                                    placeholder="e.g. Premium T-Shirt"
-                                    value={newProduct.name}
-                                    onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
-                                    className={`w-full px-4 py-3 rounded-xl outline-none ${isDark ? 'bg-white/10 text-white border border-white/10 focus:border-[#0095FF]' : 'bg-gray-100 focus:bg-white border border-gray-100 focus:border-[#0095FF]'}`}
-                                />
+                                <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Product Name *</label>
+                                <input type="text" placeholder="e.g. Premium T-Shirt" value={newProduct.name} onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
+                                    className={`w-full px-4 py-3 rounded-xl outline-none ${isDark ? 'bg-white/10 text-white border border-white/10 focus:border-[#0095FF]' : 'bg-gray-100 focus:bg-white border border-gray-100 focus:border-[#0095FF]'}`} />
                             </div>
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Price (₦)</label>
-                                    <input
-                                        type="number"
-                                        placeholder="0"
-                                        value={newProduct.price}
-                                        onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
-                                        className={`w-full px-4 py-3 rounded-xl outline-none ${isDark ? 'bg-white/10 text-white border border-white/10 focus:border-[#0095FF]' : 'bg-gray-100 focus:bg-white border border-gray-100 focus:border-[#0095FF]'}`}
-                                    />
+                                    <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Price (₦) *</label>
+                                    <input type="number" placeholder="0" value={newProduct.price} onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
+                                        className={`w-full px-4 py-3 rounded-xl outline-none ${isDark ? 'bg-white/10 text-white border border-white/10' : 'bg-gray-100 border border-gray-100'}`} />
                                 </div>
                                 <div>
                                     <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Stock</label>
-                                    <input
-                                        type="number"
-                                        placeholder="0"
-                                        value={newProduct.stock}
-                                        onChange={(e) => setNewProduct({ ...newProduct, stock: e.target.value })}
-                                        className={`w-full px-4 py-3 rounded-xl outline-none ${isDark ? 'bg-white/10 text-white border border-white/10 focus:border-[#0095FF]' : 'bg-gray-100 focus:bg-white border border-gray-100 focus:border-[#0095FF]'}`}
-                                    />
+                                    <input type="number" placeholder="0" value={newProduct.stock} onChange={(e) => setNewProduct({ ...newProduct, stock: e.target.value })}
+                                        className={`w-full px-4 py-3 rounded-xl outline-none ${isDark ? 'bg-white/10 text-white border border-white/10' : 'bg-gray-100 border border-gray-100'}`} />
                                 </div>
                             </div>
                             <div>
                                 <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Category</label>
-                                <select
-                                    value={newProduct.category}
-                                    onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })}
-                                    className={`w-full px-4 py-3 rounded-xl outline-none ${isDark ? 'bg-white/10 text-white border border-white/10' : 'bg-gray-100 border border-gray-100'}`}
-                                >
+                                <select value={newProduct.category} onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })}
+                                    className={`w-full px-4 py-3 rounded-xl outline-none ${isDark ? 'bg-white/10 text-white border border-white/10' : 'bg-gray-100 border border-gray-100'}`}>
                                     <option value="General">General</option>
                                     <option value="Clothing">Clothing</option>
                                     <option value="Electronics">Electronics</option>
@@ -342,11 +356,16 @@ const ProductsRedesign = () => {
                                     <option value="Other">Other</option>
                                 </select>
                             </div>
+                            <div>
+                                <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Description</label>
+                                <textarea placeholder="Product details..." value={newProduct.description} onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
+                                    className={`w-full px-4 py-3 rounded-xl outline-none resize-none h-20 ${isDark ? 'bg-white/10 text-white border border-white/10' : 'bg-gray-100 border border-gray-100'}`} />
+                            </div>
                         </div>
                         <div className="flex gap-3 mt-6">
-                            <button onClick={() => setShowAddModal(false)} className={`flex-1 py-3 rounded-xl font-semibold ${isDark ? 'bg-white/10 text-white' : 'bg-gray-100 text-gray-700'}`}>Cancel</button>
-                            <button onClick={handleAddProduct} disabled={saving} className="flex-1 py-3 bg-[#0095FF] text-white rounded-xl font-semibold">
-                                {saving ? 'Saving...' : 'Add Product'}
+                            <button onClick={() => { setShowAddModal(false); setEditingProduct(null) }} className={`flex-1 py-3 rounded-xl font-semibold ${isDark ? 'bg-white/10 text-white' : 'bg-gray-100 text-gray-700'}`}>Cancel</button>
+                            <button onClick={handleSaveProduct} disabled={saving} className="flex-1 py-3 bg-[#0095FF] text-white rounded-xl font-semibold">
+                                {saving ? 'Saving...' : editingProduct ? 'Save' : 'Add Product'}
                             </button>
                         </div>
                     </div>
