@@ -116,20 +116,12 @@ const DashboardRedesign = () => {
             {/* Header Section */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-main to-muted">
+                    <h1 className="text-3xl font-bold text-main">
                         {greeting}, {user?.storeName?.split(' ')[0] || 'Vendor'}
                     </h1>
                     <p className="text-muted mt-1">
                         Here's what's happening with your business today.
                     </p>
-                </div>
-                <div className="flex gap-3">
-                    <Button variant="outline" icon={<Plus size={18} />} onClick={() => navigate('/products', { state: { action: 'add' } })}>
-                        Add Product
-                    </Button>
-                    <Button icon={<FileText size={18} />} onClick={() => navigate('/orders', { state: { action: 'invoice' } })}>
-                        Create Invoice
-                    </Button>
                 </div>
             </div>
 
