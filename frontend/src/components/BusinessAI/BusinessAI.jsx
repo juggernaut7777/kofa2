@@ -1,46 +1,46 @@
-import React, { useState, useRef, useEffect, useContext } from 'react';
-import { API_BASE_URL, API_ENDPOINTS } from '../../config/api';
-import { ThemeContext } from '../../context/ThemeContext';
-import { Send, X, Bot, Sparkles, User, ChevronDown, Minimize2, Maximize2 } from 'lucide-react';
-import { Button } from '../ui/Button';
+import React, { useState, useRef, useEffect, useContext } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { API_BASE_URL, API_ENDPOINTS } from '../../config/api'
+import { ThemeContext } from '../../context/ThemeContext'
+import { Send, X, ScanLine, Mic, Plus, Package, Clock, ShoppingBag, AlertTriangle } from 'lucide-react'
 
 const BusinessAI = ({ userId = 'demo-user' }) => {
-    const { theme } = useContext(ThemeContext);
-    const isDark = theme === 'dark';
+    const navigate = useNavigate()
+    const { theme } = useContext(ThemeContext)
+    const isDark = theme === 'dark'
 
+    const [isOpen, setIsOpen] = useState(false)
     const [messages, setMessages] = useState([
         {
             role: 'assistant',
-            content: 'Hello! 👋 I\'m your KOFA Business AI.\n\nI can help you manage inventory, record sales, or analyze your business performance.',
-            suggestions: ['How many products do I have?', 'Record a sale showing 2 Shoes', 'Show me low stock items']
+            content: "Hi! I'm your KOFA Assistant. How can I help you today?",
+            type: 'text',
+            suggestions: ["Show today's sales", "Low stock items", "Add expense"]
         }
-    ]);
-    const [input, setInput] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [isOpen, setIsOpen] = useState(false);
-    const [isMinimized, setIsMinimized] = useState(false);
-
-    const messagesEndRef = useRef(null);
-    const inputRef = useRef(null);
+    ])
+    const [input, setInput] = useState('')
+    const [loading, setLoading] = useState(false)
+    const messagesEndRef = useRef(null)
+    const inputRef = useRef(null)
 
     const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    };
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
 
     useEffect(() => {
-        if (isOpen && !isMinimized) {
-            scrollToBottom();
-            setTimeout(() => inputRef.current?.focus(), 100);
+        if (isOpen) {
+            scrollToBottom()
+            setTimeout(() => inputRef.current?.focus(), 100)
         }
-    }, [messages, isOpen, isMinimized]);
+    }, [messages, isOpen])
 
     const sendMessage = async (text = input) => {
-        if (!text.trim() || loading) return;
+        if (!text.trim() || loading) return
 
-        const userMessage = text.trim();
-        setInput('');
-        setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
-        setLoading(true);
+        const userMessage = text.trim()
+        setInput('')
+        setMessages(prev => [...prev, { role: 'user', content: userMessage, type: 'text' }])
+        setLoading(true)
 
         try {
             const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.BUSINESS_AI}`, {
@@ -50,191 +50,182 @@ const BusinessAI = ({ userId = 'demo-user' }) => {
                     user_id: userId,
                     message: userMessage
                 })
-            });
+            })
 
-            if (!response.ok) throw new Error('Failed to get response');
+            if (!response.ok) throw new Error('Failed to get response')
 
-            const data = await response.json();
-            let aiContent = data.response || 'Sorry, I couldn\'t process that request.';
+            const data = await response.json()
+            let aiContent = data.response || "I'm here to help!"
 
             if (data.action_taken) {
-                aiContent += `\n\n✅ Action: ${data.action_taken}`;
-                if (data.action_result) {
-                    aiContent += `\n${JSON.stringify(data.action_result, null, 2)}`;
-                }
+                aiContent += `\n\n✅ ${data.action_taken}`
             }
 
-            setMessages(prev => [...prev, { role: 'assistant', content: aiContent }]);
-        } catch (error) {
-            console.error('AI Error:', error);
             setMessages(prev => [...prev, {
                 role: 'assistant',
-                content: '❌ Sorry, I couldn\'t connect to the server. Please check your internet connection.'
-            }]);
+                content: aiContent,
+                type: 'text',
+                suggestions: data.suggestions || []
+            }])
+        } catch (error) {
+            console.error('AI Error:', error)
+            setMessages(prev => [...prev, {
+                role: 'assistant',
+                content: "Sorry, I couldn't connect to the server. Please try again.",
+                type: 'text'
+            }])
         } finally {
-            setLoading(false);
+            setLoading(false)
         }
-    };
+    }
 
     const handleKeyPress = (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendMessage();
+            e.preventDefault()
+            sendMessage()
         }
-    };
+    }
 
+    // Small button in top right corner - clean Stitch design
+    if (!isOpen) {
+        return (
+            <button
+                onClick={() => setIsOpen(true)}
+                className={`fixed top-4 right-4 z-40 flex items-center gap-2 px-3 py-2 rounded-lg font-medium text-sm transition-all ${isDark
+                        ? 'bg-[#1A1A1F] border border-white/10 text-white hover:bg-[#252530]'
+                        : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 shadow-sm'
+                    }`}
+            >
+                <ScanLine size={18} className="text-[#0095FF]" />
+                <span>Ask KOFA</span>
+            </button>
+        )
+    }
+
+    // Full page AI interface
     return (
-        <>
-            {/* Floating Toggle Button - TOP RIGHT with BETA badge */}
-            {!isOpen && (
+        <div className={`fixed inset-0 z-50 flex flex-col ${isDark ? 'bg-[#0F0F12]' : 'bg-white'}`}>
+            {/* Header */}
+            <header className={`flex items-center justify-between px-4 py-3 border-b ${isDark ? 'border-white/10' : 'border-gray-100'}`}>
                 <button
-                    onClick={() => setIsOpen(true)}
-                    className="fixed top-20 lg:top-6 right-4 lg:right-6 h-12 px-4 rounded-full bg-gradient-to-r from-brand-primary to-purple-600 text-white shadow-lg shadow-brand-glow hover:scale-105 transition-all flex items-center gap-2 z-40 group"
+                    onClick={() => setIsOpen(false)}
+                    className={`p-2 rounded-lg ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}
                 >
-                    <Sparkles size={18} className="group-hover:animate-pulse" />
-                    <span className="text-sm font-medium hidden sm:inline">AI Assistant</span>
-                    <span className="text-[10px] font-bold bg-white/20 px-1.5 py-0.5 rounded uppercase">Beta</span>
+                    <X size={24} className={isDark ? 'text-white' : 'text-gray-700'} />
                 </button>
-            )}
+                <div className="text-center">
+                    <h1 className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>KOFA Assistant</h1>
+                    <div className="flex items-center justify-center gap-1 text-xs text-green-500">
+                        <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                        Online
+                    </div>
+                </div>
+                <button className={`p-2 rounded-lg ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}>
+                    <ScanLine size={20} className="text-[#0095FF]" />
+                </button>
+            </header>
 
-            {/* Chat Window */}
-            {isOpen && (
-                <div
-                    className={`
-                        fixed top-16 lg:top-14 right-4 lg:right-6 z-50 flex flex-col transition-all duration-300 ease-in-out
-                        ${isMinimized ? 'w-72 h-14' : 'w-[90vw] sm:w-[400px] h-[500px] max-h-[70vh]'}
-                        bg-app/95 backdrop-blur-xl border border-border-subtle rounded-2xl shadow-2xl overflow-hidden
-                    `}
-                >
-                    {/* Header */}
-                    <div
-                        className="h-14 bg-surface-2/80 backdrop-blur-md flex items-center justify-between px-4 cursor-pointer border-b border-border-subtle"
-                        onClick={() => setIsMinimized(!isMinimized)}
-                    >
-                        <div className="flex items-center gap-2">
-                            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-brand-primary to-purple-600 flex items-center justify-center">
-                                <Bot size={18} className="text-white" />
+            {/* Messages */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {/* Date Header */}
+                <div className="text-center">
+                    <span className={`text-xs px-3 py-1 rounded-full ${isDark ? 'bg-white/10 text-gray-400' : 'bg-gray-100 text-gray-500'}`}>
+                        Today
+                    </span>
+                </div>
+
+                {messages.map((msg, i) => (
+                    <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        {msg.role === 'assistant' && (
+                            <div className="w-8 h-8 rounded-full bg-[#E6F4FF] flex items-center justify-center mr-2 flex-shrink-0">
+                                <Package size={16} className="text-[#0095FF]" />
                             </div>
-                            <div>
-                                <h3 className="font-bold text-sm text-main">Business AI</h3>
-                                <div className="flex items-center gap-1.5">
-                                    <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
-                                    <span className="text-[10px] text-muted">Online</span>
+                        )}
+
+                        <div className="max-w-[80%] space-y-2">
+                            <div className={`p-3 rounded-2xl text-sm ${msg.role === 'user'
+                                    ? 'bg-[#0095FF] text-white rounded-br-sm'
+                                    : isDark ? 'bg-[#1A1A1F] border border-white/10 text-white rounded-bl-sm' : 'bg-gray-100 text-gray-900 rounded-bl-sm'
+                                }`}>
+                                {msg.content}
+                            </div>
+
+                            {/* Suggestions */}
+                            {msg.suggestions && msg.suggestions.length > 0 && (
+                                <div className="flex flex-wrap gap-2">
+                                    {msg.suggestions.map((s, j) => (
+                                        <button
+                                            key={j}
+                                            onClick={() => sendMessage(s)}
+                                            className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${isDark
+                                                    ? 'border-white/20 text-gray-300 hover:bg-white/10'
+                                                    : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                                                }`}
+                                        >
+                                            {s}
+                                        </button>
+                                    ))}
                                 </div>
-                            </div>
+                            )}
                         </div>
-                        <div className="flex items-center gap-1">
-                            <button
-                                onClick={(e) => { e.stopPropagation(); setIsMinimized(!isMinimized); }}
-                                className="p-1.5 rounded-lg hover:bg-surface-3 text-muted transition-colors"
-                            >
-                                {isMinimized ? <Maximize2 size={16} /> : <Minimize2 size={16} />}
-                            </button>
-                            <button
-                                onClick={(e) => { e.stopPropagation(); setIsOpen(false); }}
-                                className="p-1.5 rounded-lg hover:bg-red-500/10 text-muted hover:text-red-500 transition-colors"
-                            >
-                                <X size={16} />
-                            </button>
+
+                        {msg.role === 'user' && (
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ml-2 flex-shrink-0 ${isDark ? 'bg-white/10' : 'bg-gray-200'}`}>
+                                <span className={`text-xs font-medium ${isDark ? 'text-gray-300' : 'text-gray-500'}`}>You</span>
+                            </div>
+                        )}
+                    </div>
+                ))}
+
+                {loading && (
+                    <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-[#E6F4FF] flex items-center justify-center">
+                            <Package size={16} className="text-[#0095FF]" />
+                        </div>
+                        <div className={`p-3 rounded-2xl ${isDark ? 'bg-[#1A1A1F]' : 'bg-gray-100'}`}>
+                            <div className="flex gap-1">
+                                <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                                <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                                <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                            </div>
                         </div>
                     </div>
+                )}
 
-                    {/* Messages Area */}
-                    {!isMinimized && (
-                        <>
-                            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-surface-1/50 scrollbar-thin scrollbar-thumb-surface-3">
-                                {messages.map((msg, idx) => (
-                                    <div key={idx} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                                        <div className={`
-                                            h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0
-                                            ${msg.role === 'user' ? 'bg-surface-3' : 'bg-gradient-to-br from-brand-primary to-purple-600'}
-                                        `}>
-                                            {msg.role === 'user' ? <User size={14} className="text-main" /> : <Bot size={14} className="text-white" />}
-                                        </div>
+                <div ref={messagesEndRef} />
+            </div>
 
-                                        <div className="max-w-[80%] space-y-2">
-                                            <div className={`
-                                                p-3 rounded-2xl text-sm leading-relaxed shadow-sm
-                                                ${msg.role === 'user'
-                                                    ? 'bg-surface-3 text-main rounded-tr-none'
-                                                    : 'bg-surface-2 border border-border-subtle text-main rounded-tl-none'
-                                                }
-                                            `}>
-                                                {msg.content.split('\n').map((line, i) => (
-                                                    <p key={i} className="min-h-[1rem]">{line}</p>
-                                                ))}
-                                            </div>
-
-                                            {/* Quick Suggestions for Assistant's Welcome Message */}
-                                            {msg.suggestions && (
-                                                <div className="flex flex-wrap gap-2 mt-2">
-                                                    {msg.suggestions.map((s, i) => (
-                                                        <button
-                                                            key={i}
-                                                            onClick={() => sendMessage(s)}
-                                                            className="text-xs px-3 py-1.5 rounded-full bg-brand-primary/10 text-brand-primary border border-brand-primary/20 hover:bg-brand-primary/20 transition-colors text-left"
-                                                        >
-                                                            {s}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))}
-
-                                {loading && (
-                                    <div className="flex gap-3">
-                                        <div className="h-8 w-8 rounded-full bg-gradient-to-br from-brand-primary to-purple-600 flex items-center justify-center flex-shrink-0">
-                                            <Bot size={14} className="text-white" />
-                                        </div>
-                                        <div className="bg-surface-2 border border-border-subtle p-3 rounded-2xl rounded-tl-none flex items-center gap-1.5">
-                                            <span className="h-1.5 w-1.5 bg-muted rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                                            <span className="h-1.5 w-1.5 bg-muted rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                                            <span className="h-1.5 w-1.5 bg-muted rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                                        </div>
-                                    </div>
-                                )}
-                                <div ref={messagesEndRef} />
-                            </div>
-
-                            {/* Input Area */}
-                            <div className="p-4 bg-app/95 border-t border-border-subtle backdrop-blur-sm">
-                                <div className="relative flex items-end gap-2 bg-surface-2 rounded-xl border border-border-subtle p-2 focus-within:border-brand-primary focus-within:ring-1 focus-within:ring-brand-primary transition-all">
-                                    <textarea
-                                        ref={inputRef}
-                                        value={input}
-                                        onChange={(e) => setInput(e.target.value)}
-                                        onKeyPress={handleKeyPress}
-                                        placeholder="Type a message..."
-                                        rows={1}
-                                        className="flex-1 bg-transparent border-none text-sm text-main placeholder-muted focus:ring-0 px-2 py-1.5 max-h-32 resize-none"
-                                        style={{ minHeight: '44px' }}
-                                    />
-                                    <button
-                                        onClick={() => sendMessage()}
-                                        disabled={!input.trim() || loading}
-                                        className={`
-                                            p-2 rounded-lg mb-0.5 transition-all
-                                            ${input.trim() && !loading
-                                                ? 'bg-brand-primary text-white shadow-lg shadow-brand-glow hover:scale-105'
-                                                : 'bg-surface-3 text-muted cursor-not-allowed'
-                                            }
-                                        `}
-                                    >
-                                        <Send size={18} />
-                                    </button>
-                                </div>
-                                <div className="text-center mt-2">
-                                    <p className="text-[10px] text-muted">Powered by Groq AI • Free Tier</p>
-                                </div>
-                            </div>
-                        </>
-                    )}
+            {/* Input */}
+            <div className={`p-4 border-t ${isDark ? 'border-white/10 bg-[#0F0F12]' : 'border-gray-100 bg-white'}`}>
+                <div className="flex items-center gap-2">
+                    <button className={`p-2 rounded-lg ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}>
+                        <Plus size={22} className="text-[#0095FF]" />
+                    </button>
+                    <div className={`flex-1 flex items-center px-4 py-2 rounded-full ${isDark ? 'bg-[#1A1A1F]' : 'bg-gray-100'}`}>
+                        <input
+                            ref={inputRef}
+                            type="text"
+                            value={input}
+                            onChange={(e) => setInput(e.target.value)}
+                            onKeyPress={handleKeyPress}
+                            placeholder="Ask KOFA..."
+                            className={`flex-1 bg-transparent outline-none text-sm ${isDark ? 'text-white placeholder-gray-500' : 'text-gray-900 placeholder-gray-400'}`}
+                        />
+                        <button className={`p-1 rounded-full ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-200'}`}>
+                            <Mic size={18} className={isDark ? 'text-gray-500' : 'text-gray-400'} />
+                        </button>
+                    </div>
+                    <button
+                        onClick={() => sendMessage()}
+                        disabled={!input.trim() || loading}
+                        className="w-10 h-10 bg-[#0095FF] text-white rounded-full flex items-center justify-center disabled:opacity-50"
+                    >
+                        <Send size={18} />
+                    </button>
                 </div>
-            )}
-        </>
-    );
-};
+            </div>
+        </div>
+    )
+}
 
-export default BusinessAI;
+export default BusinessAI
