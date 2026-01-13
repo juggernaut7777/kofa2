@@ -1,11 +1,9 @@
 import React, { useState, useRef, useEffect, useContext } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { API_BASE_URL, API_ENDPOINTS } from '../../config/api'
 import { ThemeContext } from '../../context/ThemeContext'
-import { Send, X, ScanLine, Mic, Plus, Package, Clock, ShoppingBag, AlertTriangle } from 'lucide-react'
+import { Send, X, MessageCircle, Mic, Plus, Package } from 'lucide-react'
 
 const BusinessAI = ({ userId = 'demo-user' }) => {
-    const navigate = useNavigate()
     const { theme } = useContext(ThemeContext)
     const isDark = theme === 'dark'
 
@@ -46,20 +44,14 @@ const BusinessAI = ({ userId = 'demo-user' }) => {
             const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.BUSINESS_AI}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    user_id: userId,
-                    message: userMessage
-                })
+                body: JSON.stringify({ user_id: userId, message: userMessage })
             })
 
-            if (!response.ok) throw new Error('Failed to get response')
+            if (!response.ok) throw new Error('Failed')
 
             const data = await response.json()
             let aiContent = data.response || "I'm here to help!"
-
-            if (data.action_taken) {
-                aiContent += `\n\n✅ ${data.action_taken}`
-            }
+            if (data.action_taken) aiContent += `\n\n✅ ${data.action_taken}`
 
             setMessages(prev => [...prev, {
                 role: 'assistant',
@@ -68,10 +60,9 @@ const BusinessAI = ({ userId = 'demo-user' }) => {
                 suggestions: data.suggestions || []
             }])
         } catch (error) {
-            console.error('AI Error:', error)
             setMessages(prev => [...prev, {
                 role: 'assistant',
-                content: "Sorry, I couldn't connect to the server. Please try again.",
+                content: "Sorry, I couldn't connect. Please try again.",
                 type: 'text'
             }])
         } finally {
@@ -86,7 +77,7 @@ const BusinessAI = ({ userId = 'demo-user' }) => {
         }
     }
 
-    // Small button in top right corner - clean Stitch design
+    // Small button in top right - MESSAGE ICON
     if (!isOpen) {
         return (
             <button
@@ -96,42 +87,34 @@ const BusinessAI = ({ userId = 'demo-user' }) => {
                         : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 shadow-sm'
                     }`}
             >
-                <ScanLine size={18} className="text-[#0095FF]" />
-                <span>Ask KOFA</span>
+                <MessageCircle size={18} className="text-[#0095FF]" />
+                <span>Ask KOFA AI</span>
             </button>
         )
     }
 
-    // Full page AI interface
+    // Full page AI
     return (
         <div className={`fixed inset-0 z-50 flex flex-col ${isDark ? 'bg-[#0F0F12]' : 'bg-white'}`}>
             {/* Header */}
             <header className={`flex items-center justify-between px-4 py-3 border-b ${isDark ? 'border-white/10' : 'border-gray-100'}`}>
-                <button
-                    onClick={() => setIsOpen(false)}
-                    className={`p-2 rounded-lg ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}
-                >
+                <button onClick={() => setIsOpen(false)} className={`p-2 rounded-lg ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}>
                     <X size={24} className={isDark ? 'text-white' : 'text-gray-700'} />
                 </button>
                 <div className="text-center">
-                    <h1 className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>KOFA Assistant</h1>
+                    <h1 className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>KOFA AI Assistant</h1>
                     <div className="flex items-center justify-center gap-1 text-xs text-green-500">
                         <span className="w-2 h-2 bg-green-500 rounded-full"></span>
                         Online
                     </div>
                 </div>
-                <button className={`p-2 rounded-lg ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}>
-                    <ScanLine size={20} className="text-[#0095FF]" />
-                </button>
+                <div className="w-10"></div>
             </header>
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {/* Date Header */}
                 <div className="text-center">
-                    <span className={`text-xs px-3 py-1 rounded-full ${isDark ? 'bg-white/10 text-gray-400' : 'bg-gray-100 text-gray-500'}`}>
-                        Today
-                    </span>
+                    <span className={`text-xs px-3 py-1 rounded-full ${isDark ? 'bg-white/10 text-gray-400' : 'bg-gray-100 text-gray-500'}`}>Today</span>
                 </div>
 
                 {messages.map((msg, i) => (
@@ -150,18 +133,12 @@ const BusinessAI = ({ userId = 'demo-user' }) => {
                                 {msg.content}
                             </div>
 
-                            {/* Suggestions */}
-                            {msg.suggestions && msg.suggestions.length > 0 && (
+                            {msg.suggestions?.length > 0 && (
                                 <div className="flex flex-wrap gap-2">
                                     {msg.suggestions.map((s, j) => (
-                                        <button
-                                            key={j}
-                                            onClick={() => sendMessage(s)}
-                                            className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${isDark
-                                                    ? 'border-white/20 text-gray-300 hover:bg-white/10'
-                                                    : 'border-gray-200 text-gray-600 hover:bg-gray-50'
-                                                }`}
-                                        >
+                                        <button key={j} onClick={() => sendMessage(s)}
+                                            className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${isDark ? 'border-white/20 text-gray-300 hover:bg-white/10' : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                                                }`}>
                                             {s}
                                         </button>
                                     ))}
@@ -208,7 +185,7 @@ const BusinessAI = ({ userId = 'demo-user' }) => {
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
                             onKeyPress={handleKeyPress}
-                            placeholder="Ask KOFA..."
+                            placeholder="Ask KOFA anything..."
                             className={`flex-1 bg-transparent outline-none text-sm ${isDark ? 'text-white placeholder-gray-500' : 'text-gray-900 placeholder-gray-400'}`}
                         />
                         <button className={`p-1 rounded-full ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-200'}`}>
@@ -218,8 +195,7 @@ const BusinessAI = ({ userId = 'demo-user' }) => {
                     <button
                         onClick={() => sendMessage()}
                         disabled={!input.trim() || loading}
-                        className="w-10 h-10 bg-[#0095FF] text-white rounded-full flex items-center justify-center disabled:opacity-50"
-                    >
+                        className="w-10 h-10 bg-[#0095FF] text-white rounded-full flex items-center justify-center disabled:opacity-50">
                         <Send size={18} />
                     </button>
                 </div>
