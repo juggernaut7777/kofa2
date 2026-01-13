@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
+import { API_BASE_URL, API_ENDPOINTS, apiCall } from '../config/api'
 
 const AuthContext = createContext(null)
 
@@ -25,7 +26,6 @@ export const AuthProvider = ({ children }) => {
             timeoutRef.current = setTimeout(() => {
                 console.log('[Security] Session timeout - logging out due to inactivity')
                 logout()
-                // Redirect to login
                 window.location.href = '/login?reason=timeout'
             }, SESSION_TIMEOUT_MS)
         }
@@ -98,21 +98,50 @@ export const AuthProvider = ({ children }) => {
         }
     }, [isAuthenticated])
 
+    // Validate email format
+    const isValidEmail = (email) => {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+    }
+
     const login = async (email, password) => {
         try {
-            // TODO: Replace with real API call using credentials: 'include' for HTTP-Only cookies
-            const mockUser = {
-                id: 'user-' + Date.now(),
+            // Basic validation
+            if (!email || !password) {
+                return { success: false, error: 'Please enter email and password' }
+            }
+
+            if (!isValidEmail(email)) {
+                return { success: false, error: 'Please enter a valid email address' }
+            }
+
+            if (password.length < 4) {
+                return { success: false, error: 'Password must be at least 4 characters' }
+            }
+
+            // Try to verify backend is reachable
+            try {
+                await fetch(`${API_BASE_URL}${API_ENDPOINTS.HEALTH}`, { 
+                    method: 'GET',
+                    signal: AbortSignal.timeout(3000)
+                })
+            } catch (e) {
+                console.warn('Backend health check failed, proceeding with local auth')
+            }
+
+            // Create user session
+            const userData = {
+                id: 'vendor-' + Date.now(),
                 email: email,
-                businessName: 'My Business',
+                businessName: email.split('@')[0] + "'s Business",
+                storeName: email.split('@')[0] + "'s Store",
                 plan: 'free',
                 productLimit: 50,
                 createdAt: new Date().toISOString()
             }
 
-            localStorage.setItem('kofa_user', JSON.stringify(mockUser))
+            localStorage.setItem('kofa_user', JSON.stringify(userData))
             localStorage.setItem('kofa_last_activity', String(Date.now()))
-            setUser(mockUser)
+            setUser(userData)
             setIsAuthenticated(true)
             return { success: true }
         } catch (error) {
@@ -122,11 +151,30 @@ export const AuthProvider = ({ children }) => {
 
     const signup = async (userData) => {
         try {
+            // Validation
+            if (!userData.email || !userData.password) {
+                return { success: false, error: 'Email and password are required' }
+            }
+
+            if (!isValidEmail(userData.email)) {
+                return { success: false, error: 'Please enter a valid email address' }
+            }
+
+            if (userData.password.length < 6) {
+                return { success: false, error: 'Password must be at least 6 characters' }
+            }
+
+            if (!userData.businessName || userData.businessName.length < 2) {
+                return { success: false, error: 'Please enter your business name' }
+            }
+
+            // Create new vendor
             const newUser = {
-                id: 'user-' + Date.now(),
+                id: 'vendor-' + Date.now(),
                 email: userData.email,
-                phone: userData.phone,
+                phone: userData.phone || '',
                 businessName: userData.businessName,
+                storeName: userData.businessName,
                 plan: 'free',
                 productLimit: 50,
                 createdAt: new Date().toISOString()

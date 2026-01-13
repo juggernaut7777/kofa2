@@ -104,10 +104,10 @@ const SettingsRedesign = () => {
         <div onClick={onClick} className={`flex items-center justify-between p-4 cursor-pointer ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`}>
             <div className="flex items-center gap-3">
                 <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${iconColor === 'blue' ? 'bg-blue-100 text-blue-500' :
-                        iconColor === 'green' ? 'bg-green-100 text-green-500' :
-                            iconColor === 'orange' ? 'bg-orange-100 text-orange-500' :
-                                iconColor === 'purple' ? 'bg-purple-100 text-purple-500' :
-                                    'bg-gray-100 text-gray-500'
+                    iconColor === 'green' ? 'bg-green-100 text-green-500' :
+                        iconColor === 'orange' ? 'bg-orange-100 text-orange-500' :
+                            iconColor === 'purple' ? 'bg-purple-100 text-purple-500' :
+                                'bg-gray-100 text-gray-500'
                     }`}>
                     <Icon size={18} />
                 </div>
@@ -279,6 +279,24 @@ const SettingsRedesign = () => {
                                         {botSettings.enabled ? <><Pause size={16} /> Pause</> : <><Play size={16} /> Resume</>}
                                     </button>
                                 </div>
+
+                                {/* Test Bot Button */}
+                                <button
+                                    onClick={async () => {
+                                        try {
+                                            const res = await apiCall(API_ENDPOINTS.BUSINESS_AI, {
+                                                method: 'POST',
+                                                body: JSON.stringify({ user_id: 'test', message: 'Hello, test message' })
+                                            })
+                                            alert(`✅ Bot responded: "${res.response?.substring(0, 100) || 'Success!'}"`)
+                                        } catch (e) {
+                                            alert('❌ Bot test failed. Check backend connection.')
+                                        }
+                                    }}
+                                    className={`w-full py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 ${isDark ? 'bg-[#0095FF]/10 text-[#0095FF]' : 'bg-blue-50 text-[#0095FF]'}`}
+                                >
+                                    <Send size={16} /> Test Bot Connection
+                                </button>
                             </div>
 
                             {/* Bot Style */}
