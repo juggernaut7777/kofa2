@@ -132,28 +132,24 @@ const DashboardRedesign = () => {
                     value={formatCurrency(stats.revenue)}
                     icon={DollarSign}
                     colorClass="bg-blue-500/10 text-blue-500"
-                    trend="+12% vs last week"
                 />
                 <StatItem
                     label="Active Orders"
                     value={stats.orders}
                     icon={ShoppingBag}
                     colorClass="bg-amber-500/10 text-amber-500"
-                    trend="Processing"
                 />
                 <StatItem
                     label="Net Profit"
                     value={formatCurrency(stats.profit)}
                     icon={TrendingUp}
                     colorClass="bg-green-500/10 text-green-500"
-                    trend="+8% margin"
                 />
                 <StatItem
                     label="Customers"
                     value={stats.customers}
                     icon={Users}
                     colorClass="bg-purple-500/10 text-purple-500"
-                    trend="+15% new"
                 />
             </div>
 

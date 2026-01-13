@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useContext } from 'react'
-import { API_BASE_URL, API_ENDPOINTS } from '../../config/api'
+import { apiCall, API_ENDPOINTS } from '../../config/api'
 import { ThemeContext } from '../../context/ThemeContext'
-import { Send, X, MessageCircle, Mic, Plus, Package } from 'lucide-react'
+import { Send, X, MessageCircle, Mic, Plus, Package, AlertCircle } from 'lucide-react'
 
 const BusinessAI = ({ userId = 'demo-user' }) => {
     const { theme } = useContext(ThemeContext)
@@ -18,6 +18,7 @@ const BusinessAI = ({ userId = 'demo-user' }) => {
     ])
     const [input, setInput] = useState('')
     const [loading, setLoading] = useState(false)
+    const [connectionError, setConnectionError] = useState(false)
     const messagesEndRef = useRef(null)
     const inputRef = useRef(null)
 
@@ -37,19 +38,19 @@ const BusinessAI = ({ userId = 'demo-user' }) => {
 
         const userMessage = text.trim()
         setInput('')
+        setConnectionError(false)
         setMessages(prev => [...prev, { role: 'user', content: userMessage, type: 'text' }])
         setLoading(true)
 
         try {
-            const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.BUSINESS_AI}`, {
+            const data = await apiCall(API_ENDPOINTS.BUSINESS_AI, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ user_id: userId, message: userMessage })
+                body: JSON.stringify({
+                    user_id: userId,
+                    message: userMessage
+                })
             })
 
-            if (!response.ok) throw new Error('Failed')
-
-            const data = await response.json()
             let aiContent = data.response || "I'm here to help!"
             if (data.action_taken) aiContent += `\n\n✅ ${data.action_taken}`
 
@@ -60,10 +61,12 @@ const BusinessAI = ({ userId = 'demo-user' }) => {
                 suggestions: data.suggestions || []
             }])
         } catch (error) {
+            console.error('AI Error:', error)
+            setConnectionError(true)
             setMessages(prev => [...prev, {
                 role: 'assistant',
-                content: "Sorry, I couldn't connect. Please try again.",
-                type: 'text'
+                content: "I couldn't connect to the backend. Please check that the Heroku server is running.",
+                type: 'error'
             }])
         } finally {
             setLoading(false)
@@ -103,9 +106,9 @@ const BusinessAI = ({ userId = 'demo-user' }) => {
                 </button>
                 <div className="text-center">
                     <h1 className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>KOFA AI Assistant</h1>
-                    <div className="flex items-center justify-center gap-1 text-xs text-green-500">
-                        <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                        Online
+                    <div className={`flex items-center justify-center gap-1 text-xs ${connectionError ? 'text-red-500' : 'text-green-500'}`}>
+                        <span className={`w-2 h-2 rounded-full ${connectionError ? 'bg-red-500' : 'bg-green-500'}`}></span>
+                        {connectionError ? 'Reconnecting...' : 'Online'}
                     </div>
                 </div>
                 <div className="w-10"></div>
@@ -120,15 +123,17 @@ const BusinessAI = ({ userId = 'demo-user' }) => {
                 {messages.map((msg, i) => (
                     <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                         {msg.role === 'assistant' && (
-                            <div className="w-8 h-8 rounded-full bg-[#E6F4FF] flex items-center justify-center mr-2 flex-shrink-0">
-                                <Package size={16} className="text-[#0095FF]" />
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-2 flex-shrink-0 ${msg.type === 'error' ? 'bg-red-100' : 'bg-[#E6F4FF]'}`}>
+                                {msg.type === 'error' ? <AlertCircle size={16} className="text-red-500" /> : <Package size={16} className="text-[#0095FF]" />}
                             </div>
                         )}
 
                         <div className="max-w-[80%] space-y-2">
                             <div className={`p-3 rounded-2xl text-sm ${msg.role === 'user'
                                     ? 'bg-[#0095FF] text-white rounded-br-sm'
-                                    : isDark ? 'bg-[#1A1A1F] border border-white/10 text-white rounded-bl-sm' : 'bg-gray-100 text-gray-900 rounded-bl-sm'
+                                    : msg.type === 'error'
+                                        ? isDark ? 'bg-red-500/20 border border-red-500/30 text-red-400 rounded-bl-sm' : 'bg-red-50 border border-red-200 text-red-600 rounded-bl-sm'
+                                        : isDark ? 'bg-[#1A1A1F] border border-white/10 text-white rounded-bl-sm' : 'bg-gray-100 text-gray-900 rounded-bl-sm'
                                 }`}>
                                 {msg.content}
                             </div>
