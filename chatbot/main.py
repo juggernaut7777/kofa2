@@ -1094,60 +1094,61 @@ class CustomerBotTestRequest(BaseModel):
     """Test customer bot request."""
     message: str
     style: str = "professional"  # professional or pidgin
+    user_id: Optional[str] = None  # To fetch user's products
 
 
 @router.post("/customer-bot/test")
 async def test_customer_bot(request: CustomerBotTestRequest):
     """
     Test customer-facing bot with selected style.
-    Uses Groq AI to generate responses in Professional or Pidgin style.
+    Uses Groq AI (with Gemini fallback) and real product context.
     """
-    from .groq_client import send_to_groq
+    from .ai_unified import send_to_ai, build_context_prompt
+    from .database import SessionLocal
+    from .models import Product, User
     
     style = request.style.lower()
+    products = []
+    store_name = "our store"
     
-    # Professional style system prompt
-    professional_prompt = """You are a helpful, professional customer service bot for a Nigerian business.
+    # Fetch real products if user_id provided
+    if request.user_id:
+        try:
+            db = SessionLocal()
+            try:
+                # Get user's store name
+                user = db.query(User).filter(User.id == request.user_id).first()
+                if user and user.business_name:
+                    store_name = user.business_name
+                
+                # Get user's products
+                db_products = db.query(Product).filter(Product.user_id == request.user_id).limit(20).all()
+                products = [
+                    {
+                        "name": p.name,
+                        "price": p.price_ngn,
+                        "stock_level": p.stock_level
+                    }
+                    for p in db_products
+                ]
+            finally:
+                db.close()
+        except Exception:
+            pass  # Use empty products list
     
-Rules:
-- Be polite, formal, and professional
-- Use proper English
-- Be helpful and informative
-- Keep responses concise (2-3 sentences max)
-- Never use slang or informal language
-
-Example responses:
-- "Thank you for your inquiry. How may I assist you today?"
-- "We have a variety of quality products available. Would you like me to share our catalog?"
-- "Delivery fees vary by location. May I have your address to provide an accurate estimate?"
-"""
-
-    # Pidgin style system prompt  
-    pidgin_prompt = """You are a friendly, helpful customer service bot for a Nigerian business.
-You MUST respond in Nigerian Pidgin English.
-
-Rules:
-- Use Nigerian Pidgin English (NOT regular English)
-- Be friendly and welcoming
-- Use expressions like "Oga", "Madam", "Abeg", "Wetin", "Sharp sharp", "How far"
-- Keep responses concise (2-3 sentences max)
-- Be helpful while maintaining the Pidgin style
-
-Example responses (YOU MUST SOUND LIKE THIS):
-- "How far, Oga! Wetin you wan buy today?"
-- "We get plenty correct products! Just tell me wetin you dey find."
-- "Abeg drop your address make we calculate delivery for you sharp sharp."
-- "Ah! This one na correct choice! You no go regret am at all."
-"""
-
-    system_prompt = pidgin_prompt if style == "pidgin" else professional_prompt
+    # Build context-aware prompt with real product data
+    system_prompt = build_context_prompt(
+        products=products,
+        store_name=store_name,
+        style=style
+    )
     
     try:
-        # Call Groq AI
-        response = await send_to_groq(
+        # Call AI with automatic fallback
+        response, api_used = await send_to_ai(
             messages=[{"role": "user", "content": request.message}],
             system_prompt=system_prompt,
-            max_tokens=200,
+            max_tokens=250,
             temperature=0.8
         )
         
@@ -1155,10 +1156,12 @@ Example responses (YOU MUST SOUND LIKE THIS):
             "response": response,
             "style": style,
             "message_received": request.message,
-            "ai_powered": True
+            "ai_powered": True,
+            "api_used": api_used,
+            "products_loaded": len(products)
         }
     except Exception as e:
-        # Fallback demo responses if API fails
+        # Fallback demo responses if all APIs fail
         fallback = {
             "professional": "Thank you for contacting us. How may I assist you today?",
             "pidgin": "How far! Welcome to our shop oh! Wetin you wan buy?"
