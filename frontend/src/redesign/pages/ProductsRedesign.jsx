@@ -1,6 +1,6 @@
 import { useState, useEffect, useContext, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { apiCall, cachedApiCall, API_ENDPOINTS, CACHE_KEYS } from '../../config/api'
+import { apiCall, cachedApiCall, API_ENDPOINTS, CACHE_KEYS, API_BASE_URL } from '../../config/api'
 import { ThemeContext } from '../../context/ThemeContext'
 import { Plus, Search, ScanLine, Package, Upload, X, RefreshCw, Edit2, Image, Camera } from 'lucide-react'
 
@@ -110,7 +110,7 @@ const ProductsRedesign = () => {
                 formData.append('image', newProduct.image)
 
                 try {
-                    await fetch(`${API_ENDPOINTS.UPLOAD_PRODUCT_IMAGE(productId)}`, {
+                    await fetch(`${API_BASE_URL}${API_ENDPOINTS.UPLOAD_PRODUCT_IMAGE(productId)}`, {
                         method: 'POST',
                         body: formData
                     })
@@ -274,8 +274,8 @@ const ProductsRedesign = () => {
                                     <p className={`text-xs mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{product.category}</p>
                                     <div className="flex items-center gap-2 mt-2">
                                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${status.color === 'green' ? 'bg-green-100 text-green-600' :
-                                                status.color === 'orange' ? 'bg-orange-100 text-orange-600' :
-                                                    'bg-red-100 text-red-600'
+                                            status.color === 'orange' ? 'bg-orange-100 text-orange-600' :
+                                                'bg-red-100 text-red-600'
                                             }`}>{product.stock} in stock</span>
                                     </div>
                                 </div>
