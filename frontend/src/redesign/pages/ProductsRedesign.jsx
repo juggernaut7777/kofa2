@@ -208,8 +208,12 @@ const ProductsRedesign = () => {
     return (
         <div className={`min-h-screen ${isDark ? 'bg-[#0F0F12]' : 'bg-white'}`}>
             {/* Header */}
-            <header className={`px-4 pt-4 pb-2 flex items-center justify-between ${isDark ? 'text-white' : ''}`}>
+            <header className={`px-4 pt-4 pb-2 ${isDark ? 'text-white' : ''}`}>
                 <h1 className="text-2xl font-bold">Inventory</h1>
+            </header>
+
+            <div className="px-4 pb-4 flex items-center justify-between">
+                <p className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Manage stock levels and pricing</p>
                 <div className="flex items-center gap-2">
                     <button className={`p-2 rounded-lg ${isDark ? 'bg-white/10 hover:bg-white/20' : 'bg-gray-100 hover:bg-gray-200'}`}
                         title="Scan Barcode" onClick={() => alert('Barcode scanning coming soon!')}>
@@ -221,9 +225,7 @@ const ProductsRedesign = () => {
                         <Upload size={20} className={isDark ? 'text-gray-400' : 'text-gray-500'} />
                     </button>
                 </div>
-            </header>
-
-            <p className={`px-4 pb-4 text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Manage stock levels and pricing</p>
+            </div>
 
             {/* Search */}
             <div className="px-4 pb-4">

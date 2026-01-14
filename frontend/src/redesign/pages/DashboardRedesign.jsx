@@ -117,8 +117,11 @@ const DashboardRedesign = () => {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-main">
-                        {greeting}, {user?.firstName || user?.businessName?.split(' ')[0] || 'there'}
+                        {greeting}
                     </h1>
+                    <h2 className="text-xl font-semibold text-main mt-1">
+                        {user?.firstName || user?.businessName?.split(' ')[0] || 'there'}
+                    </h2>
                     <p className="text-muted mt-1">
                         Here's what's happening with your business today.
                     </p>
