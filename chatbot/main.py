@@ -294,7 +294,7 @@ async def health_check():
 
 @router.get("/products")
 @limiter.limit("50/minute")
-async def get_products():
+async def get_products(request: Request):
     """Get all products from inventory. CACHED for 60 seconds to reduce I/O costs."""
     cache_key = "products:all"
     
