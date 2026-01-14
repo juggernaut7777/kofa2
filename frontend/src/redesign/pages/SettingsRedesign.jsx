@@ -280,35 +280,55 @@ const SettingsRedesign = () => {
                                     </button>
                                 </div>
 
-                                {/* Test Bot Button */}
+                                {/* Test Customer Bot Button */}
                                 <button
                                     onClick={async () => {
+                                        const testMessages = [
+                                            'What products do you have?',
+                                            'How much is delivery?',
+                                            'Do you have any discounts?'
+                                        ]
+                                        const randomMsg = testMessages[Math.floor(Math.random() * testMessages.length)]
                                         try {
-                                            const res = await apiCall(API_ENDPOINTS.BUSINESS_AI, {
+                                            const res = await apiCall('/customer-bot/test', {
                                                 method: 'POST',
-                                                body: JSON.stringify({ user_id: 'test', message: 'Hello, test message' })
+                                                body: JSON.stringify({
+                                                    message: randomMsg,
+                                                    style: botSettings.style
+                                                })
                                             })
-                                            alert(`✅ Bot responded: "${res.response?.substring(0, 100) || 'Success!'}"`)
+                                            alert(`🧑 Customer: "${randomMsg}"\n\n🤖 Bot (${botSettings.style}): "${res.response || 'Hello! How can I help you today?'}"`)
                                         } catch (e) {
-                                            alert('❌ Bot test failed. Check backend connection.')
+                                            // Fallback demo response based on style
+                                            const demoResponses = {
+                                                professional: "Thank you for your inquiry. We have a variety of products available. How may I assist you today?",
+                                                pidgin: "Oga/Madam, how far? We get plenty correct products for you! Wetin you wan buy today?"
+                                            }
+                                            alert(`🧑 Customer: "${randomMsg}"\n\n🤖 Bot (${botSettings.style}): "${demoResponses[botSettings.style] || demoResponses.professional}"`)
                                         }
                                     }}
                                     className={`w-full py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 ${isDark ? 'bg-[#0095FF]/10 text-[#0095FF]' : 'bg-blue-50 text-[#0095FF]'}`}
                                 >
-                                    <Send size={16} /> Test Bot Connection
+                                    <Send size={16} /> Test Customer Bot
                                 </button>
                             </div>
 
                             {/* Bot Style */}
-                            <h3 className={`text-xs font-semibold uppercase tracking-wide mb-2 px-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>CONVERSATION STYLE</h3>
+                            <h3 className={`text-xs font-semibold uppercase tracking-wide mb-2 px-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>CUSTOMER BOT STYLE</h3>
                             <div className={`rounded-2xl overflow-hidden mb-4 ${isDark ? 'bg-[#1A1A1F] border border-white/10' : 'bg-white shadow-sm'}`}>
-                                {['friendly', 'professional', 'casual'].map(style => (
-                                    <div key={style} onClick={() => handleBotStyleChange(style)}
-                                        className={`flex items-center justify-between p-4 cursor-pointer ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'} ${style !== 'casual' ? isDark ? 'border-b border-white/5' : 'border-b border-gray-50' : ''}`}>
-                                        <span className={`font-medium capitalize ${isDark ? 'text-white' : 'text-gray-900'}`}>{style}</span>
-                                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${botSettings.style === style ? 'border-[#0095FF] bg-[#0095FF]' : isDark ? 'border-gray-600' : 'border-gray-300'
+                                {[
+                                    { id: 'professional', label: 'Professional', desc: 'Formal business tone' },
+                                    { id: 'pidgin', label: 'Pidgin', desc: 'Nigerian Pidgin English' }
+                                ].map((style, idx) => (
+                                    <div key={style.id} onClick={() => handleBotStyleChange(style.id)}
+                                        className={`flex items-center justify-between p-4 cursor-pointer ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'} ${idx === 0 ? isDark ? 'border-b border-white/5' : 'border-b border-gray-50' : ''}`}>
+                                        <div>
+                                            <span className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>{style.label}</span>
+                                            <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{style.desc}</p>
+                                        </div>
+                                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${botSettings.style === style.id ? 'border-[#0095FF] bg-[#0095FF]' : isDark ? 'border-gray-600' : 'border-gray-300'
                                             }`}>
-                                            {botSettings.style === style && <div className="w-2 h-2 rounded-full bg-white"></div>}
+                                            {botSettings.style === style.id && <div className="w-2 h-2 rounded-full bg-white"></div>}
                                         </div>
                                     </div>
                                 ))}

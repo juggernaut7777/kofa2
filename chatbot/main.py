@@ -1086,7 +1086,57 @@ async def get_bot_style():
     """Get current bot style."""
     return {
         "current_style": response_formatter.style.value,
-        "available_styles": ["corporate", "street"]
+        "available_styles": ["professional", "pidgin"]
+    }
+
+
+class CustomerBotTestRequest(BaseModel):
+    """Test customer bot request."""
+    message: str
+    style: str = "professional"  # professional or pidgin
+
+
+@router.post("/customer-bot/test")
+async def test_customer_bot(request: CustomerBotTestRequest):
+    """
+    Test customer-facing bot with selected style.
+    Returns a demo response in Professional or Pidgin style.
+    """
+    message = request.message.lower()
+    style = request.style.lower()
+    
+    # Professional style responses
+    professional_responses = {
+        "products": "Thank you for your interest. We have a wide range of quality products available. Would you like me to share our catalog or help you find something specific?",
+        "delivery": "We offer reliable delivery services. Delivery fees vary based on your location. May I have your address to provide an accurate estimate?",
+        "discount": "We appreciate your business! We occasionally run promotions. Would you like me to notify you about upcoming offers?",
+        "default": "Thank you for contacting us. I'm here to help with any questions about our products and services. How may I assist you today?"
+    }
+    
+    # Pidgin style responses
+    pidgin_responses = {
+        "products": "Oga/Madam, we get plenty correct products for you oh! You wan check our catalog? Just tell me wetin you dey find, I go help you sharp sharp!",
+        "delivery": "We dey deliver to anywhere! The delivery fee depend on where you dey. Abeg drop your address make I calculate am give you quick quick.",
+        "discount": "Ah! You know wetin good! We dey run special promo sometimes oh. You wan make I alert you when e drop?",
+        "default": "How far! Welcome to our shop oh! Wetin you wan buy today? Just tell me, I go assist you well well!"
+    }
+    
+    # Select response based on message content
+    responses = pidgin_responses if style == "pidgin" else professional_responses
+    
+    if "product" in message or "what" in message:
+        response = responses["products"]
+    elif "delivery" in message or "ship" in message:
+        response = responses["delivery"]
+    elif "discount" in message or "promo" in message or "offer" in message:
+        response = responses["discount"]
+    else:
+        response = responses["default"]
+    
+    return {
+        "response": response,
+        "style": style,
+        "message_received": request.message
     }
 
 
