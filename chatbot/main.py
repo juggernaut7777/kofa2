@@ -1100,44 +1100,76 @@ class CustomerBotTestRequest(BaseModel):
 async def test_customer_bot(request: CustomerBotTestRequest):
     """
     Test customer-facing bot with selected style.
-    Returns a demo response in Professional or Pidgin style.
+    Uses Groq AI to generate responses in Professional or Pidgin style.
     """
-    message = request.message.lower()
+    from .groq_client import send_to_groq
+    
     style = request.style.lower()
     
-    # Professional style responses
-    professional_responses = {
-        "products": "Thank you for your interest. We have a wide range of quality products available. Would you like me to share our catalog or help you find something specific?",
-        "delivery": "We offer reliable delivery services. Delivery fees vary based on your location. May I have your address to provide an accurate estimate?",
-        "discount": "We appreciate your business! We occasionally run promotions. Would you like me to notify you about upcoming offers?",
-        "default": "Thank you for contacting us. I'm here to help with any questions about our products and services. How may I assist you today?"
-    }
+    # Professional style system prompt
+    professional_prompt = """You are a helpful, professional customer service bot for a Nigerian business.
     
-    # Pidgin style responses
-    pidgin_responses = {
-        "products": "Oga/Madam, we get plenty correct products for you oh! You wan check our catalog? Just tell me wetin you dey find, I go help you sharp sharp!",
-        "delivery": "We dey deliver to anywhere! The delivery fee depend on where you dey. Abeg drop your address make I calculate am give you quick quick.",
-        "discount": "Ah! You know wetin good! We dey run special promo sometimes oh. You wan make I alert you when e drop?",
-        "default": "How far! Welcome to our shop oh! Wetin you wan buy today? Just tell me, I go assist you well well!"
-    }
+Rules:
+- Be polite, formal, and professional
+- Use proper English
+- Be helpful and informative
+- Keep responses concise (2-3 sentences max)
+- Never use slang or informal language
+
+Example responses:
+- "Thank you for your inquiry. How may I assist you today?"
+- "We have a variety of quality products available. Would you like me to share our catalog?"
+- "Delivery fees vary by location. May I have your address to provide an accurate estimate?"
+"""
+
+    # Pidgin style system prompt  
+    pidgin_prompt = """You are a friendly, helpful customer service bot for a Nigerian business.
+You MUST respond in Nigerian Pidgin English.
+
+Rules:
+- Use Nigerian Pidgin English (NOT regular English)
+- Be friendly and welcoming
+- Use expressions like "Oga", "Madam", "Abeg", "Wetin", "Sharp sharp", "How far"
+- Keep responses concise (2-3 sentences max)
+- Be helpful while maintaining the Pidgin style
+
+Example responses (YOU MUST SOUND LIKE THIS):
+- "How far, Oga! Wetin you wan buy today?"
+- "We get plenty correct products! Just tell me wetin you dey find."
+- "Abeg drop your address make we calculate delivery for you sharp sharp."
+- "Ah! This one na correct choice! You no go regret am at all."
+"""
+
+    system_prompt = pidgin_prompt if style == "pidgin" else professional_prompt
     
-    # Select response based on message content
-    responses = pidgin_responses if style == "pidgin" else professional_responses
-    
-    if "product" in message or "what" in message:
-        response = responses["products"]
-    elif "delivery" in message or "ship" in message:
-        response = responses["delivery"]
-    elif "discount" in message or "promo" in message or "offer" in message:
-        response = responses["discount"]
-    else:
-        response = responses["default"]
-    
-    return {
-        "response": response,
-        "style": style,
-        "message_received": request.message
-    }
+    try:
+        # Call Groq AI
+        response = await send_to_groq(
+            messages=[{"role": "user", "content": request.message}],
+            system_prompt=system_prompt,
+            max_tokens=200,
+            temperature=0.8
+        )
+        
+        return {
+            "response": response,
+            "style": style,
+            "message_received": request.message,
+            "ai_powered": True
+        }
+    except Exception as e:
+        # Fallback demo responses if API fails
+        fallback = {
+            "professional": "Thank you for contacting us. How may I assist you today?",
+            "pidgin": "How far! Welcome to our shop oh! Wetin you wan buy?"
+        }
+        return {
+            "response": fallback.get(style, fallback["professional"]),
+            "style": style,
+            "message_received": request.message,
+            "ai_powered": False,
+            "error": str(e)
+        }
 
 
 @router.post("/products")
