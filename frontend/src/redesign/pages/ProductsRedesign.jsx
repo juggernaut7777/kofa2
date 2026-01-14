@@ -83,7 +83,7 @@ const ProductsRedesign = () => {
         try {
             const productData = {
                 name: newProduct.name,
-                price: parseFloat(newProduct.price),
+                price_ngn: parseFloat(newProduct.price),
                 stock_level: parseInt(newProduct.stock) || 0,
                 category: newProduct.category,
                 description: newProduct.description
