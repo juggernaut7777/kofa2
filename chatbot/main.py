@@ -432,7 +432,7 @@ BUSINESS_AI_CONVERSATIONS: Dict[str, List[Dict]] = {}
 
 @router.post("/business-ai")
 @limiter.limit("10/minute")  # Protect AI credits
-async def business_ai_chat(request: BusinessAIRequest, req: Request):
+async def business_ai_chat(body: BusinessAIRequest, request: Request):
     """
     Business AI Assistant - Manage your business with natural language.
     
@@ -449,21 +449,21 @@ async def business_ai_chat(request: BusinessAIRequest, req: Request):
         from .ai_brain import process_business_command
         
         # Get or create conversation ID
-        conversation_id = request.conversation_id or str(uuid.uuid4())
+        conversation_id = body.conversation_id or str(uuid.uuid4())
         
         # Get conversation history
         history = BUSINESS_AI_CONVERSATIONS.get(conversation_id, [])
         
         # Process with AI
         result = await process_business_command(
-            message=request.message,
-            user_id=request.user_id,
+            message=body.message,
+            user_id=body.user_id,
             inventory_manager=inventory_manager,
             conversation_history=history
         )
         
         # Update conversation history
-        history.append({"role": "user", "content": request.message})
+        history.append({"role": "user", "content": body.message})
         history.append({"role": "assistant", "content": result["response"]})
         
         # Keep only last 10 messages for context
@@ -481,13 +481,13 @@ async def business_ai_chat(request: BusinessAIRequest, req: Request):
         # Fallback if AI module not available
         return BusinessAIResponse(
             response=f"AI module not loaded. Please ensure GROQ_API_KEY is set. Error: {str(e)}",
-            conversation_id=request.conversation_id or str(uuid.uuid4())
+            conversation_id=body.conversation_id or str(uuid.uuid4())
         )
     except Exception as e:
         logger.error(f"Business AI error: {e}")
         return BusinessAIResponse(
             response=f"Sorry, I encountered an error: {str(e)}. Please try again.",
-            conversation_id=request.conversation_id or str(uuid.uuid4())
+            conversation_id=body.conversation_id or str(uuid.uuid4())
         )
 
 
