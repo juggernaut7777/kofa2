@@ -4,6 +4,7 @@ import { apiCall, cachedApiCall, API_ENDPOINTS, CACHE_KEYS, API_BASE_URL } from 
 import { ThemeContext } from '../../context/ThemeContext'
 import { useAuth } from '../../context/AuthContext'
 import { Plus, Search, ScanLine, Package, Upload, X, RefreshCw, Edit2, Image, Camera } from 'lucide-react'
+import BarcodeScanner from '../../components/BarcodeScanner/BarcodeScanner'
 
 const ProductsRedesign = () => {
     const navigate = useNavigate()
@@ -22,6 +23,7 @@ const ProductsRedesign = () => {
     const [showAddModal, setShowAddModal] = useState(false)
     const [editingProduct, setEditingProduct] = useState(null)
     const [uploadingImage, setUploadingImage] = useState(false)
+    const [showBarcodeScanner, setShowBarcodeScanner] = useState(false)
 
     const [newProduct, setNewProduct] = useState({
         name: '', price: '', stock: '', category: 'General', description: '', image: null
@@ -219,7 +221,7 @@ const ProductsRedesign = () => {
                 <p className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Manage stock levels and pricing</p>
                 <div className="flex items-center gap-2">
                     <button className={`p-2 rounded-lg ${isDark ? 'bg-white/10 hover:bg-white/20' : 'bg-gray-100 hover:bg-gray-200'}`}
-                        title="Scan Barcode" onClick={() => alert('Barcode scanning coming soon!')}>
+                        title="Scan Barcode" onClick={() => setShowBarcodeScanner(true)}>
                         <ScanLine size={20} className="text-[#0095FF]" />
                     </button>
                     <input type="file" ref={fileInputRef} accept=".csv" onChange={handleCSVImport} className="hidden" />
@@ -376,6 +378,29 @@ const ProductsRedesign = () => {
                     </div>
                 </div>
             )}
+
+            {/* Barcode Scanner Modal */}
+            <BarcodeScanner
+                isOpen={showBarcodeScanner}
+                onClose={() => setShowBarcodeScanner(false)}
+                isDark={isDark}
+                onProductScanned={async (scannedProduct) => {
+                    // Create the product via API
+                    try {
+                        await apiCall(API_ENDPOINTS.CREATE_PRODUCT, {
+                            method: 'POST',
+                            body: JSON.stringify({
+                                ...scannedProduct,
+                                user_id: user?.id
+                            })
+                        })
+                        loadProducts()
+                        alert(`✅ Product "${scannedProduct.name}" added successfully!`)
+                    } catch (e) {
+                        alert('Failed to add product. Please try again.')
+                    }
+                }}
+            />
         </div>
     )
 }
