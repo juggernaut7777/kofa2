@@ -2,12 +2,14 @@ import { useState, useEffect, useContext, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { apiCall, cachedApiCall, API_ENDPOINTS, CACHE_KEYS, API_BASE_URL } from '../../config/api'
 import { ThemeContext } from '../../context/ThemeContext'
+import { useAuth } from '../../context/AuthContext'
 import { Plus, Search, ScanLine, Package, Upload, X, RefreshCw, Edit2, Image, Camera } from 'lucide-react'
 
 const ProductsRedesign = () => {
     const navigate = useNavigate()
     const location = useLocation()
     const { theme } = useContext(ThemeContext)
+    const { user } = useAuth()
     const isDark = theme === 'dark'
     const fileInputRef = useRef(null)
     const imageInputRef = useRef(null)
@@ -86,7 +88,8 @@ const ProductsRedesign = () => {
                 price_ngn: parseFloat(newProduct.price),
                 stock_level: parseInt(newProduct.stock) || 0,
                 category: newProduct.category,
-                description: newProduct.description
+                description: newProduct.description,
+                user_id: user?.id  // Required for FK constraint
             }
 
             let productId = editingProduct?.id

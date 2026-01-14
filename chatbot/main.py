@@ -1032,6 +1032,7 @@ class ProductCreate(BaseModel):
     category: Optional[str] = None
     voice_tags: Optional[List[str]] = None
     image_url: Optional[str] = None
+    user_id: Optional[str] = None  # Required for database FK constraint
     
     @validator('name')
     def validate_name(cls, v):
@@ -1178,6 +1179,13 @@ async def test_customer_bot(request: CustomerBotTestRequest):
 @router.post("/products")
 async def create_product(product: ProductCreate):
     """Add a new product to inventory."""
+    # Require user_id for proper FK constraint
+    if not product.user_id:
+        raise HTTPException(
+            status_code=400,
+            detail="user_id is required to create a product"
+        )
+    
     # Check freemium limit
     limit_check = check_limit("products")
     if not limit_check["allowed"]:
@@ -1203,8 +1211,9 @@ async def create_product(product: ProductCreate):
         "image_url": product.image_url or ""
     }
     
-    # Add to inventory (in production, this would insert to Supabase)
-    inventory_manager.add_product(new_product)
+    # Create user-specific inventory manager and add product
+    user_inventory = InventoryManager(user_id=product.user_id)
+    user_inventory.add_product(new_product)
     
     # Return with limit info
     new_limit = check_limit("products")
