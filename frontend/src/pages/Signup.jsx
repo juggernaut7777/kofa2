@@ -5,6 +5,7 @@ import { Package, Eye, EyeOff } from 'lucide-react'
 
 const Signup = () => {
     const [formData, setFormData] = useState({
+        firstName: '',
         businessName: '',
         email: '',
         phone: '',
@@ -26,7 +27,7 @@ const Signup = () => {
         setError('')
         setIsLoading(true)
 
-        if (!formData.businessName || !formData.email || !formData.password) {
+        if (!formData.firstName || !formData.businessName || !formData.email || !formData.password) {
             setError('Please fill in all required fields')
             setIsLoading(false)
             return
@@ -62,6 +63,19 @@ const Signup = () => {
                             {error}
                         </div>
                     )}
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-600 mb-2">
+                            First Name
+                        </label>
+                        <input
+                            type="text"
+                            value={formData.firstName}
+                            onChange={(e) => handleChange('firstName', e.target.value)}
+                            className="stitch-input"
+                            placeholder="Your first name"
+                        />
+                    </div>
 
                     <div>
                         <label className="block text-sm font-medium text-gray-600 mb-2">

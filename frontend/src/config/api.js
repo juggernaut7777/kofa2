@@ -32,6 +32,11 @@ export const API_ENDPOINTS = {
   USERS: '/users',
   USER_BY_ID: (id) => `/users/${id}`,
 
+  // Auth
+  AUTH_REGISTER: '/auth/register',
+  AUTH_LOGIN: '/auth/login',
+  AUTH_ME: '/auth/me',
+
   // Dashboard
   DASHBOARD_SUMMARY: '/dashboard/summary',
 
