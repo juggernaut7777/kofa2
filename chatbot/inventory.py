@@ -144,33 +144,32 @@ class InventoryManager:
 
     def add_product(self, name_or_dict, stock: int = 0, price_ngn: float = 0.0, price_usd: float = 0.0) -> dict:
         """Adds a new product to inventory. Accepts either a dict or positional args."""
-        db = self._get_db()
-        try:
-            # Handle dict input (from KOFA 2.0 API)
-            if isinstance(name_or_dict, dict):
-                product_data = {
-                    "id": name_or_dict.get("id") or str(uuid.uuid4()),
-                    "name": name_or_dict.get("name", "Unnamed Product"),
-                    "stock_level": name_or_dict.get("stock_level", 0),
-                    "price_ngn": name_or_dict.get("price_ngn", 0.0),
-                    "voice_tags": name_or_dict.get("voice_tags", [name_or_dict.get("name", "").lower()]),
-                    "description": name_or_dict.get("description", ""),
-                    "category": name_or_dict.get("category", ""),
-                    "image_url": name_or_dict.get("image_url")
-                }
-            else:
-                # Original positional args
-                product_data = {
-                    "id": str(uuid.uuid4()),
-                    "name": name_or_dict,
-                    "stock_level": stock,
-                    "price_ngn": price_ngn,
-                    "voice_tags": [name_or_dict.lower()],
-                    "description": "",
-                    "category": "",
-                    "image_url": None
-                }
+        # Handle dict input (from KOFA 2.0 API)
+        if isinstance(name_or_dict, dict):
+            product_data = {
+                "id": name_or_dict.get("id") or str(uuid.uuid4()),
+                "name": name_or_dict.get("name", "Unnamed Product"),
+                "stock_level": name_or_dict.get("stock_level", 0),
+                "price_ngn": name_or_dict.get("price_ngn", 0.0),
+                "voice_tags": name_or_dict.get("voice_tags", [name_or_dict.get("name", "").lower()]),
+                "description": name_or_dict.get("description", ""),
+                "category": name_or_dict.get("category", ""),
+                "image_url": name_or_dict.get("image_url")
+            }
+        else:
+            # Original positional args
+            product_data = {
+                "id": str(uuid.uuid4()),
+                "name": name_or_dict,
+                "stock_level": stock,
+                "price_ngn": price_ngn,
+                "voice_tags": [name_or_dict.lower()],
+                "description": "",
+                "category": "",
+                "image_url": None
+            }
 
+        with self._get_db_session() as db:
             # Create SQLAlchemy model
             # Serialize voice_tags to JSON string for SQL Server
             voice_tags_json = json.dumps(product_data["voice_tags"]) if product_data["voice_tags"] else None
@@ -188,15 +187,10 @@ class InventoryManager:
             )
 
             db.add(product)
-            db.commit()
+            db.flush()
             db.refresh(product)
 
             return self._model_to_dict(product)
-        except Exception as e:
-            db.rollback()
-            raise e
-        finally:
-            self._close_db()
 
     def search_product(self, query: str) -> Optional[Product]:
         """
