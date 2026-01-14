@@ -28,10 +28,16 @@ const SettingsRedesign = () => {
     // Bot settings state
     const [botSettings, setBotSettings] = useState({
         enabled: true,
-        style: 'friendly',
+        style: 'professional',
         autoReply: true
     })
     const [botLoading, setBotLoading] = useState(true)
+
+    // Customer bot test chat state
+    const [testChatOpen, setTestChatOpen] = useState(false)
+    const [testMessages, setTestMessages] = useState([])
+    const [testInput, setTestInput] = useState('')
+    const [testLoading, setTestLoading] = useState(false)
 
     // Integrations state
     const [integrations, setIntegrations] = useState({
@@ -84,6 +90,29 @@ const SettingsRedesign = () => {
             logout()
             navigate('/login')
         }
+    }
+
+    const sendTestMessage = async () => {
+        if (!testInput.trim() || testLoading) return
+
+        const userMessage = testInput.trim()
+        setTestMessages(prev => [...prev, { role: 'user', content: userMessage }])
+        setTestInput('')
+        setTestLoading(true)
+
+        try {
+            const res = await apiCall('/customer-bot/test', {
+                method: 'POST',
+                body: JSON.stringify({
+                    message: userMessage,
+                    style: botSettings.style
+                })
+            })
+            setTestMessages(prev => [...prev, { role: 'bot', content: res.response }])
+        } catch (e) {
+            setTestMessages(prev => [...prev, { role: 'bot', content: 'Error: Could not get response. Please check your connection.' }])
+        }
+        setTestLoading(false)
     }
 
     const tabs = [
@@ -282,35 +311,71 @@ const SettingsRedesign = () => {
 
                                 {/* Test Customer Bot Button */}
                                 <button
-                                    onClick={async () => {
-                                        const testMessages = [
-                                            'What products do you have?',
-                                            'How much is delivery?',
-                                            'Do you have any discounts?'
-                                        ]
-                                        const randomMsg = testMessages[Math.floor(Math.random() * testMessages.length)]
-                                        try {
-                                            const res = await apiCall('/customer-bot/test', {
-                                                method: 'POST',
-                                                body: JSON.stringify({
-                                                    message: randomMsg,
-                                                    style: botSettings.style
-                                                })
-                                            })
-                                            alert(`🧑 Customer: "${randomMsg}"\n\n🤖 Bot (${botSettings.style}): "${res.response || 'Hello! How can I help you today?'}"`)
-                                        } catch (e) {
-                                            // Fallback demo response based on style
-                                            const demoResponses = {
-                                                professional: "Thank you for your inquiry. We have a variety of products available. How may I assist you today?",
-                                                pidgin: "Oga/Madam, how far? We get plenty correct products for you! Wetin you wan buy today?"
-                                            }
-                                            alert(`🧑 Customer: "${randomMsg}"\n\n🤖 Bot (${botSettings.style}): "${demoResponses[botSettings.style] || demoResponses.professional}"`)
-                                        }
-                                    }}
+                                    onClick={() => { setTestChatOpen(!testChatOpen); setTestMessages([]) }}
                                     className={`w-full py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 ${isDark ? 'bg-[#0095FF]/10 text-[#0095FF]' : 'bg-blue-50 text-[#0095FF]'}`}
                                 >
-                                    <Send size={16} /> Test Customer Bot
+                                    <MessageSquare size={16} /> {testChatOpen ? 'Close Test Chat' : 'Test Customer Bot'}
                                 </button>
+
+                                {/* Customer Bot Test Chat Interface */}
+                                {testChatOpen && (
+                                    <div className={`mt-4 rounded-xl overflow-hidden border ${isDark ? 'bg-[#0F0F12] border-white/10' : 'bg-gray-50 border-gray-200'}`}>
+                                        <div className={`p-3 ${isDark ? 'bg-[#1A1A1F] border-b border-white/10' : 'bg-white border-b border-gray-200'}`}>
+                                            <p className={`text-xs font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                                Testing in <span className="font-bold text-[#0095FF]">{botSettings.style.toUpperCase()}</span> mode
+                                            </p>
+                                        </div>
+
+                                        {/* Chat Messages */}
+                                        <div className="h-64 overflow-y-auto p-4 space-y-3">
+                                            {testMessages.length === 0 && (
+                                                <p className={`text-center text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                                                    Type a message to test your customer bot...
+                                                </p>
+                                            )}
+                                            {testMessages.map((msg, i) => (
+                                                <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                                    <div className={`max-w-[80%] p-3 rounded-xl text-sm ${msg.role === 'user'
+                                                            ? 'bg-[#0095FF] text-white'
+                                                            : isDark ? 'bg-white/10 text-white' : 'bg-white text-gray-800'
+                                                        }`}>
+                                                        {msg.content}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {testLoading && (
+                                                <div className="flex justify-start">
+                                                    <div className={`p-3 rounded-xl ${isDark ? 'bg-white/10' : 'bg-white'}`}>
+                                                        <div className="flex gap-1">
+                                                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
+                                                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
+                                                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Chat Input */}
+                                        <div className={`p-3 flex gap-2 ${isDark ? 'bg-[#1A1A1F] border-t border-white/10' : 'bg-white border-t border-gray-200'}`}>
+                                            <input
+                                                type="text"
+                                                value={testInput}
+                                                onChange={(e) => setTestInput(e.target.value)}
+                                                onKeyDown={(e) => e.key === 'Enter' && sendTestMessage()}
+                                                placeholder="Type a customer message..."
+                                                className={`flex-1 px-4 py-2 rounded-lg text-sm ${isDark ? 'bg-white/5 text-white placeholder-gray-500 border-white/10' : 'bg-gray-100 text-gray-800 placeholder-gray-400'} border focus:outline-none focus:ring-2 focus:ring-[#0095FF]/50`}
+                                            />
+                                            <button
+                                                onClick={sendTestMessage}
+                                                disabled={testLoading || !testInput.trim()}
+                                                className={`px-4 py-2 rounded-lg font-semibold text-sm ${testLoading || !testInput.trim() ? 'bg-gray-300 text-gray-500' : 'bg-[#0095FF] text-white'}`}
+                                            >
+                                                <Send size={16} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Bot Style */}
