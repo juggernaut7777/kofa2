@@ -105,7 +105,8 @@ const SettingsRedesign = () => {
                 method: 'POST',
                 body: JSON.stringify({
                     message: userMessage,
-                    style: botSettings.style
+                    style: botSettings.style,
+                    user_id: user?.id  // Pass user ID for context-aware responses
                 })
             })
             setTestMessages(prev => [...prev, { role: 'bot', content: res.response }])
@@ -336,8 +337,8 @@ const SettingsRedesign = () => {
                                             {testMessages.map((msg, i) => (
                                                 <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                                     <div className={`max-w-[80%] p-3 rounded-xl text-sm ${msg.role === 'user'
-                                                            ? 'bg-[#0095FF] text-white'
-                                                            : isDark ? 'bg-white/10 text-white' : 'bg-white text-gray-800'
+                                                        ? 'bg-[#0095FF] text-white'
+                                                        : isDark ? 'bg-white/10 text-white' : 'bg-white text-gray-800'
                                                         }`}>
                                                         {msg.content}
                                                     </div>
