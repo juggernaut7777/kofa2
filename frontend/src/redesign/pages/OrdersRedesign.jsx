@@ -95,10 +95,15 @@ const OrdersRedesign = () => {
             await apiCall(API_ENDPOINTS.CREATE_INVOICE, {
                 method: 'POST',
                 body: JSON.stringify({
+                    order_id: `INV-${Date.now()}`,
                     customer_name: newInvoice.customer_name,
-                    customer_phone: newInvoice.customer_phone,
-                    items: newInvoice.items,
-                    amount: parseFloat(newInvoice.amount)
+                    customer_phone: newInvoice.customer_phone || '+234',
+                    items: [{
+                        product_name: newInvoice.items || 'Service/Product',
+                        quantity: 1,
+                        unit_price_ngn: parseFloat(newInvoice.amount)
+                    }],
+                    delivery_fee: 0
                 })
             })
             setShowCreateInvoice(false)
@@ -153,8 +158,8 @@ const OrdersRedesign = () => {
                     <button
                         onClick={() => setActiveTab('orders')}
                         className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'orders'
-                                ? 'bg-[#0095FF] text-white'
-                                : isDark ? 'text-gray-400' : 'text-gray-500'
+                            ? 'bg-[#0095FF] text-white'
+                            : isDark ? 'text-gray-400' : 'text-gray-500'
                             }`}
                     >
                         Orders
@@ -162,8 +167,8 @@ const OrdersRedesign = () => {
                     <button
                         onClick={() => setActiveTab('invoices')}
                         className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'invoices'
-                                ? 'bg-[#0095FF] text-white'
-                                : isDark ? 'text-gray-400' : 'text-gray-500'
+                            ? 'bg-[#0095FF] text-white'
+                            : isDark ? 'text-gray-400' : 'text-gray-500'
                             }`}
                     >
                         Invoices
@@ -219,9 +224,9 @@ const OrdersRedesign = () => {
                                             <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Order #{order.id}</p>
                                         </div>
                                         <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${status.color === 'green' ? 'bg-green-100 text-green-600' :
-                                                status.color === 'red' ? 'bg-red-100 text-red-600' :
-                                                    status.color === 'orange' ? 'bg-orange-100 text-orange-600' :
-                                                        'bg-yellow-100 text-yellow-600'
+                                            status.color === 'red' ? 'bg-red-100 text-red-600' :
+                                                status.color === 'orange' ? 'bg-orange-100 text-orange-600' :
+                                                    'bg-yellow-100 text-yellow-600'
                                             }`}>
                                             <StatusIcon size={12} />
                                             {status.label}
@@ -282,8 +287,8 @@ const OrdersRedesign = () => {
                                             <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Invoice #{invoice.id}</p>
                                         </div>
                                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${status.color === 'green' ? 'bg-green-100 text-green-600' :
-                                                status.color === 'red' ? 'bg-red-100 text-red-600' :
-                                                    'bg-yellow-100 text-yellow-600'
+                                            status.color === 'red' ? 'bg-red-100 text-red-600' :
+                                                'bg-yellow-100 text-yellow-600'
                                             }`}>
                                             {status.label}
                                         </span>
