@@ -1,129 +1,156 @@
-import { useState, useEffect, useRef } from 'react'
-import { X, Camera, Check, AlertCircle, RefreshCw } from 'lucide-react'
+import { useState, useRef } from 'react'
+import { X, Camera, Check, AlertCircle, RefreshCw, FileText, Loader } from 'lucide-react'
 
 /**
- * BarcodeScanner Component
- * Scans barcodes using device camera and shows confirmation before adding to inventory.
- * Uses html5-qrcode library loaded via dynamic import.
+ * OCRScanner Component
+ * Uses camera to scan written/printed text and extract product info for inventory.
+ * Uses Tesseract.js for OCR (Optical Character Recognition).
  */
-const BarcodeScanner = ({ isOpen, onClose, onProductScanned, isDark = true }) => {
-    const [scanning, setScanning] = useState(false)
-    const [scannedData, setScannedData] = useState(null)
+const OCRScanner = ({ isOpen, onClose, onProductScanned, isDark = true }) => {
+    const [imagePreview, setImagePreview] = useState(null)
+    const [extractedText, setExtractedText] = useState('')
+    const [processing, setProcessing] = useState(false)
     const [error, setError] = useState(null)
-    const [html5QrCode, setHtml5QrCode] = useState(null)
-    const scannerRef = useRef(null)
-    const scannerContainerRef = useRef(null)
+    const [tesseractLoaded, setTesseractLoaded] = useState(false)
+    const fileInputRef = useRef(null)
+    const videoRef = useRef(null)
+    const canvasRef = useRef(null)
+    const [showCamera, setShowCamera] = useState(false)
+    const [cameraStream, setCameraStream] = useState(null)
 
     // Product form state for confirmation
     const [productForm, setProductForm] = useState({
         name: '',
-        barcode: '',
         price: '',
-        stock: '',
+        stock: '1',
         category: 'General'
     })
 
-    // Load html5-qrcode library dynamically
-    useEffect(() => {
-        if (!isOpen) return
-
-        const loadScanner = async () => {
-            try {
-                // Dynamic import of html5-qrcode
-                const { Html5Qrcode } = await import('https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js')
-                setHtml5QrCode(Html5Qrcode)
-            } catch (e) {
-                // Fallback: try loading from window if CDN loaded via script tag
-                if (window.Html5Qrcode) {
-                    setHtml5QrCode(window.Html5Qrcode)
-                } else {
-                    setError('Failed to load scanner library. Please refresh and try again.')
-                }
-            }
+    // Load Tesseract.js from CDN
+    const loadTesseract = async () => {
+        if (window.Tesseract) {
+            setTesseractLoaded(true)
+            return window.Tesseract
         }
 
-        // Load library via script tag as more reliable fallback
-        if (!window.Html5Qrcode) {
+        return new Promise((resolve, reject) => {
             const script = document.createElement('script')
-            script.src = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js'
+            script.src = 'https://unpkg.com/tesseract.js@5.0.5/dist/tesseract.min.js'
             script.onload = () => {
-                setHtml5QrCode(window.Html5Qrcode)
+                setTesseractLoaded(true)
+                resolve(window.Tesseract)
             }
-            script.onerror = () => {
-                setError('Failed to load barcode scanner. Check your internet connection.')
-            }
+            script.onerror = () => reject(new Error('Failed to load OCR library'))
             document.head.appendChild(script)
-        } else {
-            setHtml5QrCode(window.Html5Qrcode)
+        })
+    }
+
+    // Start camera
+    const startCamera = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'environment' }
+            })
+            setCameraStream(stream)
+            if (videoRef.current) {
+                videoRef.current.srcObject = stream
+            }
+            setShowCamera(true)
+            setError(null)
+        } catch (err) {
+            setError('Camera access denied. Please allow camera permissions or use file upload.')
         }
+    }
 
-        return () => {
-            stopScanner()
+    // Stop camera
+    const stopCamera = () => {
+        if (cameraStream) {
+            cameraStream.getTracks().forEach(track => track.stop())
+            setCameraStream(null)
         }
-    }, [isOpen])
+        setShowCamera(false)
+    }
 
-    const startScanner = async () => {
-        if (!html5QrCode || !scannerContainerRef.current) return
+    // Capture photo from camera
+    const capturePhoto = () => {
+        if (videoRef.current && canvasRef.current) {
+            const video = videoRef.current
+            const canvas = canvasRef.current
+            canvas.width = video.videoWidth
+            canvas.height = video.videoHeight
+            canvas.getContext('2d').drawImage(video, 0, 0)
+            const imageData = canvas.toDataURL('image/jpeg', 0.8)
+            setImagePreview(imageData)
+            stopCamera()
+            processImage(imageData)
+        }
+    }
 
+    // Handle file upload
+    const handleFileUpload = (e) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+
+        const reader = new FileReader()
+        reader.onload = (event) => {
+            const imageData = event.target.result
+            setImagePreview(imageData)
+            processImage(imageData)
+        }
+        reader.readAsDataURL(file)
+    }
+
+    // Process image with OCR
+    const processImage = async (imageData) => {
+        setProcessing(true)
         setError(null)
-        setScanning(true)
+        setExtractedText('')
 
         try {
-            const scanner = new html5QrCode('barcode-scanner-container')
-            scannerRef.current = scanner
+            const Tesseract = await loadTesseract()
 
-            await scanner.start(
-                { facingMode: 'environment' }, // Back camera
+            const result = await Tesseract.recognize(
+                imageData,
+                'eng',
                 {
-                    fps: 10,
-                    qrbox: { width: 250, height: 150 },
-                    aspectRatio: 1.5
-                },
-                (decodedText, decodedResult) => {
-                    // Barcode scanned successfully
-                    handleScanSuccess(decodedText, decodedResult)
-                },
-                (errorMessage) => {
-                    // Scan error (normal during scanning, ignore)
+                    logger: m => console.log('OCR Progress:', m)
                 }
             )
+
+            const text = result.data.text.trim()
+            setExtractedText(text)
+
+            // Try to parse product info from text
+            parseProductFromText(text)
+
         } catch (err) {
-            setError(`Camera error: ${err.message || 'Unable to access camera'}`)
-            setScanning(false)
+            setError('Failed to process image. Please try again with a clearer photo.')
+            console.error('OCR Error:', err)
+        } finally {
+            setProcessing(false)
         }
     }
 
-    const stopScanner = async () => {
-        if (scannerRef.current) {
-            try {
-                await scannerRef.current.stop()
-                scannerRef.current.clear()
-            } catch (e) {
-                // Ignore cleanup errors
-            }
-            scannerRef.current = null
-        }
-        setScanning(false)
-    }
+    // Parse product info from extracted text
+    const parseProductFromText = (text) => {
+        const lines = text.split('\n').filter(l => l.trim())
 
-    const handleScanSuccess = async (barcodeText, result) => {
-        // Stop scanner immediately
-        await stopScanner()
+        // Try to find price (numbers with naira symbol or large numbers)
+        const priceMatch = text.match(/[₦N]?\s*(\d{1,3}(?:,?\d{3})*(?:\.\d{2})?)/i)
+        const price = priceMatch ? priceMatch[1].replace(/,/g, '') : ''
 
-        // Set scanned data
-        setScannedData({
-            barcode: barcodeText,
-            format: result?.result?.format?.formatName || 'Unknown'
-        })
+        // Try to find stock/quantity
+        const stockMatch = text.match(/(?:qty|quantity|stock|x)\s*[:=]?\s*(\d+)/i)
+        const stock = stockMatch ? stockMatch[1] : '1'
 
-        // Pre-fill form with barcode
+        // First line is usually product name
+        const name = lines[0]?.replace(/[₦N]?\d{1,3}(?:,?\d{3})*(?:\.\d{2})?/g, '').trim() || ''
+
         setProductForm(prev => ({
             ...prev,
-            barcode: barcodeText,
-            name: '', // User needs to fill this
-            price: '',
-            stock: '1',
-            category: 'General'
+            name: name,
+            price: price,
+            stock: stock
         }))
     }
 
@@ -135,28 +162,26 @@ const BarcodeScanner = ({ isOpen, onClose, onProductScanned, isDark = true }) =>
 
         onProductScanned({
             name: productForm.name,
-            barcode: productForm.barcode,
             price_ngn: parseFloat(productForm.price),
             stock_level: parseInt(productForm.stock) || 1,
             category: productForm.category
         })
 
         // Reset and close
-        setScannedData(null)
-        setProductForm({ name: '', barcode: '', price: '', stock: '', category: 'General' })
+        resetScanner()
         onClose()
     }
 
-    const handleRetry = () => {
-        setScannedData(null)
+    const resetScanner = () => {
+        setImagePreview(null)
+        setExtractedText('')
+        setProductForm({ name: '', price: '', stock: '1', category: 'General' })
         setError(null)
-        startScanner()
+        stopCamera()
     }
 
     const handleClose = () => {
-        stopScanner()
-        setScannedData(null)
-        setError(null)
+        resetScanner()
         onClose()
     }
 
@@ -164,11 +189,11 @@ const BarcodeScanner = ({ isOpen, onClose, onProductScanned, isDark = true }) =>
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-            <div className={`w-full max-w-md rounded-2xl overflow-hidden ${isDark ? 'bg-[#1A1A1F]' : 'bg-white'}`}>
+            <div className={`w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl ${isDark ? 'bg-[#1A1A1F]' : 'bg-white'}`}>
                 {/* Header */}
-                <div className={`flex items-center justify-between p-4 border-b ${isDark ? 'border-white/10' : 'border-gray-200'}`}>
+                <div className={`sticky top-0 flex items-center justify-between p-4 border-b ${isDark ? 'border-white/10 bg-[#1A1A1F]' : 'border-gray-200 bg-white'}`}>
                     <h2 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                        {scannedData ? 'Confirm Product' : 'Scan Barcode'}
+                        📷 Scan Text to Add Product
                     </h2>
                     <button onClick={handleClose} className={`p-2 rounded-full ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}>
                         <X size={20} className={isDark ? 'text-white' : 'text-gray-600'} />
@@ -179,57 +204,118 @@ const BarcodeScanner = ({ isOpen, onClose, onProductScanned, isDark = true }) =>
                 <div className="p-4">
                     {error && (
                         <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center gap-2">
-                            <AlertCircle size={18} className="text-red-500" />
+                            <AlertCircle size={18} className="text-red-500 flex-shrink-0" />
                             <span className="text-sm text-red-500">{error}</span>
                         </div>
                     )}
 
-                    {!scannedData ? (
-                        // Scanner View
-                        <>
-                            <div
-                                id="barcode-scanner-container"
-                                ref={scannerContainerRef}
-                                className="w-full h-64 bg-black rounded-xl overflow-hidden mb-4"
-                            >
-                                {!scanning && !error && (
-                                    <div className="w-full h-full flex flex-col items-center justify-center text-white/50">
-                                        <Camera size={48} className="mb-2" />
-                                        <p className="text-sm">Camera preview will appear here</p>
-                                    </div>
-                                )}
-                            </div>
+                    {/* Camera/Upload Section */}
+                    {!imagePreview && !showCamera && (
+                        <div className="space-y-3">
+                            <p className={`text-sm text-center ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                Take a photo or upload an image of your product list, receipt, or price tag
+                            </p>
 
                             <button
-                                onClick={scanning ? stopScanner : startScanner}
-                                disabled={!html5QrCode}
-                                className={`w-full py-3 rounded-xl font-semibold flex items-center justify-center gap-2 ${scanning
-                                        ? 'bg-red-500 text-white'
-                                        : 'bg-[#0095FF] text-white disabled:bg-gray-400'
-                                    }`}
+                                onClick={startCamera}
+                                className="w-full py-4 rounded-xl font-semibold flex items-center justify-center gap-2 bg-[#0095FF] text-white"
                             >
-                                {scanning ? (
-                                    <><X size={18} /> Stop Scanning</>
-                                ) : (
-                                    <><Camera size={18} /> Start Camera</>
-                                )}
+                                <Camera size={20} /> Take Photo
                             </button>
 
-                            <p className={`text-xs text-center mt-3 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                                Point camera at product barcode
-                            </p>
-                        </>
-                    ) : (
-                        // Confirmation Form
-                        <>
-                            <div className={`p-3 rounded-lg mb-4 ${isDark ? 'bg-green-500/10 border border-green-500/20' : 'bg-green-50 border border-green-200'}`}>
-                                <p className="text-green-500 text-sm font-medium">✓ Barcode Scanned!</p>
-                                <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                                    {scannedData.barcode} ({scannedData.format})
-                                </p>
+                            <div className="relative">
+                                <div className={`h-px ${isDark ? 'bg-white/10' : 'bg-gray-200'}`} />
+                                <span className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-3 text-xs ${isDark ? 'bg-[#1A1A1F] text-gray-500' : 'bg-white text-gray-400'}`}>
+                                    or
+                                </span>
                             </div>
 
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                accept="image/*"
+                                onChange={handleFileUpload}
+                                className="hidden"
+                            />
+                            <button
+                                onClick={() => fileInputRef.current?.click()}
+                                className={`w-full py-4 rounded-xl font-semibold flex items-center justify-center gap-2 ${isDark ? 'bg-white/10 text-white' : 'bg-gray-100 text-gray-700'}`}
+                            >
+                                <FileText size={20} /> Upload Image
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Camera View */}
+                    {showCamera && (
+                        <div className="space-y-3">
+                            <div className="relative w-full h-64 bg-black rounded-xl overflow-hidden">
+                                <video
+                                    ref={videoRef}
+                                    autoPlay
+                                    playsInline
+                                    className="w-full h-full object-cover"
+                                />
+                                <canvas ref={canvasRef} className="hidden" />
+                            </div>
+
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={stopCamera}
+                                    className={`flex-1 py-3 rounded-xl font-semibold ${isDark ? 'bg-white/10 text-white' : 'bg-gray-100 text-gray-700'}`}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={capturePhoto}
+                                    className="flex-1 py-3 rounded-xl font-semibold bg-[#0095FF] text-white flex items-center justify-center gap-2"
+                                >
+                                    <Camera size={18} /> Capture
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Processing */}
+                    {processing && (
+                        <div className="py-12 text-center">
+                            <Loader size={40} className="mx-auto mb-3 text-[#0095FF] animate-spin" />
+                            <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                Reading text from image...
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Extracted Text & Form */}
+                    {imagePreview && !processing && (
+                        <>
+                            {/* Image Preview */}
+                            <div className="mb-4">
+                                <img
+                                    src={imagePreview}
+                                    alt="Captured"
+                                    className="w-full h-40 object-cover rounded-xl"
+                                />
+                            </div>
+
+                            {/* Extracted Text */}
+                            {extractedText && (
+                                <div className={`mb-4 p-3 rounded-lg ${isDark ? 'bg-white/5 border border-white/10' : 'bg-gray-50 border border-gray-200'}`}>
+                                    <p className={`text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                        Extracted Text:
+                                    </p>
+                                    <p className={`text-sm ${isDark ? 'text-white' : 'text-gray-800'}`}>
+                                        {extractedText.substring(0, 200)}{extractedText.length > 200 ? '...' : ''}
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Product Form */}
                             <div className="space-y-3">
+                                <p className={`text-xs font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                    ✏️ Review and correct if needed:
+                                </p>
+
                                 <div>
                                     <label className={`text-xs font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Product Name *</label>
                                     <input
@@ -295,7 +381,7 @@ const BarcodeScanner = ({ isOpen, onClose, onProductScanned, isDark = true }) =>
 
                             <div className="flex gap-3 mt-4">
                                 <button
-                                    onClick={handleRetry}
+                                    onClick={resetScanner}
                                     className={`flex-1 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 ${isDark ? 'bg-white/10 text-white' : 'bg-gray-100 text-gray-700'
                                         }`}
                                 >
@@ -316,4 +402,4 @@ const BarcodeScanner = ({ isOpen, onClose, onProductScanned, isDark = true }) =>
     )
 }
 
-export default BarcodeScanner
+export default OCRScanner
