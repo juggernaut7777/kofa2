@@ -114,38 +114,37 @@ export const AuthProvider = ({ children }) => {
                 return { success: false, error: 'Please enter a valid email address' }
             }
 
-            if (password.length < 4) {
-                return { success: false, error: 'Password must be at least 4 characters' }
-            }
-
-            // Try to verify backend is reachable
-            try {
-                await fetch(`${API_BASE_URL}${API_ENDPOINTS.HEALTH}`, { 
-                    method: 'GET',
-                    signal: AbortSignal.timeout(3000)
+            // Call backend login API
+            const response = await apiCall(API_ENDPOINTS.AUTH_LOGIN, {
+                method: 'POST',
+                body: JSON.stringify({
+                    email: email.toLowerCase().trim(),
+                    password
                 })
-            } catch (e) {
-                console.warn('Backend health check failed, proceeding with local auth')
-            }
+            })
 
-            // Create user session
-            const userData = {
-                id: 'vendor-' + Date.now(),
-                email: email,
-                businessName: email.split('@')[0] + "'s Business",
-                storeName: email.split('@')[0] + "'s Store",
-                plan: 'free',
-                productLimit: 50,
-                createdAt: new Date().toISOString()
-            }
+            if (response.success) {
+                const userData = {
+                    id: response.user_id,
+                    email: response.email,
+                    firstName: response.first_name,
+                    businessName: response.business_name,
+                    plan: 'free',
+                    productLimit: 50,
+                    createdAt: new Date().toISOString()
+                }
 
-            localStorage.setItem('kofa_user', JSON.stringify(userData))
-            localStorage.setItem('kofa_last_activity', String(Date.now()))
-            setUser(userData)
-            setIsAuthenticated(true)
-            return { success: true }
+                localStorage.setItem('kofa_user', JSON.stringify(userData))
+                localStorage.setItem('kofa_last_activity', String(Date.now()))
+                setUser(userData)
+                setIsAuthenticated(true)
+                return { success: true }
+            } else {
+                return { success: false, error: response.message || 'Login failed' }
+            }
         } catch (error) {
-            return { success: false, error: error.message }
+            console.error('Login error:', error)
+            return { success: false, error: error.message || 'Login failed. Please check your credentials.' }
         }
     }
 
@@ -164,29 +163,48 @@ export const AuthProvider = ({ children }) => {
                 return { success: false, error: 'Password must be at least 6 characters' }
             }
 
+            if (!userData.firstName || userData.firstName.length < 1) {
+                return { success: false, error: 'Please enter your first name' }
+            }
+
             if (!userData.businessName || userData.businessName.length < 2) {
                 return { success: false, error: 'Please enter your business name' }
             }
 
-            // Create new vendor
-            const newUser = {
-                id: 'vendor-' + Date.now(),
-                email: userData.email,
-                phone: userData.phone || '',
-                businessName: userData.businessName,
-                storeName: userData.businessName,
-                plan: 'free',
-                productLimit: 50,
-                createdAt: new Date().toISOString()
-            }
+            // Call backend register API
+            const response = await apiCall(API_ENDPOINTS.AUTH_REGISTER, {
+                method: 'POST',
+                body: JSON.stringify({
+                    email: userData.email.toLowerCase().trim(),
+                    password: userData.password,
+                    first_name: userData.firstName,
+                    business_name: userData.businessName,
+                    phone: userData.phone || null
+                })
+            })
 
-            localStorage.setItem('kofa_user', JSON.stringify(newUser))
-            localStorage.setItem('kofa_last_activity', String(Date.now()))
-            setUser(newUser)
-            setIsAuthenticated(true)
-            return { success: true }
+            if (response.success) {
+                const newUser = {
+                    id: response.user_id,
+                    email: response.email,
+                    firstName: response.first_name,
+                    businessName: response.business_name,
+                    plan: 'free',
+                    productLimit: 50,
+                    createdAt: new Date().toISOString()
+                }
+
+                localStorage.setItem('kofa_user', JSON.stringify(newUser))
+                localStorage.setItem('kofa_last_activity', String(Date.now()))
+                setUser(newUser)
+                setIsAuthenticated(true)
+                return { success: true }
+            } else {
+                return { success: false, error: response.message || 'Registration failed' }
+            }
         } catch (error) {
-            return { success: false, error: error.message }
+            console.error('Signup error:', error)
+            return { success: false, error: error.message || 'Registration failed. Please try again.' }
         }
     }
 
