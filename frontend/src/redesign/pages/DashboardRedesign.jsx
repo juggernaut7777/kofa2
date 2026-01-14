@@ -128,8 +128,8 @@ const DashboardRedesign = () => {
                 </div>
             </div>
 
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Stats Grid - 2 columns on mobile, 4 on desktop */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 <StatItem
                     label="Total Revenue"
                     value={formatCurrency(stats.revenue)}
@@ -155,6 +155,33 @@ const DashboardRedesign = () => {
                     colorClass="bg-purple-500/10 text-purple-500"
                 />
             </div>
+
+            {/* Quick Actions - Right after stats, 3 in a row */}
+            <Card glass>
+                <CardHeader>
+                    <CardTitle>Quick Actions</CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-3 gap-3">
+                    <button onClick={() => navigate('/products', { state: { action: 'add' } })} className="p-4 rounded-xl bg-surface-2 hover:bg-surface-3 transition-colors text-center group">
+                        <div className="w-10 h-10 mx-auto mb-2 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <Package size={20} />
+                        </div>
+                        <span className="text-xs font-medium">Add Product</span>
+                    </button>
+                    <button onClick={() => navigate('/expenses', { state: { action: 'add' } })} className="p-4 rounded-xl bg-surface-2 hover:bg-surface-3 transition-colors text-center group">
+                        <div className="w-10 h-10 mx-auto mb-2 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <CreditCard size={20} />
+                        </div>
+                        <span className="text-xs font-medium">Add Expense</span>
+                    </button>
+                    <button onClick={() => navigate('/orders', { state: { tab: 'invoices', action: 'create' } })} className="p-4 rounded-xl bg-surface-2 hover:bg-surface-3 transition-colors text-center group">
+                        <div className="w-10 h-10 mx-auto mb-2 rounded-full bg-green-500/10 text-green-500 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <FileText size={20} />
+                        </div>
+                        <span className="text-xs font-medium">Create Invoice</span>
+                    </button>
+                </CardContent>
+            </Card>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Main Chart / Activity Area */}
@@ -222,45 +249,24 @@ const DashboardRedesign = () => {
                     </Card>
                 </div>
 
-                {/* Side Panel: Inventory & Quick Actions */}
-                <div className="space-y-6">
-                    <Card glass>
-                        <CardHeader>
-                            <CardTitle>Quick Actions</CardTitle>
-                        </CardHeader>
-                        <CardContent className="grid grid-cols-2 gap-3">
-                            <button onClick={() => navigate('/products', { state: { action: 'add' } })} className="p-4 rounded-xl bg-surface-2 hover:bg-surface-3 transition-colors text-center group">
-                                <div className="w-10 h-10 mx-auto mb-2 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center group-hover:scale-110 transition-transform">
-                                    <Package size={20} />
-                                </div>
-                                <span className="text-xs font-medium">Add Product</span>
-                            </button>
-                            <button onClick={() => navigate('/expenses', { state: { action: 'add' } })} className="p-4 rounded-xl bg-surface-2 hover:bg-surface-3 transition-colors text-center group">
-                                <div className="w-10 h-10 mx-auto mb-2 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center group-hover:scale-110 transition-transform">
-                                    <CreditCard size={20} />
-                                </div>
-                                <span className="text-xs font-medium">Add Expense</span>
-                            </button>
-                        </CardContent>
-                    </Card>
 
-                    {/* Inventory Health */}
-                    <Card glass>
-                        <CardHeader>
-                            <CardTitle>Inventory Health</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="flex items-center justify-between p-3 rounded-lg bg-surface-2">
-                                <span className="text-sm font-medium">Total Products</span>
-                                <span className="font-bold">{products.length}</span>
-                            </div>
-                            <div className="flex items-center justify-between p-3 rounded-lg bg-red-500/5 border border-red-500/10">
-                                <span className="text-sm font-medium text-red-500">Low Stock</span>
-                                <Badge variant="danger" size="sm">{products.filter(p => p.stock_level < 5).length}</Badge>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
+
+                {/* Inventory Health */}
+                <Card glass>
+                    <CardHeader>
+                        <CardTitle>Inventory Health</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-surface-2">
+                            <span className="text-sm font-medium">Total Products</span>
+                            <span className="font-bold">{products.length}</span>
+                        </div>
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-red-500/5 border border-red-500/10">
+                            <span className="text-sm font-medium text-red-500">Low Stock</span>
+                            <Badge variant="danger" size="sm">{products.filter(p => p.stock_level < 5).length}</Badge>
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
         </div>
     )
