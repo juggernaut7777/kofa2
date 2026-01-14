@@ -121,9 +121,9 @@ export const apiCall = async (endpoint, options = {}) => {
     ...options,
   };
 
-  // Add timeout to prevent hanging - 5 seconds for fast failure
+  // Add timeout to prevent hanging - 30 seconds for Heroku cold starts
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
   try {
     const response = await fetch(url, { ...config, signal: controller.signal });
@@ -137,7 +137,7 @@ export const apiCall = async (endpoint, options = {}) => {
     clearTimeout(timeoutId);
 
     if (error.name === 'AbortError') {
-      throw new Error('API request timed out after 5 seconds');
+      throw new Error('API request timed out after 30 seconds');
     }
 
     console.error('API Call Error:', error);
