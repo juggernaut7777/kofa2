@@ -44,10 +44,15 @@ const DashboardRedesign = () => {
 
     const loadData = async () => {
         try {
+            // Build API endpoints with user_id for proper filtering
+            const ordersEndpoint = user?.id ? `${API_ENDPOINTS.ORDERS}?user_id=${user.id}` : API_ENDPOINTS.ORDERS
+            const productsEndpoint = user?.id ? `${API_ENDPOINTS.PRODUCTS}?user_id=${user.id}` : API_ENDPOINTS.PRODUCTS
+            const profitEndpoint = user?.id ? `${API_ENDPOINTS.PROFIT_SUMMARY}?user_id=${user.id}` : API_ENDPOINTS.PROFIT_SUMMARY
+
             const [ordersRes, productsRes, profitRes] = await Promise.allSettled([
-                cachedApiCall(API_ENDPOINTS.ORDERS, CACHE_KEYS.ORDERS, setRecentOrders),
-                cachedApiCall(API_ENDPOINTS.PRODUCTS, CACHE_KEYS.PRODUCTS, setProducts),
-                cachedApiCall(API_ENDPOINTS.PROFIT_SUMMARY, CACHE_KEYS.PROFIT_SUMMARY)
+                cachedApiCall(ordersEndpoint, `${CACHE_KEYS.ORDERS}_${user?.id}`, setRecentOrders),
+                cachedApiCall(productsEndpoint, `${CACHE_KEYS.PRODUCTS}_${user?.id}`, setProducts),
+                cachedApiCall(profitEndpoint, `${CACHE_KEYS.PROFIT_SUMMARY}_${user?.id}`)
             ])
 
             if (ordersRes.status === 'fulfilled' && Array.isArray(ordersRes.value)) {
