@@ -105,7 +105,7 @@ VERIFICATION_CODES = {}
 async def register(request: RegisterRequest):
     """
     Register a new user account.
-    Returns user_id on success.
+    Creates user directly without email verification.
     """
     try:
         from ..database import SessionLocal
@@ -124,32 +124,19 @@ async def register(request: RegisterRequest):
                 if existing_phone:
                     raise HTTPException(status_code=400, detail="Phone number already registered")
             
-            # Generate verification code
-            verification_code = generate_verification_code()
-            verification_expiry = get_verification_expiry()
-            
-            # Store verification data (user not created yet)
+            # Create user directly in database
             user_id = str(uuid.uuid4())
-            VERIFICATION_CODES[request.email] = {
-                "code": verification_code,
-                "expiry": verification_expiry,
-                "user_id": user_id,
-                "password_hash": hash_password(request.password),
-                "first_name": request.first_name,
-                "business_name": request.business_name,
-                "phone": request.phone or f"+234{uuid.uuid4().hex[:10]}"
-            }
-            
-            # Send verification email
-            email_result = await send_verification_email(
-                to_email=request.email,
-                verification_code=verification_code,
-                first_name=request.first_name
+            new_user = User(
+                id=user_id,
+                email=request.email,
+                phone=request.phone or f"+234{uuid.uuid4().hex[:10]}",
+                password_hash=hash_password(request.password),
+                first_name=request.first_name,
+                business_name=request.business_name
             )
             
-            if not email_result.get("success"):
-                # Email failed, but continue - log error
-                print(f"Verification email failed: {email_result.get('error')}")
+            db.add(new_user)
+            db.commit()
             
             return AuthResponse(
                 success=True,
@@ -157,8 +144,8 @@ async def register(request: RegisterRequest):
                 email=request.email,
                 first_name=request.first_name,
                 business_name=request.business_name,
-                requires_verification=True,
-                message="Verification code sent to your email. Please verify to complete registration."
+                requires_verification=False,
+                message="Account created successfully"
             )
             
         except HTTPException:
