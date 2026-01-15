@@ -106,3 +106,18 @@ class OrderItem(Base):
     order = relationship("Order", back_populates="order_items")
     product = relationship("Product", back_populates="order_items")
 
+
+class Expense(Base):
+    """Expense tracking model for vendors."""
+    __tablename__ = "expenses"
+    
+    id = Column(GUID, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(GUID, ForeignKey("users.id"), nullable=False, index=True)
+    amount = Column(Float, nullable=False)
+    description = Column(String(500), nullable=False)
+    category = Column(String(100), nullable=False, default="misc")
+    expense_type = Column(String(50), nullable=False, default="BUSINESS")
+    date = Column(DateTime, default=datetime.utcnow, index=True)
+    receipt_image_url = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
