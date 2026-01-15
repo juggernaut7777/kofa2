@@ -1,6 +1,7 @@
 import { useState, useEffect, useContext, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { apiCall, cachedApiCall, API_ENDPOINTS, CACHE_KEYS, API_BASE_URL } from '../../config/api'
+import { clearCache } from '../../utils/cache'
 import { ThemeContext } from '../../context/ThemeContext'
 import { useAuth } from '../../context/AuthContext'
 import { Plus, Search, ScanLine, Package, Upload, X, RefreshCw, Edit2, Image, Camera } from 'lucide-react'
@@ -128,6 +129,7 @@ const ProductsRedesign = () => {
             setEditingProduct(null)
             setNewProduct({ name: '', price: '', stock: '', category: 'General', description: '', image: null })
             setImagePreview(null)
+            clearCache(CACHE_KEYS.PRODUCTS)  // Clear cache to force fresh fetch
             loadProducts()
         } catch (e) {
             alert('Failed to save product')
