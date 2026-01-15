@@ -36,6 +36,8 @@ export const API_ENDPOINTS = {
   AUTH_REGISTER: '/auth/register',
   AUTH_LOGIN: '/auth/login',
   AUTH_ME: '/auth/me',
+  VERIFY_EMAIL: '/auth/verify',
+  RESEND_CODE: '/auth/resend-code',
 
   // Dashboard
   DASHBOARD_SUMMARY: '/dashboard/summary',

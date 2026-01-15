@@ -36,7 +36,11 @@ const Signup = () => {
         const result = await signup(formData)
 
         if (result.success) {
-            navigate('/dashboard', { replace: true })
+            // Redirect to verification page with email
+            navigate('/verify', {
+                replace: true,
+                state: { email: formData.email }
+            })
         } else {
             setError(result.error || 'Signup failed. Please try again.')
         }
