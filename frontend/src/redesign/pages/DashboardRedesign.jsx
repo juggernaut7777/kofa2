@@ -13,7 +13,9 @@ import {
     FileText,
     ShoppingBag,
     Clock,
-    DollarSign
+    DollarSign,
+    Store,
+    ExternalLink
 } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
@@ -125,6 +127,36 @@ const DashboardRedesign = () => {
                     <p className="text-muted mt-1">
                         Here's what's happening with your business today.
                     </p>
+                </div>
+
+                {/* Store Preview Button */}
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => {
+                            const storeUrl = `${window.location.origin}/shop/${encodeURIComponent(user?.businessName || user?.business_name || 'shop')}`
+                            navigator.clipboard.writeText(storeUrl)
+                            alert('✅ Store link copied!')
+                        }}
+                        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all ${isDark
+                            ? 'bg-white/10 hover:bg-white/20 text-white border border-white/10'
+                            : 'bg-gray-100 hover:bg-gray-200 text-gray-800 border border-gray-200'
+                            }`}
+                        title="Copy store link"
+                    >
+                        <Store size={18} className="text-[#0095FF]" />
+                        <span className="hidden sm:inline">Copy Store Link</span>
+                    </button>
+                    <button
+                        onClick={() => {
+                            const storeUrl = `${window.location.origin}/shop/${encodeURIComponent(user?.businessName || user?.business_name || 'shop')}`
+                            window.open(storeUrl, '_blank')
+                        }}
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium bg-[#0095FF] hover:bg-[#0080DD] text-white transition-all"
+                        title="Preview your store"
+                    >
+                        <ExternalLink size={18} />
+                        <span className="hidden sm:inline">Preview Store</span>
+                    </button>
                 </div>
             </div>
 

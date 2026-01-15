@@ -105,7 +105,7 @@ const SettingsRedesign = () => {
                 method: 'POST',
                 body: JSON.stringify({
                     message: userMessage,
-                    style: botSettings.style,
+                    style: 'corporate',  // Always use professional/corporate style
                     user_id: user?.id  // Pass user ID for context-aware responses
                 })
             })
@@ -323,7 +323,7 @@ const SettingsRedesign = () => {
                                     <div className={`mt-4 rounded-xl overflow-hidden border ${isDark ? 'bg-[#0F0F12] border-white/10' : 'bg-gray-50 border-gray-200'}`}>
                                         <div className={`p-3 ${isDark ? 'bg-[#1A1A1F] border-b border-white/10' : 'bg-white border-b border-gray-200'}`}>
                                             <p className={`text-xs font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                                                Testing in <span className="font-bold text-[#0095FF]">{botSettings.style.toUpperCase()}</span> mode
+                                                Bot responds in <span className="font-bold text-[#0095FF]">PROFESSIONAL</span> mode
                                             </p>
                                         </div>
 
