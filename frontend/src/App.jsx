@@ -3,6 +3,7 @@ import { AuthProvider } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
 import PrivateRoute from './components/PrivateRoute'
 import BusinessAI from './components/BusinessAI/BusinessAI'
+import StorefrontButton from './components/StorefrontButton/StorefrontButton'
 
 // Redesigned pages (new Stitch UI)
 import {
@@ -70,6 +71,9 @@ function App() {
 
           {/* Business AI Assistant - Available on all pages */}
           <BusinessAI />
+
+          {/* Storefront Button - For vendors to share their store */}
+          <StorefrontButton />
         </Router>
       </ThemeProvider>
     </AuthProvider>
