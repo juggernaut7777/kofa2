@@ -20,6 +20,7 @@ import Landing from './pages/Landing'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
 import Verify from './pages/Verify'
+import Shop from './pages/Shop'
 
 function App() {
   return (
@@ -32,6 +33,7 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/verify" element={<Verify />} />
+            <Route path="/shop/:shopName" element={<Shop />} />
 
             {/* Protected Routes - Redesigned UI (5 main pages) */}
             <Route path="/dashboard" element={
