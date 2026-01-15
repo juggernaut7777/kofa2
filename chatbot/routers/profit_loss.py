@@ -14,12 +14,11 @@ router = APIRouter()
 
 
 @router.get("/today")
-async def get_today_profit():
+async def get_today_profit(user_id: str = None):
     """
-    Get today's profit/loss.
-    The quick "how much I make today" answer.
+    Get today's profit/loss for a specific user.
     """
-    report = profit_loss_service.get_profit_loss_report(ReportPeriod.TODAY)
+    report = profit_loss_service.get_profit_loss_report(ReportPeriod.TODAY, user_id=user_id)
     
     return {
         "date": datetime.now().strftime("%Y-%m-%d"),
@@ -36,11 +35,11 @@ async def get_today_profit():
 
 
 @router.get("/summary")
-async def get_daily_summary():
+async def get_daily_summary(user_id: str = None):
     """
     Get quick daily summary for dashboard.
     """
-    summary = profit_loss_service.get_daily_summary()
+    summary = profit_loss_service.get_daily_summary(user_id=user_id)
     
     return {
         "date": summary.date,
