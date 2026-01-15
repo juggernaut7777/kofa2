@@ -294,22 +294,44 @@ async def health_check():
 
 @router.get("/products")
 @limiter.limit("50/minute")
-async def get_products(request: Request):
-    """Get all products from inventory. CACHED for 60 seconds to reduce I/O costs."""
-    cache_key = "products:all"
+async def get_products(request: Request, user_id: str = None):
+    """Get products for a specific user (vendor). Requires user_id."""
+    from .database import SessionLocal
+    from .models import Product as ProductModel
+    
+    # If no user_id, return empty list (no global product listing)
+    if not user_id:
+        return []
+    
+    cache_key = f"products:user:{user_id}"
     
     # Check cache first (fast, in-memory)
     cached = get_cache(cache_key)
     if cached is not None:
         return cached
     
-    # Cache miss - fetch from database
-    products = inventory_manager.list_products()
-    
-    # Store in cache for 60 seconds
-    set_cache(cache_key, products, ttl_seconds=60)
-    
-    return products
+    # Cache miss - fetch from database filtered by user_id
+    db = SessionLocal()
+    try:
+        products = db.query(ProductModel).filter(ProductModel.user_id == user_id).all()
+        product_list = []
+        for p in products:
+            product_list.append({
+                "id": p.id,
+                "name": p.name,
+                "price_ngn": p.price_ngn,
+                "stock_level": p.stock_level,
+                "description": p.description or "",
+                "category": p.category or "",
+                "image_url": p.image_url or None
+            })
+        
+        # Store in cache for 60 seconds
+        set_cache(cache_key, product_list, ttl_seconds=60)
+        
+        return product_list
+    finally:
+        db.close()
 
 @router.post("/orders", response_model=OrderResponse)
 async def create_order(request: OrderRequest):

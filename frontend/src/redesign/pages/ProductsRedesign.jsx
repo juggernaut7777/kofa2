@@ -54,7 +54,11 @@ const ProductsRedesign = () => {
     const loadProducts = async () => {
         setLoading(true)
         try {
-            const data = await cachedApiCall(API_ENDPOINTS.PRODUCTS, CACHE_KEYS.PRODUCTS, (fresh) => {
+            // Pass user_id to filter products by current vendor
+            const endpoint = user?.id ? `${API_ENDPOINTS.PRODUCTS}?user_id=${user.id}` : API_ENDPOINTS.PRODUCTS
+            const cacheKey = user?.id ? `${CACHE_KEYS.PRODUCTS}_${user.id}` : CACHE_KEYS.PRODUCTS
+
+            const data = await cachedApiCall(endpoint, cacheKey, (fresh) => {
                 setProducts(normalizeProducts(fresh))
             })
             setProducts(normalizeProducts(data))
