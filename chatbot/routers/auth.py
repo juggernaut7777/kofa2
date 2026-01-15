@@ -226,21 +226,15 @@ async def verify_email(request: VerifyCodeRequest):
                     message="Email verified successfully"
                 )
             
-            # Create new user
+            # Create new user with password_hash and first_name stored in database
             new_user = User(
                 id=verification_data["user_id"],
                 email=email,
                 phone=verification_data["phone"],
+                password_hash=verification_data["password_hash"],  # Store in DB permanently
+                first_name=verification_data["first_name"],  # Store in DB permanently
                 business_name=verification_data["business_name"]
             )
-            
-            # Move from verification to users store
-            USERS_STORE[email] = {
-                "user_id": verification_data["user_id"],
-                "password_hash": verification_data["password_hash"],
-                "first_name": verification_data["first_name"],
-                "business_name": verification_data["business_name"]
-            }
             
             db.add(new_user)
             db.commit()
@@ -332,28 +326,19 @@ async def login(request: LoginRequest):
             if not user:
                 raise HTTPException(status_code=401, detail="Invalid email or password")
             
-            # Check password from memory store
-            stored_data = USERS_STORE.get(request.email.lower().strip())
-            if not stored_data:
-                # User exists in DB but no password - might be old account
-                # For now, allow login and create password entry
-                USERS_STORE[request.email.lower().strip()] = {
-                    "user_id": user.id,
-                    "password_hash": hash_password(request.password),
-                    "first_name": user.business_name.split()[0] if user.business_name else "User",
-                    "business_name": user.business_name
-                }
-                stored_data = USERS_STORE[request.email.lower().strip()]
+            # Check password from database
+            if not user.password_hash:
+                raise HTTPException(status_code=401, detail="Account not verified. Please complete email verification.")
             
             # Verify password
-            if not verify_password(request.password, stored_data["password_hash"]):
+            if not verify_password(request.password, user.password_hash):
                 raise HTTPException(status_code=401, detail="Invalid email or password")
             
             return AuthResponse(
                 success=True,
                 user_id=user.id,
                 email=user.email,
-                first_name=stored_data.get("first_name", "User"),
+                first_name=user.first_name or "User",
                 business_name=user.business_name,
                 message="Login successful"
             )
