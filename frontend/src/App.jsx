@@ -19,6 +19,7 @@ import {
 import Landing from './pages/Landing'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
+import Verify from './pages/Verify'
 
 function App() {
   return (
@@ -30,6 +31,7 @@ function App() {
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/verify" element={<Verify />} />
 
             {/* Protected Routes - Redesigned UI (5 main pages) */}
             <Route path="/dashboard" element={

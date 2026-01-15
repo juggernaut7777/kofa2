@@ -9,6 +9,22 @@ import os
 
 router = APIRouter()
 
+# Import verification email function
+try:
+    from ..resend_client import send_verification_email, generate_verification_code, get_verification_expiry
+except ImportError:
+    # Fallback if resend_client not available
+    def generate_verification_code():
+        import random
+        return str(random.randint(100000, 999999))
+    
+    async def send_verification_email(email, code, name):
+        return {"success": False, "error": "Email service not configured"}
+    
+    def get_verification_expiry():
+        from datetime import datetime, timedelta
+        return datetime.utcnow() + timedelta(minutes=15)
+
 # Simple password hashing (in production, use bcrypt)
 def hash_password(password: str) -> str:
     """Hash password with salt using SHA256."""
@@ -59,6 +75,12 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class VerifyCodeRequest(BaseModel):
+    """Email verification code request."""
+    email: str
+    code: str
+
+
 class AuthResponse(BaseModel):
     """Auth response with user data."""
     success: bool
@@ -67,11 +89,16 @@ class AuthResponse(BaseModel):
     first_name: Optional[str] = None
     business_name: Optional[str] = None
     message: Optional[str] = None
+    requires_verification: Optional[bool] = False
 
 
 # In-memory user store (will be replaced with database)
 # Format: {email: {user_data}}
 USERS_STORE = {}
+
+# Verification codes store
+# Format: {email: {code, expiry, user_data}}
+VERIFICATION_CODES = {}
 
 
 @router.post("/register", response_model=AuthResponse)
@@ -97,27 +124,32 @@ async def register(request: RegisterRequest):
                 if existing_phone:
                     raise HTTPException(status_code=400, detail="Phone number already registered")
             
-            # Create new user
-            user_id = str(uuid.uuid4())
-            new_user = User(
-                id=user_id,
-                email=request.email,
-                phone=request.phone or f"+234{uuid.uuid4().hex[:10]}",  # Generate placeholder if not provided
-                business_name=request.business_name,
-                # Store first_name in the 'name' field (we'll update model if needed)
-                # For now, use business_name field or add to a JSON field
-            )
+            # Generate verification code
+            verification_code = generate_verification_code()
+            verification_expiry = get_verification_expiry()
             
-            # Store password hash in memory for now (add to model later)
-            USERS_STORE[request.email] = {
+            # Store verification data (user not created yet)
+            user_id = str(uuid.uuid4())
+            VERIFICATION_CODES[request.email] = {
+                "code": verification_code,
+                "expiry": verification_expiry,
                 "user_id": user_id,
                 "password_hash": hash_password(request.password),
                 "first_name": request.first_name,
-                "business_name": request.business_name
+                "business_name": request.business_name,
+                "phone": request.phone or f"+234{uuid.uuid4().hex[:10]}"
             }
             
-            db.add(new_user)
-            db.commit()
+            # Send verification email
+            email_result = await send_verification_email(
+                to_email=request.email,
+                verification_code=verification_code,
+                first_name=request.first_name
+            )
+            
+            if not email_result.get("success"):
+                # Email failed, but continue - log error
+                print(f"Verification email failed: {email_result.get('error')}")
             
             return AuthResponse(
                 success=True,
@@ -125,7 +157,8 @@ async def register(request: RegisterRequest):
                 email=request.email,
                 first_name=request.first_name,
                 business_name=request.business_name,
-                message="Account created successfully"
+                requires_verification=True,
+                message="Verification code sent to your email. Please verify to complete registration."
             )
             
         except HTTPException:
@@ -140,6 +173,145 @@ async def register(request: RegisterRequest):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
+
+
+@router.post("/verify", response_model=AuthResponse)
+async def verify_email(request: VerifyCodeRequest):
+    """
+    Verify email with 6-digit code and complete registration.
+    Creates the user account after successful verification.
+    """
+    try:
+        from ..database import SessionLocal
+        from ..models import User
+        
+        email = request.email.lower().strip()
+        
+        # Get verification data
+        verification_data = VERIFICATION_CODES.get(email)
+        if not verification_data:
+            raise HTTPException(status_code=400, detail="No verification code found. Please register first.")
+        
+        # Check if code expired
+        if datetime.utcnow() > verification_data["expiry"]:
+            del VERIFICATION_CODES[email]
+            raise HTTPException(status_code=400, detail="Verification code expired. Please request a new one.")
+        
+        # Verify code
+        if verification_data["code"] != request.code:
+            raise HTTPException(status_code=400, detail="Invalid verification code")
+        
+        # Code is valid - create user account
+        db = SessionLocal()
+        try:
+            # Check if user already exists
+            existing = db.query(User).filter(User.email == email).first()
+            if existing:
+                # Clear verification and move to users store
+                user_id = existing.id
+                USERS_STORE[email] = {
+                    "user_id": user_id,
+                    "password_hash": verification_data["password_hash"],
+                    "first_name": verification_data["first_name"],
+                    "business_name": verification_data["business_name"]
+                }
+                del VERIFICATION_CODES[email]
+                
+                return AuthResponse(
+                    success=True,
+                    user_id=user_id,
+                    email=email,
+                    first_name=verification_data["first_name"],
+                    business_name=verification_data["business_name"],
+                    message="Email verified successfully"
+                )
+            
+            # Create new user
+            new_user = User(
+                id=verification_data["user_id"],
+                email=email,
+                phone=verification_data["phone"],
+                business_name=verification_data["business_name"]
+            )
+            
+            # Move from verification to users store
+            USERS_STORE[email] = {
+                "user_id": verification_data["user_id"],
+                "password_hash": verification_data["password_hash"],
+                "first_name": verification_data["first_name"],
+                "business_name": verification_data["business_name"]
+            }
+            
+            db.add(new_user)
+            db.commit()
+            
+            # Clear verification data
+            del VERIFICATION_CODES[email]
+            
+            return AuthResponse(
+                success=True,
+                user_id=verification_data["user_id"],
+                email=email,
+                first_name=verification_data["first_name"],
+                business_name=verification_data["business_name"],
+                message="Email verified and account created successfully"
+            )
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(status_code=500, detail=f"Verification failed: {str(e)}")
+        finally:
+            db.close()
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Verification failed: {str(e)}")
+
+
+@router.post("/resend-code")
+async def resend_verification_code(email: str):
+    """
+    Resend verification code to email.
+    """
+    try:
+        email = email.lower().strip()
+        
+        # Get existing verification data
+        verification_data = VERIFICATION_CODES.get(email)
+        if not verification_data:
+            raise HTTPException(status_code=400, detail="No pending verification for this email")
+        
+        # Generate new code
+        verification_code = generate_verification_code()
+        verification_expiry = get_verification_expiry()
+        
+        # Update verification data
+        verification_data["code"] = verification_code
+        verification_data["expiry"] = verification_expiry
+        VERIFICATION_CODES[email] = verification_data
+        
+        # Resend email
+        email_result = await send_verification_email(
+            to_email=email,
+            verification_code=verification_code,
+            first_name=verification_data["first_name"]
+        )
+        
+        if not email_result.get("success"):
+            raise HTTPException(status_code=500, detail="Failed to send verification email")
+        
+        return {
+            "success": True,
+            "message": "New verification code sent to your email"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to resend code: {str(e)}")
 
 
 @router.post("/login", response_model=AuthResponse)
