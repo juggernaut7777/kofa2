@@ -2,6 +2,7 @@ import { useState, useEffect, useContext } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { apiCall, API_ENDPOINTS } from '../../config/api'
 import { ThemeContext } from '../../context/ThemeContext'
+import { useAuth } from '../../context/AuthContext'
 import {
     ChevronLeft, Plus, TrendingUp, TrendingDown, Home, Megaphone,
     Package, Truck, Wrench, FileText, Edit2, Trash2, BarChart3, DollarSign
@@ -11,6 +12,7 @@ const ExpensesRedesign = () => {
     const navigate = useNavigate()
     const { theme } = useContext(ThemeContext)
     const isDark = theme === 'dark'
+    const { user } = useAuth()
 
     // Tab state: 'expenses' or 'reports'
     const [activeTab, setActiveTab] = useState('expenses')
@@ -50,7 +52,8 @@ const ExpensesRedesign = () => {
     const loadExpenses = async () => {
         setLoading(true)
         try {
-            const data = await apiCall(API_ENDPOINTS.LIST_EXPENSES)
+            const endpoint = user?.id ? `${API_ENDPOINTS.LIST_EXPENSES}?user_id=${user.id}` : API_ENDPOINTS.LIST_EXPENSES
+            const data = await apiCall(endpoint)
             setExpenses(Array.isArray(data) ? data : [])
         } catch (e) { setExpenses([]) }
         finally { setLoading(false) }
@@ -92,7 +95,8 @@ const ExpensesRedesign = () => {
                     description: newExpense.description,
                     amount: parseFloat(newExpense.amount),
                     category: newExpense.category,
-                    date: new Date().toISOString()
+                    date: new Date().toISOString(),
+                    user_id: user?.id  // Required for database storage
                 })
             })
             setShowAddModal(false)
@@ -215,10 +219,10 @@ const ExpensesRedesign = () => {
                                                 <div key={expense.id || i} className={`flex items-center justify-between p-4 ${i < items.length - 1 ? isDark ? 'border-b border-white/5' : 'border-b border-gray-50' : ''}`}>
                                                     <div className="flex items-center gap-3">
                                                         <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${cat.color === 'orange' ? 'bg-orange-100 text-orange-500' :
-                                                                cat.color === 'purple' ? 'bg-purple-100 text-purple-500' :
-                                                                    cat.color === 'blue' ? 'bg-blue-100 text-blue-500' :
-                                                                        cat.color === 'green' ? 'bg-green-100 text-green-500' :
-                                                                            'bg-red-100 text-red-500'
+                                                            cat.color === 'purple' ? 'bg-purple-100 text-purple-500' :
+                                                                cat.color === 'blue' ? 'bg-blue-100 text-blue-500' :
+                                                                    cat.color === 'green' ? 'bg-green-100 text-green-500' :
+                                                                        'bg-red-100 text-red-500'
                                                             }`}>
                                                             <Icon size={18} />
                                                         </div>
