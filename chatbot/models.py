@@ -22,6 +22,8 @@ class User(Base):
     id = Column(GUID, primary_key=True, default=lambda: str(uuid.uuid4()))
     phone = Column(String(20), unique=True, nullable=False, index=True)
     email = Column(String(255), nullable=True)
+    password_hash = Column(String(255), nullable=True)  # Stored permanently
+    first_name = Column(String(100), nullable=True)  # User's first name
     business_name = Column(String(255), nullable=True)
     business_address = Column(Text, nullable=True)
     bank_name = Column(String(100), nullable=True)
