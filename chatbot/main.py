@@ -1364,8 +1364,12 @@ async def delete_product(product_id: str):
 async def upload_product_image(product_id: str, file: UploadFile = File(...)):
     """
     Upload an image for a product.
-    Stores in Supabase Storage and updates product's image_url.
+    Stores as base64 data URL in the database.
     """
+    from .database import SessionLocal
+    from .models import Product as ProductModel
+    import base64
+    
     # Validate file type
     allowed_types = ["image/jpeg", "image/png", "image/webp", "image/gif"]
     if file.content_type not in allowed_types:
@@ -1374,42 +1378,40 @@ async def upload_product_image(product_id: str, file: UploadFile = File(...)):
             detail=f"Invalid file type. Allowed: {', '.join(allowed_types)}"
         )
     
-    # Check file size (max 5MB)
+    # Check file size (max 2MB for base64 storage)
     contents = await file.read()
-    if len(contents) > 5 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="File too large. Maximum size is 5MB")
+    if len(contents) > 2 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File too large. Maximum size is 2MB")
     
-    # Find the product first
-    products = inventory_manager.list_products()
-    product_found = None
-    for p in products:
-        if str(p.get('id')) == product_id:
-            product_found = p
-            break
-    
-    if not product_found:
-        raise HTTPException(status_code=404, detail=f"Product {product_id} not found")
-    
-    # Upload to Supabase Storage
-    success, message, image_url = await storage_service.upload_product_image(
-        product_id=product_id,
-        file_bytes=contents,
-        filename=file.filename or "image.jpg",
-        content_type=file.content_type or "image/jpeg"
-    )
-    
-    if not success:
-        raise HTTPException(status_code=500, detail=message)
-    
-    # Update product with image URL
-    inventory_manager.update_product_fields(product_id, {"image_url": image_url})
-    
-    return {
-        "status": "success",
-        "message": "Product image uploaded successfully",
-        "image_url": image_url,
-        "product_id": product_id
-    }
+    # Find the product directly in database
+    db = SessionLocal()
+    try:
+        product = db.query(ProductModel).filter(ProductModel.id == product_id).first()
+        
+        if not product:
+            raise HTTPException(status_code=404, detail=f"Product {product_id} not found")
+        
+        # Convert to base64 data URL
+        base64_data = base64.b64encode(contents).decode('utf-8')
+        image_url = f"data:{file.content_type};base64,{base64_data}"
+        
+        # Update product with image URL
+        product.image_url = image_url
+        db.commit()
+        
+        return {
+            "status": "success",
+            "message": "Product image uploaded successfully",
+            "image_url": image_url[:100] + "...",  # Return truncated for response
+            "product_id": product_id
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to upload image: {str(e)}")
+    finally:
+        db.close()
 
 
 @router.delete("/products/{product_id}/image")

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useContext } from 'react'
+import { useLocation } from 'react-router-dom'
 import { apiCall, API_ENDPOINTS } from '../../config/api'
 import { ThemeContext } from '../../context/ThemeContext'
 import { Send, X, MessageCircle, Mic, Plus, Package, AlertCircle } from 'lucide-react'
@@ -6,6 +7,11 @@ import { Send, X, MessageCircle, Mic, Plus, Package, AlertCircle } from 'lucide-
 const BusinessAI = ({ userId = 'demo-user' }) => {
     const { theme } = useContext(ThemeContext)
     const isDark = theme === 'dark'
+    const location = useLocation()
+
+    // Hide on public shop pages
+    const isShopPage = location.pathname.startsWith('/shop')
+    if (isShopPage) return null
 
     const [isOpen, setIsOpen] = useState(false)
     const [messages, setMessages] = useState([
@@ -86,8 +92,8 @@ const BusinessAI = ({ userId = 'demo-user' }) => {
             <button
                 onClick={() => setIsOpen(true)}
                 className={`fixed top-4 right-4 z-40 flex items-center gap-2 px-3 py-2 rounded-lg font-medium text-sm transition-all ${isDark
-                        ? 'bg-[#1A1A1F] border border-white/10 text-white hover:bg-[#252530]'
-                        : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 shadow-sm'
+                    ? 'bg-[#1A1A1F] border border-white/10 text-white hover:bg-[#252530]'
+                    : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 shadow-sm'
                     }`}
             >
                 <MessageCircle size={18} className="text-[#0095FF]" />
@@ -130,10 +136,10 @@ const BusinessAI = ({ userId = 'demo-user' }) => {
 
                         <div className="max-w-[80%] space-y-2">
                             <div className={`p-3 rounded-2xl text-sm ${msg.role === 'user'
-                                    ? 'bg-[#0095FF] text-white rounded-br-sm'
-                                    : msg.type === 'error'
-                                        ? isDark ? 'bg-red-500/20 border border-red-500/30 text-red-400 rounded-bl-sm' : 'bg-red-50 border border-red-200 text-red-600 rounded-bl-sm'
-                                        : isDark ? 'bg-[#1A1A1F] border border-white/10 text-white rounded-bl-sm' : 'bg-gray-100 text-gray-900 rounded-bl-sm'
+                                ? 'bg-[#0095FF] text-white rounded-br-sm'
+                                : msg.type === 'error'
+                                    ? isDark ? 'bg-red-500/20 border border-red-500/30 text-red-400 rounded-bl-sm' : 'bg-red-50 border border-red-200 text-red-600 rounded-bl-sm'
+                                    : isDark ? 'bg-[#1A1A1F] border border-white/10 text-white rounded-bl-sm' : 'bg-gray-100 text-gray-900 rounded-bl-sm'
                                 }`}>
                                 {msg.content}
                             </div>

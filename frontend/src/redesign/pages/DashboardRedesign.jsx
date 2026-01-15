@@ -15,7 +15,8 @@ import {
     Clock,
     DollarSign,
     Store,
-    ExternalLink
+    ExternalLink,
+    Link2
 } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
@@ -143,7 +144,7 @@ const DashboardRedesign = () => {
                             }`}
                         title="Copy store link"
                     >
-                        <Store size={18} className="text-[#0095FF]" />
+                        <Link2 size={18} className="text-[#0095FF]" />
                         <span className="hidden sm:inline">Copy Store Link</span>
                     </button>
                     <button
@@ -154,7 +155,7 @@ const DashboardRedesign = () => {
                         className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium bg-[#0095FF] hover:bg-[#0080DD] text-white transition-all"
                         title="Preview your store"
                     >
-                        <ExternalLink size={18} />
+                        <Store size={18} />
                         <span className="hidden sm:inline">Preview Store</span>
                     </button>
                 </div>
