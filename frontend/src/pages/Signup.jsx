@@ -36,8 +36,17 @@ const Signup = () => {
         const result = await signup(formData)
 
         if (result.success) {
-            // Redirect directly to dashboard (no verification needed)
-            navigate('/dashboard', { replace: true })
+            // Check if email verification is required
+            if (result.requires_verification) {
+                // Redirect to verification page with email
+                navigate('/verify', {
+                    state: { email: formData.email },
+                    replace: true
+                })
+            } else {
+                // No verification needed - go directly to dashboard
+                navigate('/dashboard', { replace: true })
+            }
         } else {
             setError(result.error || 'Signup failed. Please try again.')
         }

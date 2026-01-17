@@ -10,9 +10,8 @@ from datetime import datetime, timedelta
 RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
 RESEND_API_URL = "https://api.resend.com/emails"
 
-# Use Resend's test domain (no setup needed)
-# Later can switch to: noreply@kofaapp.me (requires domain verification)
-SENDER_EMAIL = "KOFA <onboarding@resend.dev>"
+# Use verified domain for sending
+SENDER_EMAIL = "KOFA <noreply@kofaapp.me>"
 
 
 def generate_verification_code() -> str:
