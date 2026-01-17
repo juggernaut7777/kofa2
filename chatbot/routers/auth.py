@@ -105,7 +105,7 @@ VERIFICATION_CODES = {}
 async def register(request: RegisterRequest):
     """
     Register a new user account.
-    Creates user directly without email verification.
+    Sends verification email before creating the account.
     """
     try:
         from ..database import SessionLocal
@@ -124,28 +124,42 @@ async def register(request: RegisterRequest):
                 if existing_phone:
                     raise HTTPException(status_code=400, detail="Phone number already registered")
             
-            # Create user directly in database
-            user_id = str(uuid.uuid4())
-            new_user = User(
-                id=user_id,
-                email=request.email,
-                phone=request.phone or f"+234{uuid.uuid4().hex[:10]}",
-                password_hash=hash_password(request.password),
-                first_name=request.first_name,
-                business_name=request.business_name
+            # Generate verification code
+            verification_code = generate_verification_code()
+            
+            # Send verification email
+            email_result = await send_verification_email(
+                to_email=request.email,
+                verification_code=verification_code,
+                first_name=request.first_name
             )
             
-            db.add(new_user)
-            db.commit()
+            if not email_result.get("success"):
+                raise HTTPException(
+                    status_code=500, 
+                    detail=f"Failed to send verification email: {email_result.get('error', 'Unknown error')}"
+                )
+            
+            # Store pending user data with verification code
+            VERIFICATION_CODES[request.email] = {
+                "code": verification_code,
+                "expiry": get_verification_expiry(),
+                "user_data": {
+                    "email": request.email,
+                    "password": request.password,
+                    "first_name": request.first_name,
+                    "business_name": request.business_name,
+                    "phone": request.phone
+                }
+            }
             
             return AuthResponse(
                 success=True,
-                user_id=user_id,
                 email=request.email,
                 first_name=request.first_name,
                 business_name=request.business_name,
-                requires_verification=False,
-                message="Account created successfully"
+                requires_verification=True,
+                message="Verification email sent. Please check your inbox."
             )
             
         except HTTPException:
@@ -188,39 +202,34 @@ async def verify_email(request: VerifyCodeRequest):
         if verification_data["code"] != request.code:
             raise HTTPException(status_code=400, detail="Invalid verification code")
         
-        # Code is valid - create user account
+        # Code is valid - get user data from stored verification
+        user_data = verification_data["user_data"]
+        
+        # Create user account
         db = SessionLocal()
         try:
             # Check if user already exists
             existing = db.query(User).filter(User.email == email).first()
             if existing:
-                # Clear verification and move to users store
-                user_id = existing.id
-                USERS_STORE[email] = {
-                    "user_id": user_id,
-                    "password_hash": verification_data["password_hash"],
-                    "first_name": verification_data["first_name"],
-                    "business_name": verification_data["business_name"]
-                }
                 del VERIFICATION_CODES[email]
-                
                 return AuthResponse(
                     success=True,
-                    user_id=user_id,
+                    user_id=existing.id,
                     email=email,
-                    first_name=verification_data["first_name"],
-                    business_name=verification_data["business_name"],
-                    message="Email verified successfully"
+                    first_name=existing.first_name,
+                    business_name=existing.business_name,
+                    message="Email already verified and account exists"
                 )
             
-            # Create new user with password_hash and first_name stored in database
+            # Create new user with hashed password
+            user_id = str(uuid.uuid4())
             new_user = User(
-                id=verification_data["user_id"],
+                id=user_id,
                 email=email,
-                phone=verification_data["phone"],
-                password_hash=verification_data["password_hash"],  # Store in DB permanently
-                first_name=verification_data["first_name"],  # Store in DB permanently
-                business_name=verification_data["business_name"]
+                phone=user_data.get("phone") or f"+234{uuid.uuid4().hex[:10]}",
+                password_hash=hash_password(user_data["password"]),
+                first_name=user_data["first_name"],
+                business_name=user_data["business_name"]
             )
             
             db.add(new_user)
@@ -231,10 +240,10 @@ async def verify_email(request: VerifyCodeRequest):
             
             return AuthResponse(
                 success=True,
-                user_id=verification_data["user_id"],
+                user_id=user_id,
                 email=email,
-                first_name=verification_data["first_name"],
-                business_name=verification_data["business_name"],
+                first_name=user_data["first_name"],
+                business_name=user_data["business_name"],
                 message="Email verified and account created successfully"
             )
             
