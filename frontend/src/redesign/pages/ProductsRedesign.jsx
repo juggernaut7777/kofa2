@@ -51,16 +51,23 @@ const ProductsRedesign = () => {
         }))
     }
 
-    const loadProducts = async () => {
+    const loadProducts = async (forceRefresh = false) => {
         setLoading(true)
         try {
             // Pass user_id to filter products by current vendor
             const endpoint = user?.id ? `${API_ENDPOINTS.PRODUCTS}?user_id=${user.id}` : API_ENDPOINTS.PRODUCTS
             const cacheKey = user?.id ? `${CACHE_KEYS.PRODUCTS}_${user.id}` : CACHE_KEYS.PRODUCTS
 
-            const data = await cachedApiCall(endpoint, cacheKey, (fresh) => {
-                setProducts(normalizeProducts(fresh))
-            })
+            let data
+            if (forceRefresh) {
+                // Skip cache - fetch directly from API for instant update
+                clearCache(cacheKey)
+                data = await apiCall(endpoint)
+            } else {
+                data = await cachedApiCall(endpoint, cacheKey, (fresh) => {
+                    setProducts(normalizeProducts(fresh))
+                })
+            }
             setProducts(normalizeProducts(data))
         } catch (e) { setProducts([]) }
         finally { setLoading(false) }
@@ -134,7 +141,7 @@ const ProductsRedesign = () => {
             setNewProduct({ name: '', price: '', stock: '', category: 'General', description: '', image: null })
             setImagePreview(null)
             clearCache(CACHE_KEYS.PRODUCTS)  // Clear cache to force fresh fetch
-            loadProducts()
+            loadProducts(true)  // Force refresh - skip cache
         } catch (e) {
             alert('Failed to save product')
         } finally {
