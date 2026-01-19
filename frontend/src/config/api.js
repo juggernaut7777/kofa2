@@ -25,7 +25,10 @@ export const API_ENDPOINTS = {
   UPDATE_ORDER_STATUS: (id) => `/orders/${id}/status`,
   CREATE_ORDER: '/orders',
 
-  // Sales
+  // Sales (Walk-in / Quick Sale)
+  SALES_RECORD: '/sales/record',
+  SALES_CREDIT: '/sales/credit',
+  SALES_MARK_PAID: (id) => `/sales/mark-paid/${id}`,
   MANUAL_SALE: '/sales/manual',
 
   // Users/Vendors
