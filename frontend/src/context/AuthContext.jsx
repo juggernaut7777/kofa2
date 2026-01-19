@@ -231,6 +231,25 @@ export const AuthProvider = ({ children }) => {
         }
     }, [])
 
+    // Direct login function for use after email verification
+    // This doesn't call the API, just sets the user in context
+    const setUserDirectly = (userData) => {
+        const user = {
+            id: userData.id,
+            email: userData.email,
+            firstName: userData.firstName,
+            businessName: userData.businessName,
+            plan: 'free',
+            productLimit: 50,
+            createdAt: new Date().toISOString()
+        }
+
+        localStorage.setItem('kofa_user', JSON.stringify(user))
+        localStorage.setItem('kofa_last_activity', String(Date.now()))
+        setUser(user)
+        setIsAuthenticated(true)
+    }
+
     const value = {
         user,
         isAuthenticated,
@@ -238,6 +257,7 @@ export const AuthProvider = ({ children }) => {
         login,
         signup,
         logout,
+        setUserDirectly,  // For Verify page to use after email verification
         // Expose session info for UI
         sessionTimeoutMinutes: SESSION_TIMEOUT_MS / 60000
     }
