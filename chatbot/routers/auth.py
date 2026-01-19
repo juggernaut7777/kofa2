@@ -105,15 +105,15 @@ VERIFICATION_CODES = {}
 async def register(request: RegisterRequest):
     """
     Register a new user account.
-    Sends verification email before creating the account.
+    Sends verification email and stores verification code in database.
     """
     try:
         from ..database import SessionLocal
-        from ..models import User
+        from ..models import User, VerificationCode
         
         db = SessionLocal()
         try:
-            # Check if email already exists
+            # Check if email already exists in users
             existing = db.query(User).filter(User.email == request.email).first()
             if existing:
                 raise HTTPException(status_code=400, detail="Email already registered")
@@ -140,18 +140,23 @@ async def register(request: RegisterRequest):
                     detail=f"Failed to send verification email: {email_result.get('error', 'Unknown error')}"
                 )
             
-            # Store pending user data with verification code
-            VERIFICATION_CODES[request.email] = {
-                "code": verification_code,
-                "expiry": get_verification_expiry(),
-                "user_data": {
-                    "email": request.email,
-                    "password": request.password,
-                    "first_name": request.first_name,
-                    "business_name": request.business_name,
-                    "phone": request.phone
-                }
-            }
+            # Delete any existing verification code for this email
+            db.query(VerificationCode).filter(VerificationCode.email == request.email).delete()
+            
+            # Store verification code in database (persists across Heroku restarts!)
+            new_verification = VerificationCode(
+                id=str(uuid.uuid4()),
+                email=request.email.lower().strip(),
+                code=verification_code,
+                password=hash_password(request.password),  # Store hashed password
+                first_name=request.first_name,
+                business_name=request.business_name,
+                phone=request.phone,
+                expires_at=get_verification_expiry()
+            )
+            
+            db.add(new_verification)
+            db.commit()
             
             return AuthResponse(
                 success=True,
@@ -181,37 +186,39 @@ async def verify_email(request: VerifyCodeRequest):
     """
     Verify email with 6-digit code and complete registration.
     Creates the user account after successful verification.
+    Reads verification data from database (persists across Heroku restarts).
     """
     try:
         from ..database import SessionLocal
-        from ..models import User
+        from ..models import User, VerificationCode
         
         email = request.email.lower().strip()
         
-        # Get verification data
-        verification_data = VERIFICATION_CODES.get(email)
-        if not verification_data:
-            raise HTTPException(status_code=400, detail="No verification code found. Please register first.")
-        
-        # Check if code expired
-        if datetime.utcnow() > verification_data["expiry"]:
-            del VERIFICATION_CODES[email]
-            raise HTTPException(status_code=400, detail="Verification code expired. Please request a new one.")
-        
-        # Verify code
-        if verification_data["code"] != request.code:
-            raise HTTPException(status_code=400, detail="Invalid verification code")
-        
-        # Code is valid - get user data from stored verification
-        user_data = verification_data["user_data"]
-        
-        # Create user account
         db = SessionLocal()
         try:
-            # Check if user already exists
+            # Get verification data from database
+            verification_data = db.query(VerificationCode).filter(
+                VerificationCode.email == email
+            ).first()
+            
+            if not verification_data:
+                raise HTTPException(status_code=400, detail="No verification code found. Please register first.")
+            
+            # Check if code expired
+            if datetime.utcnow() > verification_data.expires_at:
+                db.delete(verification_data)
+                db.commit()
+                raise HTTPException(status_code=400, detail="Verification code expired. Please request a new one.")
+            
+            # Verify code
+            if verification_data.code != request.code:
+                raise HTTPException(status_code=400, detail="Invalid verification code")
+            
+            # Code is valid - check if user already exists
             existing = db.query(User).filter(User.email == email).first()
             if existing:
-                del VERIFICATION_CODES[email]
+                db.delete(verification_data)
+                db.commit()
                 return AuthResponse(
                     success=True,
                     user_id=existing.id,
@@ -221,29 +228,30 @@ async def verify_email(request: VerifyCodeRequest):
                     message="Email already verified and account exists"
                 )
             
-            # Create new user with hashed password
+            # Create new user - password is already hashed in verification_data
             user_id = str(uuid.uuid4())
             new_user = User(
                 id=user_id,
                 email=email,
-                phone=user_data.get("phone") or f"+234{uuid.uuid4().hex[:10]}",
-                password_hash=hash_password(user_data["password"]),
-                first_name=user_data["first_name"],
-                business_name=user_data["business_name"]
+                phone=verification_data.phone or f"+234{uuid.uuid4().hex[:10]}",
+                password_hash=verification_data.password,  # Already hashed during registration
+                first_name=verification_data.first_name,
+                business_name=verification_data.business_name
             )
             
             db.add(new_user)
-            db.commit()
             
-            # Clear verification data
-            del VERIFICATION_CODES[email]
+            # Delete verification code
+            db.delete(verification_data)
+            
+            db.commit()
             
             return AuthResponse(
                 success=True,
                 user_id=user_id,
                 email=email,
-                first_name=user_data["first_name"],
-                business_name=user_data["business_name"],
+                first_name=verification_data.first_name,
+                business_name=verification_data.business_name,
                 message="Email verified and account created successfully"
             )
             

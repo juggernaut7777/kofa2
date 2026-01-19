@@ -121,3 +121,17 @@ class Expense(Base):
     receipt_image_url = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+
+class VerificationCode(Base):
+    """Email verification codes for registration - stored in DB instead of memory."""
+    __tablename__ = "verification_codes"
+    
+    id = Column(GUID, primary_key=True, default=lambda: str(uuid.uuid4()))
+    email = Column(String(255), nullable=False, unique=True, index=True)
+    code = Column(String(10), nullable=False)
+    password = Column(String(255), nullable=False)  # Hashed password
+    first_name = Column(String(100), nullable=False)
+    business_name = Column(String(255), nullable=False)
+    phone = Column(String(50), nullable=True)
+    expires_at = Column(DateTime, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
