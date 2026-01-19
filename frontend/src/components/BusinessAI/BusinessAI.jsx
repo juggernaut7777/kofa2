@@ -91,7 +91,7 @@ const BusinessAI = ({ userId = 'demo-user' }) => {
         return (
             <button
                 onClick={() => setIsOpen(true)}
-                className={`fixed top-4 right-4 z-40 flex items-center gap-2 px-3 py-2 rounded-lg font-medium text-sm transition-all ${isDark
+                className={`fixed top-4 right-4 z-[60] flex items-center gap-2 px-3 py-2 rounded-lg font-medium text-sm transition-all ${isDark
                     ? 'bg-[#1A1A1F] border border-white/10 text-white hover:bg-[#252530]'
                     : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 shadow-sm'
                     }`}
