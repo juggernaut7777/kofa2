@@ -326,8 +326,8 @@ async def get_products(request: Request, user_id: str = None):
                 "image_url": p.image_url or None
             })
         
-        # Store in cache for 60 seconds
-        set_cache(cache_key, product_list, ttl_seconds=60)
+        # Store in cache for 10 seconds (reduced from 60s for faster updates)
+        set_cache(cache_key, product_list, ttl_seconds=10)
         
         return product_list
     finally:
@@ -1201,12 +1201,36 @@ async def test_customer_bot(request: CustomerBotTestRequest):
 @router.post("/products")
 async def create_product(product: ProductCreate):
     """Add a new product to inventory."""
+    from .database import SessionLocal
+    from .models import Product as ProductModel
+    
     # Require user_id for proper FK constraint
     if not product.user_id:
         raise HTTPException(
             status_code=400,
             detail="user_id is required to create a product"
         )
+    
+    # Check for duplicate product name (case-insensitive)
+    db = SessionLocal()
+    try:
+        existing = db.query(ProductModel).filter(
+            ProductModel.user_id == product.user_id,
+            ProductModel.name.ilike(product.name.strip())
+        ).first()
+        
+        if existing:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": "Product already exists",
+                    "message": f"Product '{existing.name}' already exists. Edit the existing product or use a different name.",
+                    "existing_product_id": existing.id,
+                    "existing_stock": existing.stock_level
+                }
+            )
+    finally:
+        db.close()
     
     # Check freemium limit
     limit_check = check_limit("products")

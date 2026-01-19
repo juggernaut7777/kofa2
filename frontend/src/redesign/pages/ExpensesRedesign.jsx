@@ -87,18 +87,32 @@ const ExpensesRedesign = () => {
         if (!newExpense.description || !newExpense.amount) { alert('Please fill all fields'); return }
         setSaving(true)
         try {
-            const endpoint = editingExpense ? API_ENDPOINTS.LOG_EXPENSE : API_ENDPOINTS.LOG_EXPENSE
-            await apiCall(endpoint, {
-                method: 'POST',
-                body: JSON.stringify({
-                    id: editingExpense?.id,
-                    description: newExpense.description,
-                    amount: parseFloat(newExpense.amount),
-                    category: newExpense.category,
-                    date: new Date().toISOString(),
-                    user_id: user?.id  // Required for database storage
+            // Use PUT for editing, POST for creating new
+            if (editingExpense) {
+                // UPDATE existing expense
+                await apiCall(`/expenses/${editingExpense.id}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                        description: newExpense.description,
+                        amount: parseFloat(newExpense.amount),
+                        category: newExpense.category,
+                        expense_type: 'BUSINESS',
+                        user_id: user?.id
+                    })
                 })
-            })
+            } else {
+                // CREATE new expense
+                await apiCall(API_ENDPOINTS.LOG_EXPENSE, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        description: newExpense.description,
+                        amount: parseFloat(newExpense.amount),
+                        category: newExpense.category,
+                        date: new Date().toISOString(),
+                        user_id: user?.id
+                    })
+                })
+            }
             setShowAddModal(false)
             setEditingExpense(null)
             setNewExpense({ description: '', amount: '', category: 'restock' })
