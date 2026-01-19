@@ -138,3 +138,71 @@ async def list_expenses(user_id: str = None, expense_type: Optional[str] = None)
         ]
     finally:
         db.close()
+
+
+@router.delete("/{expense_id}")
+async def delete_expense(expense_id: str):
+    """
+    Delete an expense by ID.
+    """
+    from ..database import SessionLocal
+    from ..models import Expense as ExpenseModel
+    
+    db = SessionLocal()
+    try:
+        expense = db.query(ExpenseModel).filter(ExpenseModel.id == expense_id).first()
+        if not expense:
+            raise HTTPException(status_code=404, detail="Expense not found")
+        
+        db.delete(expense)
+        db.commit()
+        
+        return {"success": True, "message": "Expense deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+
+@router.put("/{expense_id}")
+async def update_expense(expense_id: str, expense: ExpenseCreate):
+    """
+    Update an existing expense.
+    """
+    from ..database import SessionLocal
+    from ..models import Expense as ExpenseModel
+    
+    db = SessionLocal()
+    try:
+        existing = db.query(ExpenseModel).filter(ExpenseModel.id == expense_id).first()
+        if not existing:
+            raise HTTPException(status_code=404, detail="Expense not found")
+        
+        existing.amount = expense.amount
+        existing.description = expense.description
+        existing.category = expense.category
+        existing.expense_type = expense.expense_type or "BUSINESS"
+        if expense.date:
+            existing.date = datetime.fromisoformat(expense.date.replace('Z', '+00:00'))
+        
+        db.commit()
+        
+        return {
+            "id": expense_id,
+            "amount": existing.amount,
+            "description": existing.description,
+            "category": existing.category,
+            "expense_type": existing.expense_type,
+            "date": existing.date.isoformat() if existing.date else None,
+            "message": "Expense updated successfully"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
