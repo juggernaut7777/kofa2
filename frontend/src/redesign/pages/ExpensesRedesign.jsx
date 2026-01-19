@@ -132,6 +132,17 @@ const ExpensesRedesign = () => {
         setShowAddModal(true)
     }
 
+    const handleDeleteExpense = async (expense) => {
+        if (!confirm(`Delete expense "${expense.description}" for ${formatCurrency(expense.amount)}?`)) return
+        try {
+            await apiCall(`/expenses/${expense.id}`, { method: 'DELETE' })
+            loadExpenses()
+            loadReports()
+        } catch (e) {
+            alert('Failed to delete expense')
+        }
+    }
+
     const filteredExpenses = activeFilter === 'all'
         ? expenses
         : expenses.filter(e => e.category === activeFilter)
@@ -252,6 +263,9 @@ const ExpensesRedesign = () => {
                                                         </div>
                                                         <button onClick={() => handleEditExpense(expense)} className={`p-2 rounded-lg ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}>
                                                             <Edit2 size={16} className={isDark ? 'text-gray-500' : 'text-gray-400'} />
+                                                        </button>
+                                                        <button onClick={() => handleDeleteExpense(expense)} className={`p-2 rounded-lg ${isDark ? 'hover:bg-red-500/20' : 'hover:bg-red-50'}`}>
+                                                            <Trash2 size={16} className="text-red-500" />
                                                         </button>
                                                     </div>
                                                 </div>

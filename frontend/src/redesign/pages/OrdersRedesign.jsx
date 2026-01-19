@@ -313,15 +313,16 @@ const OrdersRedesign = () => {
                                 setQuickSaleLoading(true)
                                 try {
                                     const product = products.find(p => p.id === quickSale.product_id)
-                                    await apiCall('/sales/record', {
+                                    const unitPrice = product?.price || product?.price_ngn || 0
+                                    await apiCall(API_ENDPOINTS.SALES_RECORD, {
                                         method: 'POST',
                                         body: JSON.stringify({
                                             user_id: user?.id,
                                             product_id: quickSale.product_id,
                                             product_name: product?.name,
                                             quantity: quickSale.quantity,
-                                            unit_price: product?.price,
-                                            total_amount: product?.price * quickSale.quantity,
+                                            unit_price: unitPrice,
+                                            total_amount: unitPrice * quickSale.quantity,
                                             payment_method: quickSale.payment_method,
                                             customer_name: quickSale.customer_name,
                                             customer_phone: quickSale.customer_phone,
