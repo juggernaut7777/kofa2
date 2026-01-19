@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext'
 const Verify = () => {
     const navigate = useNavigate()
     const location = useLocation()
-    const { login } = useAuth()
+    const { setUserDirectly } = useAuth()
 
     const [email, setEmail] = useState('')
     const [code, setCode] = useState(['', '', '', '', '', ''])
@@ -98,8 +98,8 @@ const Verify = () => {
             if (response.success) {
                 setSuccess('✅ Email verified! Redirecting to dashboard...')
 
-                // Log the user in
-                login({
+                // Log the user in directly (no API call needed)
+                setUserDirectly({
                     id: response.user_id,
                     email: response.email,
                     firstName: response.first_name,
