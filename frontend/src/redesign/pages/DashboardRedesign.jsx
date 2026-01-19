@@ -16,7 +16,8 @@ import {
     DollarSign,
     Store,
     ExternalLink,
-    Link2
+    Link2,
+    ShoppingCart
 } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
@@ -193,6 +194,15 @@ const DashboardRedesign = () => {
                     colorClass="bg-purple-500/10 text-purple-500"
                 />
             </div>
+
+            {/* Quick Sale Button - Prominent CTA for walk-in sales */}
+            <button
+                onClick={() => navigate('/orders', { state: { action: 'quick-sale' } })}
+                className="w-full p-4 rounded-2xl bg-gradient-to-r from-[#0095FF] to-[#00D4FF] hover:from-[#0080DD] hover:to-[#00B8E0] text-white font-semibold text-lg flex items-center justify-center gap-3 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0"
+            >
+                <ShoppingCart size={24} />
+                <span>Record Walk-in Sale</span>
+            </button>
 
             {/* Quick Actions - Right after stats, 3 in a row */}
             <Card glass>

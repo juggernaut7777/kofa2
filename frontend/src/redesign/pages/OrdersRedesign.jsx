@@ -1,19 +1,22 @@
 import { useState, useEffect, useContext } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { apiCall, cachedApiCall, API_ENDPOINTS, CACHE_KEYS } from '../../config/api'
 import { ThemeContext } from '../../context/ThemeContext'
+import { useAuth } from '../../context/AuthContext'
 import {
     ChevronLeft, Search, Clock, CheckCircle, XCircle, Truck, Package,
-    MessageSquare, Plus, FileText, Send, DollarSign
+    MessageSquare, Plus, FileText, Send, DollarSign, ShoppingCart, CreditCard, Banknote, Smartphone
 } from 'lucide-react'
 
 const OrdersRedesign = () => {
     const navigate = useNavigate()
+    const location = useLocation()
     const { theme } = useContext(ThemeContext)
+    const { user } = useAuth()
     const isDark = theme === 'dark'
 
-    // Tab state: 'orders' or 'invoices'
-    const [activeTab, setActiveTab] = useState('orders')
+    // Tab state: 'orders', 'invoices', or 'quicksale'
+    const [activeTab, setActiveTab] = useState(location.state?.action === 'quick-sale' ? 'quicksale' : 'orders')
 
     // Orders state
     const [orders, setOrders] = useState([])
@@ -32,10 +35,26 @@ const OrdersRedesign = () => {
         customer_name: '', customer_phone: '', items: '', amount: ''
     })
 
+    // Quick Sale state
+    const [products, setProducts] = useState([])
+    const [quickSale, setQuickSale] = useState({
+        product_id: '', quantity: 1, payment_method: 'cash', customer_name: '', customer_phone: ''
+    })
+    const [quickSaleLoading, setQuickSaleLoading] = useState(false)
+
     useEffect(() => {
         loadOrders()
         loadInvoices()
+        loadProducts()
     }, [])
+
+    const loadProducts = async () => {
+        try {
+            const endpoint = user?.id ? `${API_ENDPOINTS.PRODUCTS}?user_id=${user.id}` : API_ENDPOINTS.PRODUCTS
+            const data = await apiCall(endpoint)
+            setProducts(Array.isArray(data) ? data : [])
+        } catch (e) { setProducts([]) }
+    }
 
     const loadOrders = async () => {
         setOrdersLoading(true)
@@ -156,6 +175,16 @@ const OrdersRedesign = () => {
             <div className="px-4 pb-4">
                 <div className={`flex rounded-xl p-1 ${isDark ? 'bg-white/10' : 'bg-gray-100'}`}>
                     <button
+                        onClick={() => setActiveTab('quicksale')}
+                        className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1 ${activeTab === 'quicksale'
+                            ? 'bg-green-500 text-white'
+                            : isDark ? 'text-gray-400' : 'text-gray-500'
+                            }`}
+                    >
+                        <ShoppingCart size={16} />
+                        Sale
+                    </button>
+                    <button
                         onClick={() => setActiveTab('orders')}
                         className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'orders'
                             ? 'bg-[#0095FF] text-white'
@@ -175,6 +204,151 @@ const OrdersRedesign = () => {
                     </button>
                 </div>
             </div>
+
+            {/* QUICK SALE TAB */}
+            {activeTab === 'quicksale' && (
+                <div className="px-4 pb-6 space-y-4">
+                    <div className={`rounded-2xl p-6 ${isDark ? 'bg-white/5 border border-white/10' : 'bg-gray-50 border border-gray-100'}`}>
+                        <h2 className={`text-lg font-semibold mb-4 flex items-center gap-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                            <ShoppingCart size={20} className="text-green-500" />
+                            Record Walk-in Sale
+                        </h2>
+
+                        {/* Product Selection */}
+                        <div className="mb-4">
+                            <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Product *</label>
+                            <select
+                                value={quickSale.product_id}
+                                onChange={(e) => setQuickSale({ ...quickSale, product_id: e.target.value })}
+                                className={`w-full px-4 py-3 rounded-xl outline-none ${isDark ? 'bg-white/10 text-white border border-white/10' : 'bg-white border border-gray-200'}`}
+                            >
+                                <option value="">Select a product</option>
+                                {products.map(p => (
+                                    <option key={p.id} value={p.id}>{p.name} - ₦{Number(p.price || 0).toLocaleString()} ({p.stock} in stock)</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Quantity */}
+                        <div className="mb-4">
+                            <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Quantity *</label>
+                            <input
+                                type="number"
+                                min="1"
+                                value={quickSale.quantity}
+                                onChange={(e) => setQuickSale({ ...quickSale, quantity: parseInt(e.target.value) || 1 })}
+                                className={`w-full px-4 py-3 rounded-xl outline-none ${isDark ? 'bg-white/10 text-white border border-white/10' : 'bg-white border border-gray-200'}`}
+                            />
+                        </div>
+
+                        {/* Payment Method */}
+                        <div className="mb-4">
+                            <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Payment Method *</label>
+                            <div className="grid grid-cols-4 gap-2">
+                                {[
+                                    { id: 'cash', label: 'Cash', icon: Banknote, color: 'green' },
+                                    { id: 'transfer', label: 'Transfer', icon: Smartphone, color: 'blue' },
+                                    { id: 'pos', label: 'POS', icon: CreditCard, color: 'purple' },
+                                    { id: 'credit', label: 'Credit', icon: Clock, color: 'orange' },
+                                ].map(method => {
+                                    const Icon = method.icon
+                                    const isSelected = quickSale.payment_method === method.id
+                                    return (
+                                        <button
+                                            key={method.id}
+                                            onClick={() => setQuickSale({ ...quickSale, payment_method: method.id })}
+                                            className={`p-3 rounded-xl text-center transition-all ${isSelected
+                                                ? `bg-${method.color}-500 text-white ring-2 ring-${method.color}-300`
+                                                : isDark ? 'bg-white/10 text-gray-400 hover:bg-white/20' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                                }`}
+                                            style={isSelected ? { backgroundColor: method.color === 'green' ? '#22c55e' : method.color === 'blue' ? '#3b82f6' : method.color === 'purple' ? '#a855f7' : '#f97316' } : {}}
+                                        >
+                                            <Icon size={20} className="mx-auto mb-1" />
+                                            <span className="text-xs font-medium">{method.label}</span>
+                                        </button>
+                                    )
+                                })}
+                            </div>
+                        </div>
+
+                        {/* Customer Info (for Credit sales) */}
+                        {quickSale.payment_method === 'credit' && (
+                            <div className="mb-4 p-4 rounded-xl bg-orange-500/10 border border-orange-500/20">
+                                <p className="text-sm text-orange-500 font-medium mb-3">Customer Info (required for credit)</p>
+                                <input
+                                    type="text"
+                                    placeholder="Customer Name"
+                                    value={quickSale.customer_name}
+                                    onChange={(e) => setQuickSale({ ...quickSale, customer_name: e.target.value })}
+                                    className={`w-full px-4 py-3 rounded-xl outline-none mb-2 ${isDark ? 'bg-white/10 text-white border border-white/10' : 'bg-white border border-gray-200'}`}
+                                />
+                                <input
+                                    type="tel"
+                                    placeholder="Phone Number"
+                                    value={quickSale.customer_phone}
+                                    onChange={(e) => setQuickSale({ ...quickSale, customer_phone: e.target.value })}
+                                    className={`w-full px-4 py-3 rounded-xl outline-none ${isDark ? 'bg-white/10 text-white border border-white/10' : 'bg-white border border-gray-200'}`}
+                                />
+                            </div>
+                        )}
+
+                        {/* Total Display */}
+                        {quickSale.product_id && (
+                            <div className={`p-4 rounded-xl mb-4 ${isDark ? 'bg-white/10' : 'bg-gray-100'}`}>
+                                <div className="flex justify-between items-center">
+                                    <span className={`font-medium ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Total:</span>
+                                    <span className="text-2xl font-bold text-green-500">
+                                        ₦{(Number(products.find(p => p.id === quickSale.product_id)?.price || 0) * quickSale.quantity).toLocaleString()}
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Submit Button */}
+                        <button
+                            onClick={async () => {
+                                if (!quickSale.product_id) return alert('Please select a product')
+                                if (quickSale.payment_method === 'credit' && !quickSale.customer_name) return alert('Customer name required for credit sales')
+
+                                setQuickSaleLoading(true)
+                                try {
+                                    const product = products.find(p => p.id === quickSale.product_id)
+                                    await apiCall('/sales/record', {
+                                        method: 'POST',
+                                        body: JSON.stringify({
+                                            user_id: user?.id,
+                                            product_id: quickSale.product_id,
+                                            product_name: product?.name,
+                                            quantity: quickSale.quantity,
+                                            unit_price: product?.price,
+                                            total_amount: product?.price * quickSale.quantity,
+                                            payment_method: quickSale.payment_method,
+                                            customer_name: quickSale.customer_name,
+                                            customer_phone: quickSale.customer_phone,
+                                        })
+                                    })
+                                    alert('✅ Sale recorded successfully!')
+                                    setQuickSale({ product_id: '', quantity: 1, payment_method: 'cash', customer_name: '', customer_phone: '' })
+                                    loadProducts() // Refresh to show updated stock
+                                    loadOrders()
+                                } catch (e) {
+                                    alert('Failed to record sale: ' + e.message)
+                                } finally {
+                                    setQuickSaleLoading(false)
+                                }
+                            }}
+                            disabled={quickSaleLoading || !quickSale.product_id}
+                            className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-xl font-semibold text-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                        >
+                            {quickSaleLoading ? (
+                                <span>Recording...</span>
+                            ) : (
+                                <><CheckCircle size={20} /> Complete Sale</>
+                            )}
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* ORDERS TAB */}
             {activeTab === 'orders' && (

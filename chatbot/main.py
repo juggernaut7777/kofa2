@@ -64,7 +64,7 @@ from .services import storage_service
 from .routers import (
     expenses, analytics, invoice, 
     recommendations, notifications, installments, profit_loss, sales_channels, whatsapp,
-    instagram, tiktok, auth, storefront
+    instagram, tiktok, auth, storefront, sales
 )
 
 app = FastAPI(
@@ -2640,6 +2640,7 @@ app.include_router(instagram.router, prefix="/instagram", tags=["Instagram"])
 app.include_router(tiktok.router, prefix="/tiktok", tags=["TikTok"])
 app.include_router(auth.router, prefix="/auth", tags=["Auth"])
 app.include_router(storefront.router, tags=["Storefront"])  # Public shop pages
+app.include_router(sales.router, prefix="/sales", tags=["Sales"])  # Walk-in sales
 
 # #region agent log - FastAPI app fully configured
 log_to_file("FastAPI app fully configured", {
