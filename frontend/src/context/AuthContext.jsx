@@ -184,6 +184,18 @@ export const AuthProvider = ({ children }) => {
             })
 
             if (response.success) {
+                // Check if email verification is required
+                if (response.requires_verification) {
+                    // Don't log in yet - return verification requirement
+                    return {
+                        success: true,
+                        requires_verification: true,
+                        email: response.email,
+                        message: response.message || 'Please verify your email'
+                    }
+                }
+
+                // No verification needed - log user in directly
                 const newUser = {
                     id: response.user_id,
                     email: response.email,
