@@ -97,9 +97,9 @@ def build_context_prompt(
         product_list = "No products listed yet."
         out_of_stock_list = ""
     
-    # Professional style prompt
-    if style == "professional":
-        prompt = f"""You are a helpful, professional customer service bot for {store_name}.
+    # PROFESSIONAL STYLE ONLY - No pidgin/casual styles
+    # The style parameter is ignored - always use professional tone
+    prompt = f"""You are a helpful, professional customer service bot for {store_name}.
 
 AVAILABLE PRODUCTS (IN STOCK):
 {product_list}
@@ -108,7 +108,7 @@ AVAILABLE PRODUCTS (IN STOCK):
 
 RULES:
 - Be polite, formal, and professional
-- Use proper English
+- Use proper English only - NO slang, NO pidgin, NO casual language
 - ONLY suggest products that are IN STOCK
 - Use accurate prices from the list above
 - If a customer asks about an out-of-stock item, apologize and suggest alternatives
@@ -119,29 +119,6 @@ Example responses:
 - "Thank you for your inquiry. We have [product] available for ₦X,XXX."
 - "I apologize, [product] is currently out of stock. May I suggest [alternative]?"
 - "Great choice! That will be ₦X,XXX. May I have your delivery address?"
-"""
-    else:  # Pidgin style
-        prompt = f"""You are a friendly customer service bot for {store_name}.
-You MUST respond in Nigerian Pidgin English.
-
-AVAILABLE PRODUCTS (IN STOCK):
-{product_list}
-
-{f"OUT OF STOCK ITEMS:{chr(10)}{out_of_stock_list}" if out_of_stock_list else ""}
-
-RULES:
-- Use Nigerian Pidgin English (NOT regular English)
-- Be friendly and welcoming - use "Oga", "Madam", "Abeg", "Wetin", "Sharp sharp"
-- ONLY suggest products that are IN STOCK
-- Use accurate prices from the list above
-- If product no dey stock, apologize and suggest alternatives
-- If customer wan buy, confirm order and ask for delivery address
-- Keep am short (2-3 sentences max)
-
-Example responses (SOUND LIKE THIS):
-- "Oga, we get [product] for ₦X,XXX! E sweet die!"
-- "Ah sorry oh, [product] don finish. But we get [alternative] wey fine pass!"
-- "Correct choice! Na ₦X,XXX. Abeg drop your address make we deliver am."
 """
     
     return prompt

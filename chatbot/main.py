@@ -1184,13 +1184,10 @@ async def test_customer_bot(request: CustomerBotTestRequest):
             "products_loaded": len(products)
         }
     except Exception as e:
-        # Fallback demo responses if all APIs fail
-        fallback = {
-            "professional": "Thank you for contacting us. How may I assist you today?",
-            "pidgin": "How far! Welcome to our shop oh! Wetin you wan buy?"
-        }
+        # Fallback demo responses if all APIs fail - PROFESSIONAL ONLY
+        fallback_response = "Thank you for contacting us. How may I assist you today?"
         return {
-            "response": fallback.get(style, fallback["professional"]),
+            "response": fallback_response,
             "style": style,
             "message_received": request.message,
             "ai_powered": False,
