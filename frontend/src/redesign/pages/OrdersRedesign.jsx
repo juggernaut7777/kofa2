@@ -177,7 +177,7 @@ const OrdersRedesign = () => {
                     <button
                         onClick={() => setActiveTab('quicksale')}
                         className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1 ${activeTab === 'quicksale'
-                            ? 'bg-green-500 text-white'
+                            ? 'bg-[#0095FF] text-white'
                             : isDark ? 'text-gray-400' : 'text-gray-500'
                             }`}
                     >
@@ -297,7 +297,7 @@ const OrdersRedesign = () => {
                             <div className={`p-4 rounded-xl mb-4 ${isDark ? 'bg-white/10' : 'bg-gray-100'}`}>
                                 <div className="flex justify-between items-center">
                                     <span className={`font-medium ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Total:</span>
-                                    <span className="text-2xl font-bold text-green-500">
+                                    <span className="text-2xl font-bold text-[#0095FF]">
                                         ₦{(Number(products.find(p => p.id === quickSale.product_id)?.price || 0) * quickSale.quantity).toLocaleString()}
                                     </span>
                                 </div>
@@ -339,7 +339,7 @@ const OrdersRedesign = () => {
                                 }
                             }}
                             disabled={quickSaleLoading || !quickSale.product_id}
-                            className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-xl font-semibold text-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                            className="w-full py-4 bg-gradient-to-r from-[#0095FF] to-[#0077CC] hover:from-[#0077CC] hover:to-[#005599] text-white rounded-xl font-semibold text-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                         >
                             {quickSaleLoading ? (
                                 <span>Recording...</span>
