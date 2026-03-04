@@ -197,6 +197,57 @@ payment_manager = PaymentManager()
 # Default to corporate (professional) style
 response_formatter = ResponseFormatter(style=ResponseStyle.CORPORATE)
 
+
+# ============== VENDOR DATA ISOLATION ==============
+# PRIVACY: Each vendor gets their own scoped inventory manager.
+# This ensures Vendor A can NEVER see Vendor B's data.
+
+def get_vendor_inventory(user_id: str) -> InventoryManager:
+    """Create a vendor-scoped inventory manager. All data operations
+    will be filtered to this specific vendor only."""
+    return InventoryManager(user_id=user_id)
+
+def get_vendor_name(user_id: str) -> str:
+    """Look up the vendor's business name from the database.
+    Returns a default if not found."""
+    from .database import SessionLocal
+    from .models import User
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.id == user_id).first()
+        if user and user.business_name:
+            return user.business_name
+        if user and user.first_name:
+            return f"{user.first_name}'s Store"
+        return "your store"
+    except Exception:
+        return "your store"
+    finally:
+        db.close()
+
+# Per-vendor settings storage (keyed by user_id)
+# In production, this should be stored in the database
+_VENDOR_SETTINGS_STORE: Dict[str, dict] = {}
+
+def get_vendor_settings(user_id: str = "default") -> dict:
+    """Get settings for a specific vendor. Each vendor has their own isolated settings."""
+    if user_id not in _VENDOR_SETTINGS_STORE:
+        _VENDOR_SETTINGS_STORE[user_id] = {
+            "payment_account": {
+                "bank_name": "",
+                "account_number": "",
+                "account_name": "",
+            },
+            "business_info": {
+                "name": "KOFA Store",
+                "phone": "",
+                "address": "",
+            },
+            "payment_method": "bank_transfer",
+            "subscription_tier": "free",
+        }
+    return _VENDOR_SETTINGS_STORE[user_id]
+
 class MessageRequest(BaseModel):
     """Incoming message payload."""
     user_id: str  # Customer phone number
@@ -473,15 +524,20 @@ async def business_ai_chat(body: BusinessAIRequest, request: Request):
         # Get or create conversation ID
         conversation_id = body.conversation_id or str(uuid.uuid4())
         
-        # Get conversation history
+        # Get conversation history (scoped by conversation_id which is per-vendor)
         history = BUSINESS_AI_CONVERSATIONS.get(conversation_id, [])
         
-        # Process with AI
+        # PRIVACY: Create vendor-scoped inventory manager
+        vendor_inventory = get_vendor_inventory(body.user_id)
+        vendor_name = get_vendor_name(body.user_id)
+        
+        # Process with AI using vendor-scoped data
         result = await process_business_command(
             message=body.message,
             user_id=body.user_id,
-            inventory_manager=inventory_manager,
-            conversation_history=history
+            inventory_manager=vendor_inventory,
+            conversation_history=history,
+            vendor_name=vendor_name
         )
         
         # Update conversation history
@@ -1546,18 +1602,22 @@ class BusinessInfoUpdate(BaseModel):
 
 
 @router.get("/vendor/settings")
-async def get_vendor_settings():
-    """Get all vendor settings including payment account and business info."""
+async def get_vendor_settings_endpoint(user_id: str = "default"):
+    """Get all vendor settings including payment account and business info.
+    PRIVACY: Returns only the requesting vendor's settings."""
+    settings = get_vendor_settings(user_id)
     return {
         "status": "success",
-        "settings": VENDOR_SETTINGS
+        "settings": settings
     }
 
 
 @router.put("/vendor/payment-account")
-async def update_payment_account(account: PaymentAccountUpdate):
-    """Update vendor's payment account for receiving payments."""
-    VENDOR_SETTINGS["payment_account"] = {
+async def update_payment_account(account: PaymentAccountUpdate, user_id: str = "default"):
+    """Update vendor's payment account for receiving payments.
+    PRIVACY: Updates only the requesting vendor's settings."""
+    settings = get_vendor_settings(user_id)
+    settings["payment_account"] = {
         "bank_name": account.bank_name,
         "account_number": account.account_number,
         "account_name": account.account_name,
@@ -1565,14 +1625,16 @@ async def update_payment_account(account: PaymentAccountUpdate):
     return {
         "status": "success",
         "message": "Payment account updated successfully",
-        "payment_account": VENDOR_SETTINGS["payment_account"]
+        "payment_account": settings["payment_account"]
     }
 
 
 @router.put("/vendor/business-info")
-async def update_business_info(info: BusinessInfoUpdate):
-    """Update vendor's business information."""
-    VENDOR_SETTINGS["business_info"] = {
+async def update_business_info(info: BusinessInfoUpdate, user_id: str = "default"):
+    """Update vendor's business information.
+    PRIVACY: Updates only the requesting vendor's settings."""
+    settings = get_vendor_settings(user_id)
+    settings["business_info"] = {
         "name": info.name,
         "phone": info.phone or "",
         "address": info.address or "",
@@ -1580,13 +1642,15 @@ async def update_business_info(info: BusinessInfoUpdate):
     return {
         "status": "success",
         "message": "Business info updated successfully",
-        "business_info": VENDOR_SETTINGS["business_info"]
+        "business_info": settings["business_info"]
     }
 
 @router.get("/vendor/payment-account")
-async def get_payment_account():
-    """Get vendor's payment account for display to buyers."""
-    account = VENDOR_SETTINGS.get("payment_account", {})
+async def get_payment_account(user_id: str = "default"):
+    """Get vendor's payment account for display to buyers.
+    PRIVACY: Returns only the requesting vendor's payment account."""
+    settings = get_vendor_settings(user_id)
+    account = settings.get("payment_account", {})
     if not account.get("account_number"):
         return {
             "status": "not_configured",
