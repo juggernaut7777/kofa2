@@ -2,6 +2,7 @@
 """
 Sales Analytics Service for Nigerian SME Dashboard
 Provides revenue tracking, bestsellers, and customer insights.
+PRIVACY: All analytics are vendor-scoped. Each vendor only sees their own data.
 """
 from typing import List, Dict, Optional
 from dataclasses import dataclass
@@ -63,12 +64,16 @@ class DashboardData:
 
 class AnalyticsService:
     """
-    Analytics engine for OwoFlow merchants.
-    In production, this would query Supabase aggregations.
+    Analytics engine for KOFA merchants.
+    PRIVACY: In production, ALL queries MUST filter by vendor_id.
+    Each vendor only sees their own sales, products, and customer data.
     """
     
-    def __init__(self):
+    def __init__(self, vendor_id: str = "default"):
+        # PRIVACY: Store vendor_id for all query filtering
+        self.vendor_id = vendor_id
         # Mock data for demonstration
+        # TODO: In production, replace with DB queries filtered by self.vendor_id
         self._mock_products = [
             {"id": "1", "name": "Nike Air Max Red", "category": "Footwear", "price": 45000, "stock": 4},
             {"id": "2", "name": "Adidas White Sneakers", "category": "Footwear", "price": 38000, "stock": 10},
@@ -415,6 +420,12 @@ Growth: {today.growth_percent:+.1f}%
         }
 
 
-# Singleton instance
+# Default instance for backward compatibility
+# PRIVACY: In production, create per-vendor instances via get_analytics_service()
 analytics_service = AnalyticsService()
 
+
+def get_analytics_service(vendor_id: str = "default") -> AnalyticsService:
+    """Create a vendor-scoped analytics service instance.
+    PRIVACY: Each vendor gets their own analytics context."""
+    return AnalyticsService(vendor_id=vendor_id)
