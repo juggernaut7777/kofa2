@@ -7,6 +7,7 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 import uuid
+import os
 from datetime import datetime
 import logging
 
@@ -84,8 +85,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ===== RATE LIMITING (DoS Protection) =====
-limiter = Limiter(key_func=get_remote_address)
+# ===== PER-VENDOR RATE LIMITING =====
+def _get_vendor_or_ip(request: Request) -> str:
+    """
+    Rate limit key: use vendor_id from auth token if available, else IP.
+    This prevents one vendor from exhausting another's rate limit.
+    """
+    # Try to extract vendor_id from auth header
+    auth_header = request.headers.get("authorization", "")
+    if auth_header.startswith("Bearer "):
+        try:
+            from .services.auth_security import auth_security
+            payload = auth_security.verify_access_token(auth_header[7:])
+            if payload and payload.get("sub"):
+                return f"vendor:{payload['sub']}"
+        except Exception:
+            pass
+    return get_remote_address(request)
+
+limiter = Limiter(key_func=_get_vendor_or_ip)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
