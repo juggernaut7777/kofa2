@@ -2,344 +2,269 @@ import { useState, useEffect } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import {
-  Check, ArrowRight, Menu, X,
-  MessageCircle, Package, TrendingUp, Shield,
-  Smartphone, CreditCard, ChevronDown, PlayCircle
+  Package, Check, MessageSquare, ChevronRight,
+  ScanLine, Store, Zap, TrendingUp, Smartphone,
+  ShoppingBag, ArrowRight, Menu, Star
 } from 'lucide-react'
 
-// Asset Components using CSS (lightweight, fast, no external images needed)
-const ChatSimulation = () => (
-  <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden max-w-sm mx-auto transform rotate-[-2deg] hover:rotate-0 transition-transform duration-500">
-    <div className="bg-[#075E54] p-4 flex items-center gap-3 text-white">
-      <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center font-bold">K</div>
-      <div>
-        <p className="text-sm font-bold">KOFA Assistant</p>
-        <p className="text-xs opacity-80">Online</p>
-      </div>
-    </div>
-    <div className="p-4 bg-[#E5DDD5] space-y-4 h-64 overflow-y-auto text-xs">
-      <div className="bg-white p-2 rounded-lg rounded-tl-none max-w-[80%] shadow-sm">
-        Do you have the red sneakers in size 42?
-      </div>
-      <div className="bg-[#DCF8C6] p-2 rounded-lg rounded-tr-none max-w-[80%] ml-auto shadow-sm">
-        Yes! We have 2 pairs left in size 42. Price is ₦15,000. Would you like to order?
-      </div>
-      <div className="bg-white p-2 rounded-lg rounded-tl-none max-w-[80%] shadow-sm">
-        Yes please. Assuming delivery is available?
-      </div>
-      <div className="bg-[#DCF8C6] p-2 rounded-lg rounded-tr-none max-w-[80%] ml-auto shadow-sm">
-        Delivery is available! Please reply with your address to confirm.
-      </div>
-    </div>
-  </div>
-)
-
-const DashboardPreview = () => (
-  <div className="bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden">
-    <div className="border-b border-gray-100 p-4 flex items-center gap-2 bg-gray-50/50">
-      <div className="flex gap-1.5">
-        <div className="w-2.5 h-2.5 rounded-full bg-red-400/50" />
-        <div className="w-2.5 h-2.5 rounded-full bg-yellow-400/50" />
-        <div className="w-2.5 h-2.5 rounded-full bg-green-400/50" />
-      </div>
-      <div className="h-2 w-32 bg-gray-200 rounded-full ml-2" />
-    </div>
-    <div className="p-6 grid gap-6">
-      <div className="flex justify-between items-end">
-        <div>
-          <p className="text-gray-500 text-xs uppercase font-medium tracking-wider mb-1">Total Revenue</p>
-          <p className="text-3xl font-bold text-gray-900">₦1,245,000</p>
-        </div>
-        <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">+12%</span>
-      </div>
-      <div className="grid grid-cols-3 gap-4">
-        {[1, 2, 3].map(i => (
-          <div key={i} className="bg-gray-50 rounded-lg p-3">
-            <div className="w-full h-20 bg-gray-200 rounded mb-2" />
-            <div className="h-3 w-3/4 bg-gray-200 rounded mb-1" />
-            <div className="h-3 w-1/2 bg-blue-100 rounded" />
-          </div>
-        ))}
-      </div>
-    </div>
-  </div>
-)
+// Import App Components for Fidelity
+import { Card } from '../components/ui/Card'
+import { Button } from '../components/ui/Button'
+import { Badge } from '../components/ui/Badge'
 
 const Landing = () => {
   const { isAuthenticated, isLoading } = useAuth()
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   if (!isLoading && isAuthenticated) {
     return <Navigate to="/dashboard" replace />
   }
 
-  return (
-    <div className="min-h-screen bg-white font-sans text-gray-900 overflow-x-hidden selection:bg-blue-100">
+  // --- MOCKUP COMPONENTS ---
 
-      {/* Navigation */}
-      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="flex justify-between items-center h-16 sm:h-20">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-[#0095FF] rounded-lg flex items-center justify-center text-white">
-                <Package size={18} strokeWidth={3} />
-              </div>
-              <span className="font-bold text-xl tracking-tight">KOFA</span>
-            </div>
+  const WhatsAppMockup = () => (
+    <div className="bg-white rounded-[2rem] border-4 border-gray-900 overflow-hidden shadow-2xl max-w-sm mx-auto">
+      <div className="bg-[#075E54] p-4 text-white flex items-center gap-3">
+        <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center font-bold">K</div>
+        <div>
+          <p className="font-bold">KOFA Assistant</p>
+          <p className="text-xs opacity-80">Business Account</p>
+        </div>
+      </div>
+      <div className="bg-[#E5DDD5] h-80 p-4 space-y-4 overflow-y-auto text-sm">
+        <div className="bg-white p-3 rounded-xl rounded-tl-none shadow-sm max-w-[85%]">
+          Do you have the Nike Air Max in size 42?
+        </div>
+        <div className="bg-[#DCF8C6] p-3 rounded-xl rounded-tr-none shadow-sm max-w-[85%] ml-auto">
+          Yes! Based on your inventory, we have <strong>2 pairs left</strong>. Price: ₦45,000. Want to order?
+        </div>
+        <div className="bg-white p-3 rounded-xl rounded-tl-none shadow-sm max-w-[85%]">
+          Yes please. Sending ₦45k now.
+        </div>
+        <div className="bg-[#DCF8C6] p-3 rounded-xl rounded-tr-none shadow-sm max-w-[85%] ml-auto">
+          Great! Send the transfer receipt here and I'll create the invoice automatically.
+        </div>
+      </div>
+    </div>
+  )
 
-            <div className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-600">
-              <a href="#features" className="hover:text-[#0095FF] transition-colors">Features</a>
-              <a href="#how-it-works" className="hover:text-[#0095FF] transition-colors">How it works</a>
-              <a href="#pricing" className="hover:text-[#0095FF] transition-colors">Pricing</a>
-            </div>
+  const ScanMockup = () => (
+    <div className="relative bg-black rounded-[2rem] border-4 border-gray-800 overflow-hidden shadow-2xl max-w-sm mx-auto h-96">
+      {/* Background "Camera" View */}
+      <div className="absolute inset-0 bg-gray-800 flex items-center justify-center opacity-50">
+        <div className="text-white/20 text-6xl font-bold rotate-[-15deg]">RECEIPT</div>
+      </div>
 
-            <div className="flex items-center gap-4">
-              <Link to="/login" className="hidden sm:block text-sm font-medium text-gray-600 hover:text-black">
-                Log in
-              </Link>
-              <Link to="/signup" className="bg-[#0095FF] hover:bg-[#007ACC] text-white text-sm font-semibold px-5 py-2.5 rounded-full transition-all shadow-sm hover:shadow-md">
-                Get Started
-              </Link>
-              <button className="md:hidden" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
-                {mobileMenuOpen ? <X /> : <Menu />}
-              </button>
-            </div>
+      {/* Scanning Line */}
+      <div className="absolute top-1/4 left-0 right-0 h-1 bg-brand-primary shadow-[0_0_20px_rgba(0,149,255,1)] animate-[scan_2s_ease-in-out_infinite]" />
+
+      {/* Detected Text Overlay */}
+      <div className="absolute bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl p-6 rounded-t-3xl transition-transform animate-slideUp">
+        <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-4" />
+        <p className="text-xs font-bold text-muted uppercase tracking-wider mb-2">Scanned Items</p>
+        <div className="space-y-3">
+          <div className="flex justify-between items-center border-b border-gray-100 pb-2">
+            <p className="font-bold">20x Coca Cola</p>
+            <p className="text-brand-primary font-bold">₦4,000</p>
+          </div>
+          <div className="flex justify-between items-center">
+            <p className="font-bold">Supplier: Mama T</p>
+            <Badge variant="success" size="sm">Saved</Badge>
           </div>
         </div>
+        <Button variant="primary" className="w-full mt-4">Add to Inventory</Button>
+      </div>
+    </div>
+  )
 
-        {/* Mobile Menu */}
-        {mobileMenuOpen && (
-          <div className="md:hidden border-t border-gray-100 bg-white p-4 space-y-4">
-            <a href="#features" className="block text-gray-600 font-medium">Features</a>
-            <a href="#pricing" className="block text-gray-600 font-medium">Pricing</a>
-            <Link to="/login" className="block text-gray-600 font-medium">Log in</Link>
-          </div>
-        )}
-      </nav>
-
-      {/* Hero Section */}
-      <section className="pt-16 pb-20 sm:pt-24 sm:pb-32 px-4 sm:px-6 max-w-7xl mx-auto">
-        <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
-          <div className="max-w-2xl">
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-gray-900 leading-[1.1] mb-6">
-              Manage your business without the <span className="text-[#0095FF]">chaos</span>.
-            </h1>
-            <p className="text-lg text-gray-500 mb-8 leading-relaxed">
-              KOFA gives you an AI sales assistant, real-time inventory tracking, and clear profit insights. Stop using messy Excel sheets and paper notes.
-            </p>
-
-            <div className="flex flex-col sm:flex-row gap-4 mb-10">
-              <Link to="/signup" className="inline-flex items-center justify-center gap-2 bg-[#0095FF] hover:bg-[#007ACC] text-white font-semibold px-8 py-3.5 rounded-full transition-all text-base shadow-sm hover:shadow-lg hover:-translate-y-0.5">
-                Start Selling Smarter
-                <ArrowRight size={18} />
-              </Link>
-              <button className="inline-flex items-center justify-center gap-2 bg-white border border-gray-200 hover:border-gray-300 text-gray-700 font-semibold px-8 py-3.5 rounded-full transition-all">
-                <PlayCircle size={18} />
-                Watch Demo
-              </button>
+  const StorefrontMockup = () => (
+    <div className="bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden max-w-sm mx-auto">
+      <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+        <Menu size={20} className="text-gray-500" />
+        <span className="font-bold">Luxe Fashion</span>
+        <ShoppingBag size={20} className="text-gray-500" />
+      </div>
+      <div className="p-4 grid grid-cols-2 gap-3">
+        {[1, 2, 3, 4].map(i => (
+          <div key={i} className="space-y-2">
+            <div className="bg-gray-100 aspect-square rounded-lg relative">
+              {i === 1 && <span className="absolute top-2 left-2 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">SALE</span>}
             </div>
-
-            <div className="flex items-center gap-4 text-xs font-medium text-gray-500">
-              <div className="flex -space-x-2">
-                {[1, 2, 3, 4].map(i => (
-                  <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-gray-100" />
-                ))}
-              </div>
-              <p>Trusted by 3,000+ Nigerian businesses</p>
+            <div>
+              <p className="font-bold text-sm">Product {i}</p>
+              <p className="text-brand-primary text-xs font-bold">₦15,000</p>
             </div>
           </div>
+        ))}
+      </div>
+    </div>
+  )
 
-          <div className="relative lg:h-[600px] flex items-center justify-center">
-            <div className="absolute inset-0 bg-blue-50/50 rounded-full blur-3xl -z-10" />
-            <div className="relative w-full max-w-lg">
-              <DashboardPreview />
-              <div className="absolute -right-12 -bottom-12 w-64 hidden md:block">
-                <ChatSimulation />
-              </div>
-            </div>
+  const BusinessAIMockup = () => (
+    <Card className="max-w-md mx-auto p-0 overflow-hidden shadow-2xl border-border-strong">
+      <div className="bg-surface-2 p-4 border-b border-border-subtle flex items-center gap-3">
+        <div className="w-10 h-10 bg-gradient-to-br from-brand-primary to-purple-600 rounded-xl flex items-center justify-center text-white">
+          <Zap size={20} fill="currentColor" />
+        </div>
+        <div>
+          <p className="font-bold text-main">Business IQ</p>
+          <p className="text-xs text-muted">Ask anything about your sales</p>
+        </div>
+      </div>
+      <div className="p-6 space-y-4 bg-surface-1">
+        <div className="flex justify-end">
+          <div className="bg-surface-3 text-main px-4 py-2 rounded-2xl rounded-tr-sm text-sm">
+            How much profit did I make last week?
           </div>
         </div>
-      </section>
-
-      {/* Social Proof */}
-      <div className="bg-gray-50 border-y border-gray-100 py-10">
-        <div className="max-w-7xl mx-auto px-6 text-center">
-          <p className="text-sm font-semibold text-gray-400 uppercase tracking-widest mb-8">Powering top brands across Nigeria</p>
-          <div className="flex flex-wrap justify-center gap-8 md:gap-16 opacity-50 grayscale hover:grayscale-0 transition-all duration-500">
-            {/* Text placeholders for logos to keep it clean */}
-            <span className="text-xl font-bold font-serif">LuxeLagos</span>
-            <span className="text-xl font-bold font-mono">TechPoint</span>
-            <span className="text-xl font-extrabold italic">NaijaGlam</span>
-            <span className="text-xl font-light tracking-widest">URBANWEAR</span>
-            <span className="text-xl font-bold">FoodCourt</span>
+        <div className="flex justify-start gap-3">
+          <div className="w-8 h-8 flex-shrink-0 bg-brand-primary/10 rounded-full flex items-center justify-center">
+            <Zap size={14} className="text-brand-primary" />
+          </div>
+          <div className="space-y-2 max-w-[85%]">
+            <div className="bg-brand-primary/5 border border-brand-primary/10 p-4 rounded-2xl rounded-tl-sm space-y-2">
+              <p className="text-sm text-main">
+                Last week you made <span className="font-bold text-brand-primary">₦145,000</span> in profit! 🚀
+              </p>
+              <div className="h-1 bg-gray-200 rounded-full w-full overflow-hidden">
+                <div className="h-full bg-brand-primary w-[75%]" />
+              </div>
+              <p className="text-xs text-muted">Top seller: <span className="font-medium">Red Velvet Dress</span></p>
+            </div>
           </div>
         </div>
       </div>
+    </Card>
+  )
 
-      {/* Feature 1: The AI */}
-      <section id="features" className="py-24 px-6 max-w-7xl mx-auto">
-        <div className="grid md:grid-cols-2 gap-16 items-center">
-          <div className="order-2 md:order-1 bg-gray-50 rounded-3xl p-8 sm:p-12">
-            <ChatSimulation />
+  return (
+    <div className="min-h-screen bg-[#FAFAFA] font-sans text-main selection:bg-brand-primary selection:text-white pb-20">
+
+      {/* Navigation */}
+      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-border-subtle">
+        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-9 h-9 bg-brand-primary rounded-xl flex items-center justify-center text-white shadow-lg shadow-brand-glow">
+              <Package size={20} strokeWidth={2.5} />
+            </div>
+            <span className="font-bold text-xl tracking-tight text-main">KOFA</span>
+          </div>
+          <div className="hidden md:flex gap-8 text-sm font-medium text-muted">
+            {['Features', 'Pricing', 'Login'].map(l => (
+              <a key={l} href="#" className="hover:text-brand-primary transition-colors">{l}</a>
+            ))}
+          </div>
+          <Button variant="primary" className="rounded-full">Get Started</Button>
+        </div>
+      </nav>
+
+      {/* Hero */}
+      <header className="px-6 py-20 lg:py-32 max-w-7xl mx-auto text-center">
+        <div className="inline-flex items-center gap-2 bg-brand-primary/10 text-brand-primary px-4 py-1.5 rounded-full text-sm font-semibold mb-8">
+          <Zap size={14} fill="currentColor" /> The OS for African Commerce
+        </div>
+        <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-main mb-6">
+          Run your business on <span className="text-transparent bg-clip-text bg-gradient-brand">Autopilot.</span>
+        </h1>
+        <p className="text-xl text-muted max-w-2xl mx-auto mb-10">
+          KOFA replaces your messy Excel sheets with AI. Manage orders, track inventory, and find profit—automatically.
+        </p>
+        <div className="flex justify-center gap-4">
+          <Link to="/signup">
+            <Button variant="primary" size="lg" className="rounded-full shadow-xl shadow-brand-glow px-8">Start Free Trial</Button>
+          </Link>
+          <Button variant="outline" size="lg" className="rounded-full bg-white px-8">View Demo</Button>
+        </div>
+      </header>
+
+      {/* --- FEATURE 1: WHATSAPP AI --- */}
+      <section className="py-24 px-6 bg-white border-y border-border-subtle">
+        <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-16 items-center">
+          <div className="order-2 md:order-1">
+            <WhatsAppMockup />
           </div>
           <div className="order-1 md:order-2">
-            <div className="w-12 h-12 bg-green-100 text-green-700 rounded-2xl flex items-center justify-center mb-6">
-              <MessageCircle size={24} />
+            <div className="w-12 h-12 bg-green-100 text-green-600 rounded-2xl flex items-center justify-center mb-6">
+              <MessageSquare size={24} />
             </div>
-            <h2 className="text-3xl font-bold mb-4">Meet your new Sales Assistant.</h2>
-            <p className="text-lg text-gray-500 mb-6 leading-relaxed">
-              KOFA's AI connects to your WhatsApp and Instagram. It replies to customers instantly, checks your stock, and even closes sales while you sleep.
+            <h2 className="text-4xl font-bold mb-4">WhatsApp AI Assistant.</h2>
+            <p className="text-lg text-muted mb-8 leading-relaxed">
+              Most of your sales happen on WhatsApp. Why are you still replying manually? KOFA's AI reads your chats, checks your stock, and collects payments automatically.
             </p>
-            <ul className="space-y-3 mb-8">
-              {['Auto-replies to inquiries', 'Checks inventory in real-time', 'Sends payment links'].map((item, i) => (
-                <li key={i} className="flex items-center gap-3 text-gray-700 font-medium">
-                  <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center">
-                    <Check size={12} className="text-green-600" />
-                  </div>
-                  {item}
-                </li>
+            <ul className="space-y-4">
+              {['Replies instantly 24/7', 'Knows your inventory', 'Collects delivery details'].map(f => (
+                <li key={f} className="flex gap-3 text-main font-medium"><Check className="text-green-500" /> {f}</li>
               ))}
             </ul>
           </div>
         </div>
       </section>
 
-      {/* Feature 2: Inventory */}
-      <section className="py-24 px-6 max-w-7xl mx-auto border-t border-gray-100">
-        <div className="grid md:grid-cols-2 gap-16 items-center">
+      {/* --- FEATURE 2: SCAN TO UPLOAD --- */}
+      <section className="py-24 px-6">
+        <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-16 items-center">
           <div>
-            <div className="w-12 h-12 bg-blue-100 text-blue-700 rounded-2xl flex items-center justify-center mb-6">
-              <Package size={24} />
+            <div className="w-12 h-12 bg-purple-100 text-purple-600 rounded-2xl flex items-center justify-center mb-6">
+              <ScanLine size={24} />
             </div>
-            <h2 className="text-3xl font-bold mb-4">Stop overselling. Start growing.</h2>
-            <p className="text-lg text-gray-500 mb-6 leading-relaxed">
-              Never apologize for being "out of stock" again. KOFA tracks every item. When it's sold on WhatsApp, it's updated everywhere.
+            <h2 className="text-4xl font-bold mb-4">Scan Receipts to Stock.</h2>
+            <p className="text-lg text-muted mb-8 leading-relaxed">
+              Hate typing product names? Just snap a photo of your supplier's receipt. KOFA extracts the items and prices instantly.
             </p>
-            <Link to="/signup" className="text-[#0095FF] font-semibold flex items-center gap-2 hover:gap-3 transition-all">
-              Learn about inventory <ArrowRight size={16} />
-            </Link>
+            <Button variant="outline" className="rounded-full">See it in action</Button>
           </div>
-          <div className="bg-white border rounded-3xl p-8 shadow-lg">
-            <div className="space-y-4">
-              {[
-                { name: 'Red Velvet Dress', stock: 2, status: 'Low Stock', color: 'red' },
-                { name: 'Denim Jacket', stock: 15, status: 'In Stock', color: 'green' },
-                { name: 'White Sneakers', stock: 0, status: 'Out of Stock', color: 'gray' },
-              ].map((item, i) => (
-                <div key={i} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-                  <div>
-                    <p className="font-bold text-gray-900">{item.name}</p>
-                    <p className="text-xs text-gray-500">{item.stock} remaining</p>
-                  </div>
-                  <span className={`text-xs font-bold px-2 py-1 rounded bg-${item.color}-100 text-${item.color}-700`}>
-                    {item.status}
-                  </span>
-                </div>
-              ))}
-            </div>
+          <div>
+            <ScanMockup />
           </div>
         </div>
       </section>
 
-      {/* Three Column Features */}
-      <section className="py-24 px-6 bg-gray-50">
-        <div className="max-w-7xl mx-auto text-center mb-16">
-          <h2 className="text-3xl font-bold mb-4">Everything you need to run your business</h2>
-          <p className="text-gray-500">We replaced the chaos with one simple dashboard.</p>
-        </div>
-
-        <div className="max-w-7xl mx-auto grid md:grid-cols-3 gap-8">
-          {[
-            { icon: TrendingUp, title: "Profit Tracking", desc: "Know exactly how much you're making after expenses." },
-            { icon: CreditCard, title: "Instant Payments", desc: "Accept payments via transfer or card. Get settled next day." },
-            { icon: Smartphone, title: "Mobile First", desc: "Run your entire business from your phone. No laptop needed." }
-          ].map((f, i) => (
-            <div key={i} className="bg-white p-8 rounded-2xl border border-gray-100 hover:shadow-lg transition-shadow">
-              <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center mb-4 text-gray-900">
-                <f.icon size={20} />
-              </div>
-              <h3 className="text-xl font-bold mb-2">{f.title}</h3>
-              <p className="text-gray-500 leading-relaxed">{f.desc}</p>
+      {/* --- FEATURE 3: STOREFRONT --- */}
+      <section className="py-24 px-6 bg-surface-2/30 border-y border-border-subtle">
+        <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-16 items-center">
+          <div className="order-2 md:order-1 transform -rotate-2 hover:rotate-0 transition-transform duration-500">
+            <StorefrontMockup />
+          </div>
+          <div className="order-1 md:order-2">
+            <div className="w-12 h-12 bg-orange-100 text-orange-600 rounded-2xl flex items-center justify-center mb-6">
+              <Store size={24} />
             </div>
-          ))}
+            <h2 className="text-4xl font-bold mb-4">Your Own Online Store.</h2>
+            <p className="text-lg text-muted mb-8 leading-relaxed">
+              Get a beautiful link (`kofa.me/your-brand`) to share on Instagram. Customers can browse your products and order without DMing you.
+            </p>
+          </div>
         </div>
       </section>
 
-      {/* Simple Pricing */}
-      <section id="pricing" className="py-24 px-6 max-w-5xl mx-auto">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl font-bold mb-4">Simple, transparent pricing</h2>
-          <p className="text-gray-500">Start for free. Upgrade as you grow.</p>
-        </div>
-
-        <div className="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto">
-          {/* Free Plan */}
-          <div className="border border-gray-200 rounded-3xl p-8 hover:border-blue-200 transition-colors">
-            <h3 className="font-bold text-xl mb-2">Free</h3>
-            <p className="text-4xl font-bold mb-6">₦0<span className="text-lg font-normal text-gray-400">/mo</span></p>
-            <p className="text-gray-500 mb-8 border-b border-gray-100 pb-8">Perfect for just starting out.</p>
-            <ul className="space-y-4 mb-8">
-              <li className="flex gap-3 text-sm text-gray-600"><Check size={16} className="text-green-500" /> 50 Products</li>
-              <li className="flex gap-3 text-sm text-gray-600"><Check size={16} className="text-green-500" /> Basic AI Assistant</li>
-              <li className="flex gap-3 text-sm text-gray-600"><Check size={16} className="text-green-500" /> Manual Orders</li>
-            </ul>
-            <Link to="/signup" className="block w-full py-3 bg-gray-50 text-gray-900 font-semibold text-center rounded-xl hover:bg-gray-100 transition-colors">
-              Get Started
-            </Link>
+      {/* --- FEATURE 4: BUSINESS AI --- */}
+      <section className="py-24 px-6">
+        <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-16 items-center">
+          <div>
+            <div className="w-12 h-12 bg-blue-100 text-brand-primary rounded-2xl flex items-center justify-center mb-6">
+              <TrendingUp size={24} />
+            </div>
+            <h2 className="text-4xl font-bold mb-4">"How much did I make?"</h2>
+            <p className="text-lg text-muted mb-8 leading-relaxed">
+              Stop guessing. Just ask KOFA. Our Business AI analyzes your sales and expenses to tell you your *true* profit, best-selling items, and more.
+            </p>
           </div>
-
-          {/* Pro Plan */}
-          <div className="border-2 border-[#0095FF] rounded-3xl p-8 relative shadow-xl">
-            <div className="absolute top-0 right-0 bg-[#0095FF] text-white text-xs font-bold px-3 py-1 rounded-bl-xl rounded-tr-lg">POPULAR</div>
-            <h3 className="font-bold text-xl mb-2">Starter</h3>
-            <p className="text-4xl font-bold mb-6">₦5,000<span className="text-lg font-normal text-gray-400">/mo</span></p>
-            <p className="text-gray-500 mb-8 border-b border-gray-100 pb-8">For growing businesses.</p>
-            <ul className="space-y-4 mb-8">
-              <li className="flex gap-3 text-sm text-gray-900 font-medium"><Check size={16} className="text-[#0095FF]" /> 200 Products</li>
-              <li className="flex gap-3 text-sm text-gray-900 font-medium"><Check size={16} className="text-[#0095FF]" /> Advanced AI (WhatsApp)</li>
-              <li className="flex gap-3 text-sm text-gray-900 font-medium"><Check size={16} className="text-[#0095FF]" /> Profit Analytics</li>
-            </ul>
-            <Link to="/signup" className="block w-full py-3 bg-[#0095FF] text-white font-semibold text-center rounded-xl hover:bg-[#007ACC] transition-colors">
-              Start Free Trial
-            </Link>
+          <div>
+            <BusinessAIMockup />
           </div>
         </div>
+      </section>
+
+      {/* Pricing Teaser */}
+      <section className="py-24 text-center">
+        <h2 className="text-3xl font-bold mb-6">Ready to professionalize your hustle?</h2>
+        <Link to="/signup">
+          <Button variant="primary" size="lg" className="rounded-full px-8 shadow-xl shadow-brand-glow">Get Started for Free</Button>
+        </Link>
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white py-20 px-6">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between gap-12">
-          <div>
-            <div className="flex items-center gap-2 mb-6">
-              <Package size={24} className="text-[#0095FF]" />
-              <span className="font-bold text-2xl">KOFA</span>
-            </div>
-            <p className="text-gray-400 max-w-xs">
-              The operating system for African commerce. Built with ❤️ in Lagos.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-12 text-sm text-gray-400">
-            <div>
-              <h4 className="font-bold text-white mb-4">Product</h4>
-              <ul className="space-y-3">
-                <li><a href="#" className="hover:text-white">Features</a></li>
-                <li><a href="#" className="hover:text-white">Pricing</a></li>
-                <li><a href="#" className="hover:text-white">Login</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-bold text-white mb-4">Legal</h4>
-              <ul className="space-y-3">
-                <li><a href="#" className="hover:text-white">Privacy</a></li>
-                <li><a href="#" className="hover:text-white">Terms</a></li>
-              </ul>
-            </div>
-          </div>
-        </div>
-        <div className="max-w-7xl mx-auto mt-16 pt-8 border-t border-gray-800 text-center text-gray-500 text-xs">
-          © 2026 KOFA Inc. All rights reserved.
-        </div>
+      <footer className="border-t border-gray-100 py-10 text-center text-sm text-muted">
+        <p>© 2026 KOFA Commerce Engine. Built in Lagos.</p>
       </footer>
     </div>
   )

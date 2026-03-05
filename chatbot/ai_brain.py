@@ -58,6 +58,7 @@ AVAILABLE ACTIONS (respond with JSON):
 📊 REPORTS:
 - SALES_REPORT: {{"action": "SALES_REPORT", "period": "today|week|month"}}
 - BEST_SELLERS: {{"action": "BEST_SELLERS", "limit": 5}}
+- DAILY_SUMMARY: {{"action": "DAILY_SUMMARY"}}
 
 EXAMPLES:
 User: "Add 50 red bags at 3000 naira"
@@ -337,6 +338,16 @@ Current Inventory ({len(products)} products):
                         action_result = "No sales data yet. Start selling to see your best sellers!"
                 except Exception:
                     action_result = "📊 Best sellers report is being set up."
+                    
+            elif action_type == "DAILY_SUMMARY":
+                action_taken = "DAILY_SUMMARY"
+                try:
+                    from .services.analytics import get_analytics_service
+                    analytics = get_analytics_service(user_id)
+                    summary = analytics.format_daily_summary(style="corporate")
+                    action_result = summary
+                except Exception as e:
+                    action_result = "📊 Daily summary is being set up. Add more sales data to see results!"
                     
     except (json.JSONDecodeError, KeyError):
         pass  # No valid JSON action, just use AI response

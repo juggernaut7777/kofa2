@@ -3,12 +3,17 @@
 Sales Analytics Service for Nigerian SME Dashboard
 Provides revenue tracking, bestsellers, and customer insights.
 PRIVACY: All analytics are vendor-scoped. Each vendor only sees their own data.
+NOW USES REAL DATABASE QUERIES instead of mock data.
 """
-from typing import List, Dict
+from typing import List, Dict, Optional
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
-import random
+from contextlib import contextmanager
+from sqlalchemy import func, desc
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class TimePeriod(Enum):
@@ -26,7 +31,7 @@ class RevenueMetrics:
     total_revenue_ngn: float
     order_count: int
     average_order_value: float
-    growth_percent: float  # vs previous period
+    growth_percent: float
 
 
 @dataclass
@@ -65,253 +70,284 @@ class DashboardData:
 class AnalyticsService:
     """
     Analytics engine for KOFA merchants.
-    PRIVACY: In production, ALL queries MUST filter by vendor_id.
+    PRIVACY: ALL queries filter by vendor_id.
     Each vendor only sees their own sales, products, and customer data.
+    Uses REAL database queries — no mock data.
     """
     
     def __init__(self, vendor_id: str = "default"):
-        # PRIVACY: Store vendor_id for all query filtering
         self.vendor_id = vendor_id
-        # Mock data for demonstration
-        # TODO: In production, replace with DB queries filtered by self.vendor_id
-        self._mock_products = [
-            {"id": "1", "name": "Nike Air Max Red", "category": "Footwear", "price": 45000, "stock": 4},
-            {"id": "2", "name": "Adidas White Sneakers", "category": "Footwear", "price": 38000, "stock": 10},
-            {"id": "3", "name": "Men Formal Shirt White", "category": "Clothing", "price": 15000, "stock": 20},
-            {"id": "4", "name": "Designer Blue Jeans", "category": "Clothing", "price": 25000, "stock": 15},
-            {"id": "5", "name": "Black Leather Bag", "category": "Accessories", "price": 35000, "stock": 5},
-            {"id": "6", "name": "Plain Round Neck T-Shirt", "category": "Clothing", "price": 8000, "stock": 50},
-            {"id": "7", "name": "iPhone Charger Fast Charging", "category": "Electronics", "price": 12000, "stock": 2},
-        ]
-        
-        self._mock_orders = self._generate_mock_orders()
     
-    def _generate_mock_orders(self) -> List[Dict]:
-        """Generate realistic mock orders for the past 30 days."""
-        orders = []
-        now = datetime.now()
-        
-        customers = [
-            ("+2348012345678", "Chinedu Okafor"),
-            ("+2349087654321", "Amara Eze"),
-            ("+2348055551234", "Fatima Bello"),
-            ("+2347033332222", "Obinna Nwosu"),
-            ("+2348099998888", "Yetunde Adeyemi"),
-            ("+2348066667777", "Emeka Igwe"),
-        ]
-        
-        statuses = ["pending", "paid", "fulfilled"]
-        
-        for i in range(45):  # 45 orders in past 30 days
-            days_ago = random.randint(0, 30)
-            product = random.choice(self._mock_products)
-            customer = random.choice(customers)
-            quantity = random.randint(1, 3)
-            
-            orders.append({
-                "id": f"ORD-{i+1:04d}",
-                "customer_phone": customer[0],
-                "customer_name": customer[1],
-                "product_id": product["id"],
-                "product_name": product["name"],
-                "category": product["category"],
-                "quantity": quantity,
-                "unit_price": product["price"],
-                "total_amount": product["price"] * quantity,
-                "status": random.choice(statuses),
-                "created_at": (now - timedelta(days=days_ago, hours=random.randint(0, 23))).isoformat()
-            })
-        
-        return sorted(orders, key=lambda x: x["created_at"], reverse=True)
+    @contextmanager
+    def _get_db_session(self):
+        """Context manager for database sessions."""
+        from ..database import SessionLocal
+        db = SessionLocal()
+        try:
+            yield db
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+    
+    def _get_period_start(self, period: TimePeriod) -> datetime:
+        """Get the start datetime for a time period."""
+        now = datetime.utcnow()
+        if period == TimePeriod.TODAY:
+            return now.replace(hour=0, minute=0, second=0, microsecond=0)
+        elif period == TimePeriod.WEEK:
+            return now - timedelta(days=7)
+        elif period == TimePeriod.MONTH:
+            return now - timedelta(days=30)
+        elif period == TimePeriod.QUARTER:
+            return now - timedelta(days=90)
+        else:  # YEAR
+            return now - timedelta(days=365)
     
     def get_revenue_metrics(self, period: TimePeriod = TimePeriod.MONTH) -> RevenueMetrics:
-        """Calculate revenue metrics for a time period."""
-        now = datetime.now()
+        """Calculate revenue metrics for a time period from real order data."""
+        from ..models import Order as OrderModel
         
-        # Define period boundaries
-        if period == TimePeriod.TODAY:
-            start_date = now.replace(hour=0, minute=0, second=0)
-            prev_start = start_date - timedelta(days=1)
-        elif period == TimePeriod.WEEK:
-            start_date = now - timedelta(days=7)
-            prev_start = start_date - timedelta(days=7)
-        elif period == TimePeriod.MONTH:
-            start_date = now - timedelta(days=30)
-            prev_start = start_date - timedelta(days=30)
-        elif period == TimePeriod.QUARTER:
-            start_date = now - timedelta(days=90)
-            prev_start = start_date - timedelta(days=90)
-        else:  # YEAR
-            start_date = now - timedelta(days=365)
-            prev_start = start_date - timedelta(days=365)
+        now = datetime.utcnow()
+        start_date = self._get_period_start(period)
+        period_length = (now - start_date).days or 1
+        prev_start = start_date - timedelta(days=period_length)
         
-        # Filter orders
-        current_orders = [
-            o for o in self._mock_orders
-            if datetime.fromisoformat(o["created_at"]) >= start_date
-        ]
-        
-        prev_orders = [
-            o for o in self._mock_orders
-            if prev_start <= datetime.fromisoformat(o["created_at"]) < start_date
-        ]
-        
-        current_revenue = sum(o["total_amount"] for o in current_orders)
-        prev_revenue = sum(o["total_amount"] for o in prev_orders) or 1  # Avoid division by zero
-        
-        growth = ((current_revenue - prev_revenue) / prev_revenue) * 100
-        
-        return RevenueMetrics(
-            period=period.value,
-            total_revenue_ngn=current_revenue,
-            order_count=len(current_orders),
-            average_order_value=current_revenue / len(current_orders) if current_orders else 0,
-            growth_percent=round(growth, 1)
-        )
+        with self._get_db_session() as db:
+            # Current period orders
+            current_query = db.query(
+                func.count(OrderModel.id).label("order_count"),
+                func.coalesce(func.sum(OrderModel.total_amount), 0).label("total_revenue")
+            ).filter(
+                OrderModel.user_id == self.vendor_id,
+                OrderModel.created_at >= start_date,
+                OrderModel.status.in_(["paid", "fulfilled"])
+            ).first()
+            
+            current_revenue = float(current_query.total_revenue or 0)
+            current_count = int(current_query.order_count or 0)
+            
+            # Previous period for growth comparison
+            prev_query = db.query(
+                func.coalesce(func.sum(OrderModel.total_amount), 0).label("total_revenue")
+            ).filter(
+                OrderModel.user_id == self.vendor_id,
+                OrderModel.created_at >= prev_start,
+                OrderModel.created_at < start_date,
+                OrderModel.status.in_(["paid", "fulfilled"])
+            ).first()
+            
+            prev_revenue = float(prev_query.total_revenue or 0)
+            
+            # Calculate growth
+            if prev_revenue > 0:
+                growth = ((current_revenue - prev_revenue) / prev_revenue) * 100
+            elif current_revenue > 0:
+                growth = 100.0  # All new revenue
+            else:
+                growth = 0.0
+            
+            return RevenueMetrics(
+                period=period.value,
+                total_revenue_ngn=current_revenue,
+                order_count=current_count,
+                average_order_value=current_revenue / current_count if current_count > 0 else 0,
+                growth_percent=round(growth, 1)
+            )
     
     def get_top_products(self, limit: int = 5, period: TimePeriod = TimePeriod.MONTH) -> List[ProductPerformance]:
-        """Get best-selling products."""
-        now = datetime.now()
+        """Get best-selling products from real order data."""
+        from ..models import Order as OrderModel, OrderItem as OrderItemModel, Product as ProductModel
         
-        if period == TimePeriod.MONTH:
-            start_date = now - timedelta(days=30)
-        elif period == TimePeriod.WEEK:
-            start_date = now - timedelta(days=7)
-        else:
-            start_date = now - timedelta(days=30)
+        start_date = self._get_period_start(period)
         
-        # Aggregate by product
-        product_sales: Dict[str, Dict] = {}
-        
-        for order in self._mock_orders:
-            if datetime.fromisoformat(order["created_at"]) >= start_date:
-                pid = order["product_id"]
-                if pid not in product_sales:
-                    product_sales[pid] = {
-                        "product_id": pid,
-                        "product_name": order["product_name"],
-                        "category": order["category"],
-                        "units_sold": 0,
-                        "revenue_ngn": 0
-                    }
-                product_sales[pid]["units_sold"] += order["quantity"]
-                product_sales[pid]["revenue_ngn"] += order["total_amount"]
-        
-        # Sort by revenue
-        sorted_products = sorted(
-            product_sales.values(),
-            key=lambda x: x["revenue_ngn"],
-            reverse=True
-        )[:limit]
-        
-        # Add stock info
-        result = []
-        for p in sorted_products:
-            stock = next(
-                (prod["stock"] for prod in self._mock_products if prod["id"] == p["product_id"]),
-                0
-            )
-            result.append(ProductPerformance(
-                product_id=p["product_id"],
-                product_name=p["product_name"],
-                units_sold=p["units_sold"],
-                revenue_ngn=p["revenue_ngn"],
-                stock_remaining=stock,
-                category=p["category"]
-            ))
-        
-        return result
+        with self._get_db_session() as db:
+            # Join orders with order items to get sales data
+            results = db.query(
+                OrderItemModel.product_id,
+                OrderItemModel.product_name,
+                func.sum(OrderItemModel.quantity).label("units_sold"),
+                func.sum(OrderItemModel.total).label("revenue"),
+            ).join(
+                OrderModel, OrderModel.id == OrderItemModel.order_id
+            ).filter(
+                OrderModel.user_id == self.vendor_id,
+                OrderModel.created_at >= start_date,
+                OrderModel.status.in_(["paid", "fulfilled"])
+            ).group_by(
+                OrderItemModel.product_id,
+                OrderItemModel.product_name
+            ).order_by(
+                desc("revenue")
+            ).limit(limit).all()
+            
+            top_products = []
+            for row in results:
+                # Get current stock level
+                product = db.query(ProductModel).filter(
+                    ProductModel.id == row.product_id
+                ).first()
+                
+                stock = int(product.stock_level) if product else 0
+                category = product.category or "Uncategorized" if product else "Uncategorized"
+                
+                top_products.append(ProductPerformance(
+                    product_id=str(row.product_id),
+                    product_name=row.product_name,
+                    units_sold=int(row.units_sold),
+                    revenue_ngn=float(row.revenue),
+                    stock_remaining=stock,
+                    category=category,
+                ))
+            
+            return top_products
     
     def get_top_customers(self, limit: int = 5) -> List[CustomerInsight]:
-        """Get top customers by spending."""
-        customer_data: Dict[str, Dict] = {}
+        """Get top customers by spending from real order data."""
+        from ..models import Order as OrderModel, OrderItem as OrderItemModel
         
-        for order in self._mock_orders:
-            phone = order["customer_phone"]
-            if phone not in customer_data:
-                customer_data[phone] = {
-                    "customer_phone": phone,
-                    "customer_name": order["customer_name"],
-                    "total_orders": 0,
-                    "total_spent_ngn": 0,
-                    "last_order_date": order["created_at"],
-                    "categories": {}
-                }
+        with self._get_db_session() as db:
+            results = db.query(
+                OrderModel.customer_phone,
+                func.count(OrderModel.id).label("total_orders"),
+                func.sum(OrderModel.total_amount).label("total_spent"),
+                func.max(OrderModel.created_at).label("last_order"),
+            ).filter(
+                OrderModel.user_id == self.vendor_id,
+                OrderModel.status.in_(["paid", "fulfilled"])
+            ).group_by(
+                OrderModel.customer_phone
+            ).order_by(
+                desc("total_spent")
+            ).limit(limit).all()
             
-            customer_data[phone]["total_orders"] += 1
-            customer_data[phone]["total_spent_ngn"] += order["total_amount"]
+            customers = []
+            for row in results:
+                # Get the most-purchased category for this customer
+                fav_cat_query = db.query(
+                    OrderItemModel.product_name,
+                    func.count(OrderItemModel.id).label("cnt")
+                ).join(
+                    OrderModel, OrderModel.id == OrderItemModel.order_id
+                ).filter(
+                    OrderModel.customer_phone == row.customer_phone,
+                    OrderModel.user_id == self.vendor_id,
+                ).group_by(
+                    OrderItemModel.product_name
+                ).order_by(desc("cnt")).first()
+                
+                fav_category = fav_cat_query.product_name if fav_cat_query else "N/A"
+                
+                customers.append(CustomerInsight(
+                    customer_phone=row.customer_phone,
+                    customer_name=row.customer_phone,  # Phone as name until we have customer names
+                    total_orders=int(row.total_orders),
+                    total_spent_ngn=float(row.total_spent),
+                    last_order_date=row.last_order,
+                    favorite_category=fav_category,
+                ))
             
-            cat = order["category"]
-            customer_data[phone]["categories"][cat] = customer_data[phone]["categories"].get(cat, 0) + 1
-            
-            if order["created_at"] > customer_data[phone]["last_order_date"]:
-                customer_data[phone]["last_order_date"] = order["created_at"]
-        
-        sorted_customers = sorted(
-            customer_data.values(),
-            key=lambda x: x["total_spent_ngn"],
-            reverse=True
-        )[:limit]
-        
-        result = []
-        for c in sorted_customers:
-            fav_cat = max(c["categories"], key=c["categories"].get) if c["categories"] else "Unknown"
-            result.append(CustomerInsight(
-                customer_phone=c["customer_phone"],
-                customer_name=c["customer_name"],
-                total_orders=c["total_orders"],
-                total_spent_ngn=c["total_spent_ngn"],
-                last_order_date=datetime.fromisoformat(c["last_order_date"]),
-                favorite_category=fav_cat
-            ))
-        
-        return result
+            return customers
     
     def get_low_stock_alerts(self, threshold: int = 5) -> List[Dict]:
-        """Get products with stock below threshold."""
-        return [
-            {
-                "product_id": p["id"],
-                "product_name": p["name"],
-                "stock_remaining": p["stock"],
-                "category": p["category"],
-                "alert_level": "critical" if p["stock"] <= 2 else "warning"
-            }
-            for p in self._mock_products
-            if p["stock"] <= threshold
-        ]
+        """Get products with stock below threshold from real database."""
+        from ..models import Product as ProductModel
+        
+        with self._get_db_session() as db:
+            products = db.query(ProductModel).filter(
+                ProductModel.user_id == self.vendor_id,
+                ProductModel.stock_level <= threshold
+            ).order_by(ProductModel.stock_level).all()
+            
+            return [
+                {
+                    "product_id": str(p.id),
+                    "product_name": p.name,
+                    "stock_remaining": int(p.stock_level),
+                    "category": p.category or "Uncategorized",
+                    "alert_level": "critical" if p.stock_level <= 2 else "warning"
+                }
+                for p in products
+            ]
     
     def get_category_breakdown(self) -> List[Dict]:
-        """Get revenue breakdown by category."""
-        category_revenue: Dict[str, float] = {}
+        """Get revenue breakdown by category from real order data."""
+        from ..models import Order as OrderModel, OrderItem as OrderItemModel, Product as ProductModel
         
-        for order in self._mock_orders:
-            cat = order["category"]
-            category_revenue[cat] = category_revenue.get(cat, 0) + order["total_amount"]
+        with self._get_db_session() as db:
+            results = db.query(
+                ProductModel.category,
+                func.sum(OrderItemModel.total).label("revenue"),
+            ).join(
+                OrderItemModel, OrderItemModel.product_id == ProductModel.id
+            ).join(
+                OrderModel, OrderModel.id == OrderItemModel.order_id
+            ).filter(
+                OrderModel.user_id == self.vendor_id,
+                OrderModel.status.in_(["paid", "fulfilled"])
+            ).group_by(
+                ProductModel.category
+            ).order_by(desc("revenue")).all()
+            
+            total = sum(float(r.revenue or 0) for r in results) or 1
+            
+            return [
+                {
+                    "category": r.category or "Uncategorized",
+                    "revenue_ngn": float(r.revenue or 0),
+                    "percentage": round((float(r.revenue or 0) / total) * 100, 1)
+                }
+                for r in results
+            ]
+    
+    def get_recent_orders(self, limit: int = 10) -> List[Dict]:
+        """Get recent orders from real database."""
+        from ..models import Order as OrderModel, OrderItem as OrderItemModel
         
-        total = sum(category_revenue.values())
-        
-        return [
-            {
-                "category": cat,
-                "revenue_ngn": rev,
-                "percentage": round((rev / total) * 100, 1) if total > 0 else 0
-            }
-            for cat, rev in sorted(category_revenue.items(), key=lambda x: x[1], reverse=True)
-        ]
+        with self._get_db_session() as db:
+            orders = db.query(OrderModel).filter(
+                OrderModel.user_id == self.vendor_id
+            ).order_by(desc(OrderModel.created_at)).limit(limit).all()
+            
+            result = []
+            for order in orders:
+                items = db.query(OrderItemModel).filter(
+                    OrderItemModel.order_id == order.id
+                ).all()
+                
+                result.append({
+                    "id": str(order.id),
+                    "customer_phone": order.customer_phone,
+                    "total_amount": float(order.total_amount),
+                    "status": order.status,
+                    "created_at": order.created_at.isoformat() if order.created_at else "",
+                    "items": [
+                        {
+                            "product_name": item.product_name,
+                            "quantity": item.quantity,
+                            "price": float(item.price),
+                            "total": float(item.total),
+                        }
+                        for item in items
+                    ]
+                })
+            
+            return result
     
     def get_dashboard(self, period: TimePeriod = TimePeriod.MONTH) -> DashboardData:
-        """Get complete dashboard data."""
+        """Get complete dashboard data from real database."""
         revenue = self.get_revenue_metrics(period)
         top_products = self.get_top_products(5, period)
         top_customers = self.get_top_customers(5)
         low_stock = self.get_low_stock_alerts()
+        recent_orders = self.get_recent_orders(10)
         
         return DashboardData(
             revenue=revenue,
             top_products=top_products,
             top_customers=top_customers,
-            recent_orders=self._mock_orders[:10],
+            recent_orders=recent_orders,
             low_stock_alerts=low_stock,
             period_comparison={
                 "vs_previous": f"{revenue.growth_percent:+.1f}%",
@@ -320,18 +356,24 @@ class AnalyticsService:
         )
     
     def format_daily_summary(self, style: str = "street") -> str:
-        """Format daily summary for WhatsApp."""
+        """Format daily summary for WhatsApp from real data."""
         today = self.get_revenue_metrics(TimePeriod.TODAY)
         week = self.get_revenue_metrics(TimePeriod.WEEK)
         low_stock = self.get_low_stock_alerts(3)
+        top_products = self.get_top_products(3, TimePeriod.TODAY)
         
         if style == "street":
-            summary = f"""📊 *OwoFlow Daily Update*
+            summary = f"""📊 *KOFA Daily Update*
 
 💰 Today: ₦{today.total_revenue_ngn:,.0f} ({today.order_count} orders)
 📈 This week: ₦{week.total_revenue_ngn:,.0f}
 {'🔥' if today.growth_percent > 0 else '📉'} Growth: {today.growth_percent:+.1f}%
 """
+            if top_products:
+                summary += "\n🏆 *Top Sellers Today:*\n"
+                for i, p in enumerate(top_products, 1):
+                    summary += f"{i}. {p.product_name} — {p.units_sold} sold (₦{p.revenue_ngn:,.0f})\n"
+            
             if low_stock:
                 summary += "\n⚠️ *Low Stock Alert:*\n"
                 for item in low_stock[:3]:
@@ -344,6 +386,11 @@ Orders: {today.order_count}
 Weekly Total: ₦{week.total_revenue_ngn:,.0f}
 Growth: {today.growth_percent:+.1f}%
 """
+            if top_products:
+                summary += "\n🏆 *Best Performing Products:*\n"
+                for i, p in enumerate(top_products, 1):
+                    summary += f"{i}. {p.product_name} — {p.units_sold} units (₦{p.revenue_ngn:,.0f})\n"
+            
             if low_stock:
                 summary += "\n⚠️ *Inventory Alerts:*\n"
                 for item in low_stock[:3]:
@@ -354,52 +401,58 @@ Growth: {today.growth_percent:+.1f}%
     def get_cross_platform_analytics(self) -> Dict:
         """
         Get analytics breakdown by platform (WhatsApp, Instagram, TikTok).
-        Aggregates message counts, response times, and conversion rates.
+        Uses real order data for WhatsApp metrics, message stores for others.
         """
-        from ..routers import instagram, tiktok
+        from ..models import Order as OrderModel
         
-        # Get platform-specific stats
+        with self._get_db_session() as db:
+            # Real WhatsApp data from orders
+            wa_orders = db.query(
+                func.count(OrderModel.id).label("count"),
+                func.coalesce(func.sum(OrderModel.total_amount), 0).label("revenue")
+            ).filter(
+                OrderModel.user_id == self.vendor_id,
+                OrderModel.status.in_(["paid", "fulfilled"])
+            ).first()
+            
+            wa_count = int(wa_orders.count or 0)
+            wa_revenue = float(wa_orders.revenue or 0)
+        
+        # Get platform-specific message counts
         try:
+            from ..routers import instagram
             ig_messages = instagram.INSTAGRAM_MESSAGES
-        except:
+        except Exception:
             ig_messages = []
         
         try:
+            from ..routers import tiktok
             tt_messages = tiktok.TIKTOK_MESSAGES
-        except:
+        except Exception:
             tt_messages = []
         
-        # Calculate stats per platform
         platforms = {
             "whatsapp": {
-                "total_messages": len([o for o in self._mock_orders]),  # Estimate from orders
-                "customer_messages": len([o for o in self._mock_orders if o.get("status") != "fulfilled"]),
-                "bot_replies": len([o for o in self._mock_orders]),
-                "orders_generated": len(self._mock_orders),
-                "revenue_ngn": sum(o["total_amount"] for o in self._mock_orders)
+                "total_messages": wa_count * 3,  # Estimate: ~3 messages per order
+                "orders_generated": wa_count,
+                "revenue_ngn": wa_revenue
             },
             "instagram": {
                 "total_messages": len(ig_messages),
-                "customer_messages": len([m for m in ig_messages if m.get("message_type") == "customer"]),
-                "bot_replies": len([m for m in ig_messages if m.get("message_type") == "bot"]),
-                "orders_generated": 0,  # Would track from IG-attributed orders
+                "orders_generated": 0,
                 "revenue_ngn": 0
             },
             "tiktok": {
                 "total_messages": len(tt_messages),
-                "customer_messages": len([m for m in tt_messages if m.get("message_type") == "customer"]),
-                "bot_replies": 0,  # TikTok has limited DM API
                 "orders_generated": 0,
                 "revenue_ngn": 0
             }
         }
         
-        # Calculate totals
         total_messages = sum(p["total_messages"] for p in platforms.values())
         total_orders = sum(p["orders_generated"] for p in platforms.values())
         total_revenue = sum(p["revenue_ngn"] for p in platforms.values())
         
-        # Find best performing platform
         best_platform = max(platforms.keys(), key=lambda p: platforms[p]["revenue_ngn"])
         
         return {
