@@ -3,7 +3,7 @@ Unified AI Client for KOFA
 Handles Groq (primary) → Gemini (backup) fallback
 Plus context injection for product/inventory awareness
 """
-from typing import Optional, List, Dict
+from typing import List, Dict
 from .groq_client import send_to_groq
 from .gemini_client import send_to_gemini
 

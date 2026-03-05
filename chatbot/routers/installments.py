@@ -5,7 +5,7 @@ BNPL (Buy Now Pay Later) endpoints.
 """
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import Optional
 
 from ..services.installments import installment_service
 

@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException, APIRouter, UploadFile, File, Request
-from fastapi.responses import PlainTextResponse, JSONResponse
+from fastapi.responses import PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, validator
 from typing import Optional, List, Dict
@@ -23,7 +23,6 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # #region agent log - FastAPI startup
-import os
 import json
 
 def log_to_file(message, data=None):
@@ -59,7 +58,7 @@ from .services.bulk_operations import bulk_service
 from .services.payments import paystack_service, PaymentLinkRequest
 from .services.subscription import subscription_service, SubscriptionTier
 from .services.privacy import privacy_service, ConsentType
-from .services.localization import localization_service, Language, t
+from .services.localization import localization_service, Language
 from .services import storage_service
 from .routers import (
     expenses, analytics, invoice, 
@@ -584,7 +583,6 @@ async def get_orders(status: Optional[str] = None):
     if cached is not None:
         return cached
     
-    from datetime import timedelta
     from sqlalchemy.orm import joinedload
     
     all_orders = []
@@ -592,7 +590,7 @@ async def get_orders(status: Optional[str] = None):
     # Try to fetch from database first
     try:
         from .database import SessionLocal
-        from .models import Order as OrderModel, OrderItem as OrderItemModel
+        from .models import Order as OrderModel
         
         db = SessionLocal()
         try:
@@ -822,7 +820,6 @@ async def process_message(request: MessageRequest):
     3. Handle multiple matches by asking user to choose
     4. Remember context for follow-up queries
     """
-    from .conversation import conversation_manager
     
     user_id = request.user_id
     text = request.message_text

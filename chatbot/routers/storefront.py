@@ -140,7 +140,7 @@ def _build_product_card(product: dict, vendor_phone: str) -> str:
     elif stock <= 10:
         stock_badge = f'<span class="stock-badge stock-med">{stock} in stock</span>'
     else:
-        stock_badge = f'<span class="stock-badge stock-ok">In Stock</span>'
+        stock_badge = '<span class="stock-badge stock-ok">In Stock</span>'
 
     # Product image or placeholder
     if image_url:

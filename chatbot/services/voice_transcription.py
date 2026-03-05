@@ -4,7 +4,6 @@ Uses Google Gemini API for FREE voice transcription with Nigerian English suppor
 """
 import os
 import aiohttp
-import tempfile
 import base64
 from typing import Optional, Tuple
 

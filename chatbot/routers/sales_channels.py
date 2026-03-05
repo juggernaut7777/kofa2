@@ -4,10 +4,9 @@ Sales Channels API Router
 Multi-platform order aggregation endpoints.
 "One dashboard to rule them all"
 """
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, Query
 from pydantic import BaseModel
 from typing import List, Optional
-from datetime import datetime
 
 from ..services.sales_channels import sales_channels_service, SalesChannel
 

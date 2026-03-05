@@ -4,7 +4,7 @@ Sales Analytics Service for Nigerian SME Dashboard
 Provides revenue tracking, bestsellers, and customer insights.
 PRIVACY: All analytics are vendor-scoped. Each vendor only sees their own data.
 """
-from typing import List, Dict, Optional
+from typing import List, Dict
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum

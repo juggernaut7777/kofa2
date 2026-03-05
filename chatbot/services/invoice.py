@@ -7,7 +7,6 @@ from typing import List, Dict, Optional
 from dataclasses import dataclass, field
 from datetime import datetime
 import uuid
-import os
 
 
 @dataclass

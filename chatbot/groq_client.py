@@ -4,8 +4,7 @@ FREE AI API - 14,400 requests/day
 """
 import os
 import httpx
-import json
-from typing import Optional, Dict, Any
+from typing import Optional
 
 # Groq API configuration
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")

@@ -2,8 +2,7 @@
 KOFA Subscription & Pricing Service
 Manages freemium tiers, usage limits, and subscription status.
 """
-import os
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, List
 from datetime import datetime, timedelta
 from enum import Enum
 from pydantic import BaseModel

@@ -5,7 +5,7 @@ PRIVACY: All prompts are vendor-scoped. The AI never sees cross-vendor data.
 """
 import json
 import re
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, List
 from .groq_client import send_to_groq
 from .inventory import InventoryManager
 
@@ -278,7 +278,7 @@ Current Inventory ({len(products)} products):
                     action_taken = "CHECK_STOCK"
                     action_result = f"📦 {product['name']}: {product['stock_level']} in stock, ₦{product['price_ngn']:,} each"
                 else:
-                    action_result = f"❌ Product not found"
+                    action_result = "❌ Product not found"
                     
             elif action_type == "LIST_PRODUCTS":
                 action_taken = "LIST_PRODUCTS"
@@ -321,7 +321,7 @@ Current Inventory ({len(products)} products):
                         f"  {'🔥' if revenue.growth_percent > 0 else '📉'} Growth: {revenue.growth_percent:+.1f}%"
                     )
                 except Exception:
-                    action_result = f"📊 Sales report is being set up. Add more sales to see detailed analytics!"
+                    action_result = "📊 Sales report is being set up. Add more sales to see detailed analytics!"
             
             elif action_type == "BEST_SELLERS":
                 action_taken = "BEST_SELLERS"
@@ -338,7 +338,7 @@ Current Inventory ({len(products)} products):
                 except Exception:
                     action_result = "📊 Best sellers report is being set up."
                     
-    except (json.JSONDecodeError, KeyError) as e:
+    except (json.JSONDecodeError, KeyError):
         pass  # No valid JSON action, just use AI response
     
     # Clean response (remove JSON if we executed it)
