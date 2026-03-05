@@ -3,9 +3,9 @@
 Recommendations API Router
 Product recommendations and personalization.
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List
 
 from ..services.recommendations import recommendation_service
 

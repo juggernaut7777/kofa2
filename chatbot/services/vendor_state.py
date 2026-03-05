@@ -3,8 +3,7 @@
 Tracks bot pause state and auto-silence for each vendor.
 """
 from datetime import datetime, timedelta
-from typing import Dict, Optional
-import os
+from typing import Dict
 
 # In-memory store (use Supabase in production)
 # Structure: {vendor_id: {is_paused, paused_at, customer_activity: {customer_id: last_active_at}}}

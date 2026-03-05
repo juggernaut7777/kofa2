@@ -2,7 +2,7 @@
 Conversation state management for smart multi-turn chatbot.
 Tracks context so the bot remembers what products were discussed.
 """
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional
 from datetime import datetime, timedelta
 
 

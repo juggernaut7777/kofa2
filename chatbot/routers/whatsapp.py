@@ -3,8 +3,6 @@ from fastapi import APIRouter, Request, Response, HTTPException
 from pydantic import BaseModel
 from typing import Optional, List
 import json
-import hmac
-import hashlib
 
 router = APIRouter()
 
@@ -44,7 +42,7 @@ async def verify_webhook(request: Request):
     challenge = params.get("hub.challenge")
     
     if mode == "subscribe" and token == VERIFY_TOKEN:
-        print(f"✅ WhatsApp webhook verified successfully")
+        print("✅ WhatsApp webhook verified successfully")
         return Response(content=challenge, media_type="text/plain")
     else:
         print(f"❌ Webhook verification failed: mode={mode}, token={token}")
@@ -151,7 +149,6 @@ async def process_whatsapp_message(message: WhatsAppMessage):
     5. Sends the response back via WhatsApp
     """
     from ..main import inventory_manager, intent_recognizer, response_formatter
-    from ..intent import Intent
     from ..services import vendor_state
     from ..services.voice_transcription import voice_service
     

@@ -2,7 +2,6 @@
 KOFA Privacy & NDPR Compliance Service
 Handles user consent, data handling, and Nigerian Data Protection Regulation compliance.
 """
-import os
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 from enum import Enum

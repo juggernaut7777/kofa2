@@ -5,7 +5,7 @@ Tracks orders from WhatsApp, Instagram, TikTok, Walk-in, etc.
 "One dashboard to rule them all"
 """
 from typing import Dict, List, Optional
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
 import random

@@ -4,7 +4,7 @@ Expenses router - tracks vendor business expenses in database.
 """
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional
 from datetime import datetime
 import uuid
 

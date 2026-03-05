@@ -68,7 +68,7 @@ async def send_to_gemini(
             else:
                 return None
                 
-    except Exception as e:
+    except Exception:
         return None
 
 
@@ -118,5 +118,5 @@ def send_to_gemini_sync(
             else:
                 return None
                 
-    except Exception as e:
+    except Exception:
         return None

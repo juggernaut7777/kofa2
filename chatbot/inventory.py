@@ -1,11 +1,10 @@
 """Inventory management with Azure SQL backend using SQLAlchemy."""
 from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any
-from sqlalchemy.orm import Session
-from sqlalchemy import or_, func
+from sqlalchemy import func
 from contextlib import contextmanager
 from .database import SessionLocal
-from .models import Product as ProductModel, User as UserModel
+from .models import Product as ProductModel
 import uuid
 import json
 import logging
@@ -475,7 +474,7 @@ class InventoryManager:
         Returns: List of matching products (may be empty only if truly nothing matches)
         """
         from fuzzywuzzy import fuzz
-        from .conversation import expand_query_with_synonyms, get_all_synonyms
+        from .conversation import get_all_synonyms
 
         with self._get_db_session() as db:
             query_lower = query.lower().strip()

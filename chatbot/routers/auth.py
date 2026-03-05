@@ -1,6 +1,6 @@
 # KOFA Auth Router - User Registration and Login
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, EmailStr, validator
+from pydantic import BaseModel, validator
 from typing import Optional
 from datetime import datetime
 import uuid

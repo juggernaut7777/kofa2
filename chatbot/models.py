@@ -6,7 +6,6 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
 import uuid
-import os
 
 # Use String(36) for UUIDs - works with both MySQL and SQL Server
 # UNIQUEIDENTIFIER is SQL Server specific

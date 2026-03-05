@@ -36,7 +36,7 @@ async def verify_webhook(request: Request):
     challenge = params.get("challenge")
     
     if challenge:
-        print(f"✅ TikTok webhook verified")
+        print("✅ TikTok webhook verified")
         return Response(content=challenge, media_type="text/plain")
     
     raise HTTPException(status_code=403, detail="Verification failed")

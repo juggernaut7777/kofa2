@@ -4,7 +4,7 @@ Handles incoming DMs and sends automated replies via Instagram Graph API.
 """
 from fastapi import APIRouter, Request, Response, HTTPException
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import List
 import json
 import os
 from datetime import datetime
@@ -48,7 +48,7 @@ async def verify_webhook(request: Request):
     challenge = params.get("hub.challenge")
     
     if mode == "subscribe" and token == VERIFY_TOKEN:
-        print(f"✅ Instagram webhook verified successfully")
+        print("✅ Instagram webhook verified successfully")
         return Response(content=challenge, media_type="text/plain")
     else:
         print(f"❌ Instagram webhook verification failed: mode={mode}, token={token}")
@@ -143,7 +143,6 @@ async def process_instagram_message(message: InstagramMessage):
     
     try:
         from ..main import inventory_manager, intent_recognizer, response_formatter
-        from ..intent import Intent
         
         # Recognize intent
         intent, entities = intent_recognizer.recognize(message.text)
