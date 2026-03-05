@@ -3,6 +3,10 @@ from fastapi import APIRouter, Request, Response, HTTPException
 from pydantic import BaseModel
 from typing import Optional, List
 import json
+import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -22,8 +26,8 @@ class WhatsAppWebhookPayload(BaseModel):
     entry: List[dict]
 
 
-# Verification token for webhook setup (should be in env vars in production)
-VERIFY_TOKEN = "owoflow_webhook_verify_token"
+# Verification token for webhook setup - SECURITY: Read from environment
+VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN", "")
 
 
 @router.get("/webhook")
@@ -256,6 +260,73 @@ def generate_chatbot_response(intent, entities, inventory_manager, formatter) ->
     
     else:
         return formatter.format_unknown_message() + follow_up
+
+
+async def create_order_and_send_payment(
+    customer_phone: str,
+    product: dict,
+    quantity: int,
+    inventory_manager
+) -> str:
+    """
+    Create an order and generate a Paystack payment link for WhatsApp.
+    
+    Returns a formatted WhatsApp message with the payment link.
+    """
+    from ..services.payments import paystack_service, PaymentLinkRequest
+    
+    price = float(product.get("price_ngn", 0))
+    total = price * quantity
+    product_name = product.get("name", "Product")
+    product_id = product.get("id", "")
+    
+    # Create real order in database
+    order = inventory_manager.create_order(
+        customer_phone=customer_phone,
+        items=[{"product_id": product_id, "quantity": quantity}],
+        total_amount_ngn=total,
+    )
+    
+    if not order:
+        return f"❌ Sorry, couldn't process your order for {product_name}. Please try again."
+    
+    # Generate Paystack payment link
+    try:
+        payment_request = PaymentLinkRequest(
+            order_id=order.order_id,
+            amount_ngn=total,
+            customer_phone=customer_phone,
+            description=f"KOFA Order: {quantity}x {product_name}",
+            vendor_id=inventory_manager.user_id,
+        )
+        
+        payment_url = await paystack_service.create_payment_link(payment_request)
+        
+        if payment_url:
+            return (
+                f"✅ *Order Created!*\n\n"
+                f"📦 {quantity}x {product_name}\n"
+                f"💰 Total: ₦{total:,.0f}\n"
+                f"🔗 Order ID: {order.order_id[:8]}...\n\n"
+                f"💳 *Pay securely here:*\n{payment_url}\n\n"
+                f"Your order will be confirmed once payment is received! 🎉"
+            )
+        else:
+            return (
+                f"✅ *Order Created!*\n\n"
+                f"📦 {quantity}x {product_name}\n"
+                f"💰 Total: ₦{total:,.0f}\n"
+                f"🔗 Order ID: {order.order_id[:8]}...\n\n"
+                f"💳 Payment link coming soon. The vendor will reach out! 📱"
+            )
+    except Exception as e:
+        logger.error(f"Payment link generation failed: {e}")
+        return (
+            f"✅ *Order Created!*\n\n"
+            f"📦 {quantity}x {product_name}\n"
+            f"💰 Total: ₦{total:,.0f}\n\n"
+            f"The vendor will contact you to arrange payment 📱"
+        )
 
 
 async def send_whatsapp_message(to_number: str, message_text: str):

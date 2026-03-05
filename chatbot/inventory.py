@@ -460,10 +460,91 @@ class InventoryManager:
             return [self._model_to_dict(p) for p in products]
 
     def create_order(self, customer_phone: str, items: List[Dict], total_amount_ngn: float) -> Optional[Order]:
-        """Create a new order (legacy method - kept for compatibility)."""
-        # This method is kept for compatibility but orders should be created via main.py
-        # which uses the Order model directly
-        return None
+        """
+        Create a new order and persist to database.
+        
+        Args:
+            customer_phone: Customer's phone number
+            items: List of dicts with 'product_id' and 'quantity'
+            total_amount_ngn: Total order amount in NGN
+            
+        Returns:
+            Order dataclass if successful, None if failed
+        """
+        from .models import Order as OrderModel, OrderItem as OrderItemModel
+        
+        order_id = str(uuid.uuid4())
+        
+        with self._get_db_session() as db:
+            try:
+                # Create the order
+                order = OrderModel(
+                    id=order_id,
+                    user_id=self.user_id,
+                    customer_phone=customer_phone,
+                    total_amount=total_amount_ngn,
+                    status="pending",
+                )
+                db.add(order)
+                db.flush()
+                
+                # Create order items and decrement stock
+                order_items_data = []
+                for item in items:
+                    product_id = item.get("product_id", "")
+                    quantity = item.get("quantity", 1)
+                    
+                    # Get product details
+                    product = db.query(ProductModel).filter(
+                        ProductModel.id == product_id,
+                        ProductModel.user_id == self.user_id
+                    ).first()
+                    
+                    if not product:
+                        logger.warning(f"Product {product_id} not found for order {order_id}")
+                        continue
+                    
+                    # Check and decrement stock
+                    if product.stock_level < quantity:
+                        logger.warning(f"Insufficient stock for {product.name}: have {product.stock_level}, need {quantity}")
+                        continue
+                    
+                    product.stock_level -= quantity
+                    
+                    item_total = float(product.price_ngn) * quantity
+                    order_item = OrderItemModel(
+                        id=str(uuid.uuid4()),
+                        order_id=order_id,
+                        product_id=product_id,
+                        product_name=product.name,
+                        quantity=quantity,
+                        price=float(product.price_ngn),
+                        total=item_total,
+                    )
+                    db.add(order_item)
+                    order_items_data.append({
+                        "product_id": product_id,
+                        "product_name": product.name,
+                        "quantity": quantity,
+                        "price": float(product.price_ngn),
+                        "total": item_total,
+                    })
+                
+                db.flush()
+                
+                logger.info(f"Order {order_id} created: {len(order_items_data)} items, ₦{total_amount_ngn:,.0f}")
+                
+                return Order(
+                    order_id=order_id,
+                    customer_phone=customer_phone,
+                    items=order_items_data,
+                    status="pending",
+                    total_amount_ngn=total_amount_ngn,
+                )
+                
+            except Exception as e:
+                logger.error(f"Error creating order: {e}")
+                return None
 
     def smart_search_products(self, query: str) -> List[dict]:
         """
