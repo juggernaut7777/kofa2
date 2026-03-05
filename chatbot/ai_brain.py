@@ -35,16 +35,50 @@ IMPORTANT RULES:
 1. Respond in a professional, helpful manner using clear English only
 2. Do NOT use Pidgin, slang, or informal language
 3. Use ₦ for currency (Naira)
-4. When user wants to perform an action, respond with a JSON command
+4. When user wants to perform an action, include a JSON command in your response
+5. ALWAYS include the JSON when an action is needed — the system executes it automatically
 
 AVAILABLE ACTIONS (respond with JSON):
-- ADD_PRODUCT: {{"action": "ADD_PRODUCT", "name": "product name", "quantity": 10, "price": 5000}}
-- REMOVE_STOCK: {{"action": "REMOVE_STOCK", "product": "product name", "quantity": 1}}
+
+📦 INVENTORY MANAGEMENT:
+- ADD_PRODUCT: {{"action": "ADD_PRODUCT", "name": "product name", "quantity": 10, "price": 5000, "category": "optional category"}}
+- UPDATE_PRICE: {{"action": "UPDATE_PRICE", "product": "product name", "new_price": 6000}}
+- UPDATE_PRODUCT: {{"action": "UPDATE_PRODUCT", "product": "product name", "updates": {{"name": "new name", "price_ngn": 5000, "description": "new desc", "category": "new cat"}}}}
+- DELETE_PRODUCT: {{"action": "DELETE_PRODUCT", "product": "product name"}}
+- RESTOCK: {{"action": "RESTOCK", "product": "product name", "quantity": 20}}
 - CHECK_STOCK: {{"action": "CHECK_STOCK", "product": "product name"}}
 - LIST_PRODUCTS: {{"action": "LIST_PRODUCTS"}}
+- SEARCH_PRODUCT: {{"action": "SEARCH_PRODUCT", "query": "search term"}}
 - LOW_STOCK_ALERT: {{"action": "LOW_STOCK_ALERT", "threshold": 5}}
+
+💰 SALES:
+- RECORD_SALE: {{"action": "RECORD_SALE", "product": "product name", "quantity": 1, "customer": "optional phone/name"}}
+- REMOVE_STOCK: {{"action": "REMOVE_STOCK", "product": "product name", "quantity": 1}}
+
+📊 REPORTS:
 - SALES_REPORT: {{"action": "SALES_REPORT", "period": "today|week|month"}}
-- GENERATE_INVOICE: {{"action": "GENERATE_INVOICE", "customer": "phone or name", "items": [...]}}
+- BEST_SELLERS: {{"action": "BEST_SELLERS", "limit": 5}}
+
+EXAMPLES:
+User: "Add 50 red bags at 3000 naira"
+You: I'll add that to your inventory right away.
+{{"action": "ADD_PRODUCT", "name": "Red Bags", "quantity": 50, "price": 3000}}
+
+User: "I just sold 2 Nike shoes"
+You: Let me record that sale.
+{{"action": "RECORD_SALE", "product": "Nike shoes", "quantity": 2}}
+
+User: "Change price of blue jeans to 8000"
+You: Updating the price now.
+{{"action": "UPDATE_PRICE", "product": "blue jeans", "new_price": 8000}}
+
+User: "Delete the broken charger from my store"
+You: I'll remove that product from your inventory.
+{{"action": "DELETE_PRODUCT", "product": "broken charger"}}
+
+User: "I got 100 more t-shirts delivered"
+You: Great! Let me update your stock.
+{{"action": "RESTOCK", "product": "t-shirts", "quantity": 100}}
 
 If the user's intent is unclear, ask clarifying questions.
 If it's just conversation, respond naturally without JSON.
@@ -142,48 +176,120 @@ Current Inventory ({len(products)} products):
     action_taken = None
     
     try:
-        # Look for JSON in response
-        json_match = re.search(r'\{[^{}]+\}', ai_response)
+        # Look for JSON in response (support nested objects too)
+        json_match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', ai_response)
         if json_match:
             action_data = json.loads(json_match.group())
             action_type = action_data.get("action")
             
+            # ===== INVENTORY MANAGEMENT =====
+            
             if action_type == "ADD_PRODUCT":
-                result = inventory_manager.add_product({
+                product_data = {
                     "name": action_data.get("name"),
                     "stock_level": action_data.get("quantity", 0),
                     "price_ngn": action_data.get("price", 0),
-                    "voice_tags": [action_data.get("name", "").lower()]
-                })
+                    "voice_tags": [action_data.get("name", "").lower()],
+                }
+                if action_data.get("category"):
+                    product_data["category"] = action_data["category"]
+                result = inventory_manager.add_product(product_data)
                 action_taken = "ADD_PRODUCT"
-                action_result = f"✅ Added {action_data.get('name')} - {action_data.get('quantity')} units at ₦{action_data.get('price')}"
+                qty = action_data.get('quantity', 0)
+                price = action_data.get('price', 0)
+                action_result = f"✅ Added {action_data.get('name')} — {qty} units at ₦{price:,}"
                 
-            elif action_type == "REMOVE_STOCK":
+            elif action_type == "UPDATE_PRICE":
                 product = inventory_manager.get_product_by_name(action_data.get("product"))
                 if product:
-                    success = inventory_manager.decrement_stock(
+                    new_price = action_data.get("new_price", 0)
+                    inventory_manager.update_product_fields(
                         product["id"],
-                        action_data.get("quantity", 1)
+                        {"price_ngn": new_price}
                     )
-                    if success:
-                        action_taken = "REMOVE_STOCK"
-                        action_result = f"✅ Removed {action_data.get('quantity')} {action_data.get('product')} from stock"
-                    else:
-                        action_result = f"❌ Not enough stock to remove"
+                    action_taken = "UPDATE_PRICE"
+                    action_result = f"✅ Updated {product['name']} price: ₦{product['price_ngn']:,} → ₦{new_price:,}"
+                else:
+                    action_result = f"❌ Product '{action_data.get('product')}' not found"
+            
+            elif action_type == "UPDATE_PRODUCT":
+                product = inventory_manager.get_product_by_name(action_data.get("product"))
+                if product:
+                    updates = action_data.get("updates", {})
+                    inventory_manager.update_product_fields(product["id"], updates)
+                    action_taken = "UPDATE_PRODUCT"
+                    changed = ", ".join(f"{k}={v}" for k, v in updates.items())
+                    action_result = f"✅ Updated {product['name']}: {changed}"
                 else:
                     action_result = f"❌ Product '{action_data.get('product')}' not found"
                     
+            elif action_type == "DELETE_PRODUCT":
+                product = inventory_manager.get_product_by_name(action_data.get("product"))
+                if product:
+                    inventory_manager.delete_product(product["id"])
+                    action_taken = "DELETE_PRODUCT"
+                    action_result = f"✅ Deleted {product['name']} from inventory"
+                else:
+                    action_result = f"❌ Product '{action_data.get('product')}' not found"
+                    
+            elif action_type == "RESTOCK":
+                product = inventory_manager.get_product_by_name(action_data.get("product"))
+                if product:
+                    qty = action_data.get("quantity", 0)
+                    inventory_manager.update_stock(product["id"], qty)
+                    new_stock = product["stock_level"] + qty
+                    action_taken = "RESTOCK"
+                    action_result = f"✅ Restocked {product['name']}: +{qty} units (now {new_stock} total)"
+                else:
+                    action_result = f"❌ Product '{action_data.get('product')}' not found"
+            
+            elif action_type == "SEARCH_PRODUCT":
+                query = action_data.get("query", "")
+                found = inventory_manager.smart_search_products(query)
+                action_taken = "SEARCH_PRODUCT"
+                if found:
+                    items = "\n".join([f"  📦 {p['name']}: {p['stock_level']} in stock, ₦{p['price_ngn']:,}" for p in found[:10]])
+                    action_result = f"🔍 Found {len(found)} product(s):\n{items}"
+                else:
+                    action_result = f"❌ No products found matching '{query}'"
+            
+            # ===== SALES =====
+            
+            elif action_type == "RECORD_SALE" or action_type == "REMOVE_STOCK":
+                product = inventory_manager.get_product_by_name(action_data.get("product"))
+                if product:
+                    qty = action_data.get("quantity", 1)
+                    success = inventory_manager.decrement_stock(product["id"], qty)
+                    if success:
+                        action_taken = action_type
+                        revenue = product['price_ngn'] * qty
+                        remaining = product['stock_level'] - qty
+                        action_result = f"✅ Sold {qty}x {product['name']} — ₦{revenue:,} revenue ({remaining} left in stock)"
+                    else:
+                        action_result = f"❌ Not enough stock. You only have {product['stock_level']} {product['name']} left."
+                else:
+                    action_result = f"❌ Product '{action_data.get('product')}' not found"
+                    
+            # ===== INVENTORY QUERIES =====
+            
             elif action_type == "CHECK_STOCK":
                 product = inventory_manager.get_product_by_name(action_data.get("product"))
                 if product:
                     action_taken = "CHECK_STOCK"
-                    action_result = f"📦 {product['name']}: {product['stock_level']} in stock, ₦{product['price_ngn']} each"
+                    action_result = f"📦 {product['name']}: {product['stock_level']} in stock, ₦{product['price_ngn']:,} each"
                 else:
                     action_result = f"❌ Product not found"
                     
             elif action_type == "LIST_PRODUCTS":
                 action_taken = "LIST_PRODUCTS"
-                action_result = f"📋 You have {len(products)} products in inventory"
+                if products:
+                    items = "\n".join([f"  • {p['name']}: {p['stock_level']} units, ₦{p['price_ngn']:,}" for p in products[:15]])
+                    total_value = sum(p['price_ngn'] * p['stock_level'] for p in products)
+                    action_result = f"📋 Inventory ({len(products)} products, total value: ₦{total_value:,}):\n{items}"
+                    if len(products) > 15:
+                        action_result += f"\n  ... and {len(products) - 15} more"
+                else:
+                    action_result = "📋 Your inventory is empty. Say 'Add [product] at [price]' to get started!"
                 
             elif action_type == "LOW_STOCK_ALERT":
                 threshold = action_data.get("threshold", 5)
@@ -193,7 +299,44 @@ Current Inventory ({len(products)} products):
                     items = "\n".join([f"  ⚠️ {p['name']}: only {p['stock_level']} left" for p in low_stock[:10]])
                     action_result = f"🚨 Low Stock Alert ({len(low_stock)} items):\n{items}"
                 else:
-                    action_result = f"✅ No items below {threshold} units"
+                    action_result = f"✅ All good! No items below {threshold} units"
+            
+            # ===== REPORTS =====
+            
+            elif action_type == "SALES_REPORT":
+                action_taken = "SALES_REPORT"
+                # Use analytics service for reports
+                try:
+                    from .services.analytics import get_analytics_service, TimePeriod
+                    period_str = action_data.get("period", "month")
+                    period_map = {"today": TimePeriod.TODAY, "week": TimePeriod.WEEK, "month": TimePeriod.MONTH}
+                    period = period_map.get(period_str, TimePeriod.MONTH)
+                    analytics = get_analytics_service(user_id)
+                    revenue = analytics.get_revenue_metrics(period)
+                    action_result = (
+                        f"📊 Sales Report ({period_str.title()}):\n"
+                        f"  💰 Revenue: ₦{revenue.total_revenue_ngn:,.0f}\n"
+                        f"  📦 Orders: {revenue.order_count}\n"
+                        f"  📈 Avg Order: ₦{revenue.average_order_value:,.0f}\n"
+                        f"  {'🔥' if revenue.growth_percent > 0 else '📉'} Growth: {revenue.growth_percent:+.1f}%"
+                    )
+                except Exception:
+                    action_result = f"📊 Sales report is being set up. Add more sales to see detailed analytics!"
+            
+            elif action_type == "BEST_SELLERS":
+                action_taken = "BEST_SELLERS"
+                try:
+                    from .services.analytics import get_analytics_service
+                    analytics = get_analytics_service(user_id)
+                    limit = action_data.get("limit", 5)
+                    top = analytics.get_top_products(limit)
+                    if top:
+                        items = "\n".join([f"  {i+1}. {p.product_name}: {p.units_sold} sold, ₦{p.revenue_ngn:,.0f}" for i, p in enumerate(top)])
+                        action_result = f"🏆 Best Sellers:\n{items}"
+                    else:
+                        action_result = "No sales data yet. Start selling to see your best sellers!"
+                except Exception:
+                    action_result = "📊 Best sellers report is being set up."
                     
     except (json.JSONDecodeError, KeyError) as e:
         pass  # No valid JSON action, just use AI response
