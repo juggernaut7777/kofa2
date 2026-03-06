@@ -51,7 +51,6 @@ class Product(Base):
     category = Column(String(100), nullable=True, index=True)
     image_url = Column(Text, nullable=True)
     voice_tags = Column(Text, nullable=True)  # JSON string
-    has_variants = Column(Integer, default=0)  # 1 if product has size/color variants
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
