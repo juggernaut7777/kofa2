@@ -30,7 +30,6 @@ class User(Base):
     payment_method = Column(String(50), default="bank_transfer")
     bot_style = Column(String(20), default="corporate")
     is_active = Column(Integer, default=1)
-    default_currency = Column(String(3), default="NGN")  # Multi-currency support
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
