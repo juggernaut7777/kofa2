@@ -71,7 +71,7 @@ class RegisterRequest(BaseModel):
 
 class LoginRequest(BaseModel):
     """User login request."""
-    email: str
+    email_or_phone: str
     password: str
 
 
@@ -324,11 +324,14 @@ async def login(request: LoginRequest):
         
         db = SessionLocal()
         try:
-            # Find user by email
-            user = db.query(User).filter(User.email == request.email.lower().strip()).first()
+            # Find user by email or phone
+            login_id = request.email_or_phone.lower().strip()
+            user = db.query(User).filter(
+                (User.email == login_id) | (User.phone == request.email_or_phone.strip())
+            ).first()
             
             if not user:
-                raise HTTPException(status_code=401, detail="Invalid email or password")
+                raise HTTPException(status_code=401, detail="Invalid email/phone or password")
             
             # Check password from database
             if not user.password_hash:
@@ -336,11 +339,11 @@ async def login(request: LoginRequest):
             
             # Verify password
             if not verify_password(request.password, user.password_hash):
-                raise HTTPException(status_code=401, detail="Invalid email or password")
+                raise HTTPException(status_code=401, detail="Invalid email/phone or password")
             
             return AuthResponse(
                 success=True,
-                user_id=user.id,
+                user_id=str(user.id),
                 email=user.email,
                 first_name=user.first_name or "User",
                 business_name=user.business_name,
