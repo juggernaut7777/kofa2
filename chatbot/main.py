@@ -76,8 +76,7 @@ app = FastAPI(
 # Configure CORS - SECURITY: Allow any frontend origin regex to prevent 400s
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[],
-    allow_origin_regex=r".*", # Accept any origin
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
