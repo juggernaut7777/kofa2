@@ -71,7 +71,7 @@ class RegisterRequest(BaseModel):
 
 class LoginRequest(BaseModel):
     """User login request."""
-    email_or_phone: str
+    email: str
     password: str
 
 
@@ -325,9 +325,10 @@ async def login(request: LoginRequest):
         db = SessionLocal()
         try:
             # Find user by email or phone
-            login_id = request.email_or_phone.lower().strip()
+            login_id = request.email.lower().strip()
+            # The frontend calls the field "email", but the user might type a phone number in it
             user = db.query(User).filter(
-                (User.email == login_id) | (User.phone == request.email_or_phone.strip())
+                (User.email == login_id) | (User.phone == request.email.strip())
             ).first()
             
             if not user:
