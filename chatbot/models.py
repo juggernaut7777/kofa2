@@ -46,7 +46,6 @@ class Product(Base):
     user_id = Column(GUID, ForeignKey("users.id"), nullable=False, index=True)
     name = Column(String(255), nullable=False)
     price_ngn = Column(Float, nullable=False)
-    cost_price = Column(Float, nullable=True)  # Cost of goods for accurate P&L
     stock_level = Column(Integer, default=0, nullable=False)
     description = Column(Text, nullable=True)
     category = Column(String(100), nullable=True, index=True)
