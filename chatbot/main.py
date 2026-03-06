@@ -73,13 +73,11 @@ app = FastAPI(
     version="2.0.0"
 )
 
-# Configure CORS - SECURITY: Restrict to known frontend origins
-_cors_origins_raw = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:5173")
-CORS_ORIGINS = [origin.strip() for origin in _cors_origins_raw.split(",") if origin.strip()]
-
+# Configure CORS - SECURITY: Allow any frontend origin regex to prevent 400s
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=CORS_ORIGINS,
+    allow_origins=[],
+    allow_origin_regex=r".*", # Accept any origin
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
