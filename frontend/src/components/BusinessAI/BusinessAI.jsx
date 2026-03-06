@@ -2,10 +2,13 @@ import React, { useState, useRef, useEffect, useContext } from 'react'
 import { useLocation } from 'react-router-dom'
 import { apiCall, API_ENDPOINTS } from '../../config/api'
 import { ThemeContext } from '../../context/ThemeContext'
+import { useAuth } from '../../context/AuthContext'
 import { Send, X, MessageCircle, Mic, Plus, Package, AlertCircle } from 'lucide-react'
 
-const BusinessAI = ({ userId = 'demo-user' }) => {
+const BusinessAI = () => {
     const { theme } = useContext(ThemeContext)
+    const { user } = useAuth()
+    const activeUserId = user?.id || 'demo-user'
     const isDark = theme === 'dark'
     const location = useLocation()
 
@@ -52,7 +55,7 @@ const BusinessAI = ({ userId = 'demo-user' }) => {
             const data = await apiCall(API_ENDPOINTS.BUSINESS_AI, {
                 method: 'POST',
                 body: JSON.stringify({
-                    user_id: userId,
+                    user_id: activeUserId,
                     message: userMessage
                 })
             })
