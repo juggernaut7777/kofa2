@@ -1,7 +1,11 @@
 import os
+from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import QueuePool
+
+# Load env vars from .env file (must be before any os.getenv calls)
+load_dotenv()
 
 # ========== DATABASE CONFIGURATION ==========
 # SECURITY: All credentials MUST come from environment variables
