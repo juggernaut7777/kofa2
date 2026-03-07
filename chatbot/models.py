@@ -46,7 +46,9 @@ class Product(Base):
     user_id = Column(GUID, ForeignKey("users.id"), nullable=False, index=True)
     name = Column(String(255), nullable=False)
     price_ngn = Column(Float, nullable=False)
+    cost_price = Column(Float, nullable=True)  # For accurate P&L calculations
     stock_level = Column(Integer, default=0, nullable=False)
+    has_variants = Column(Integer, default=0)  # 1 if product has size/color variants
     description = Column(Text, nullable=True)
     category = Column(String(100), nullable=True, index=True)
     image_url = Column(Text, nullable=True)
