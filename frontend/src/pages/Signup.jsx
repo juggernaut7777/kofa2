@@ -168,8 +168,8 @@ const Signup = () => {
 
                     <p className="text-center text-xs text-gray-400 mt-4">
                         By signing up, you agree to our{' '}
-                        <a href="#" className="text-[#0095FF]">Terms</a> and{' '}
-                        <a href="#" className="text-[#0095FF]">Privacy Policy</a>
+                        <Link to="/terms" className="text-[#0095FF]">Terms</Link> and{' '}
+                        <Link to="/privacy" className="text-[#0095FF]">Privacy Policy</Link>
                     </p>
                 </form>
 

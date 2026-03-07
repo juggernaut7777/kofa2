@@ -1,0 +1,2 @@
+2026-03-06 10:23:13,180 - chatbot.cache - WARNING - Redis not available, using in-memory cache: No module named 'redis'
+2026-03-06 10:39:05,474 - chatbot.cache - WARNING - Redis not available, using in-memory cache: No module named 'redis'
