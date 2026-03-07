@@ -263,7 +263,12 @@ const Landing = () => {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-gray-100 py-10 text-center text-sm text-muted">
+      <footer className="border-t border-gray-100 py-10 text-center text-sm text-muted space-y-3">
+        <div className="flex items-center justify-center gap-4">
+          <Link to="/privacy" className="hover:text-gray-600 transition-colors">Privacy Policy</Link>
+          <span className="text-gray-300">•</span>
+          <Link to="/terms" className="hover:text-gray-600 transition-colors">Terms of Service</Link>
+        </div>
         <p>© 2026 KOFA Commerce Engine. Built in Lagos.</p>
       </footer>
     </div>

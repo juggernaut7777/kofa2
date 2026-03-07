@@ -21,6 +21,9 @@ import Login from './pages/Login'
 import Signup from './pages/Signup'
 import Verify from './pages/Verify'
 import Shop from './pages/Shop'
+import PrivacyPolicy from './pages/PrivacyPolicy'
+import TermsOfService from './pages/TermsOfService'
+import CookieNotice from './components/CookieNotice'
 
 function App() {
   return (
@@ -33,6 +36,8 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/verify" element={<Verify />} />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/terms" element={<TermsOfService />} />
             <Route path="/shop/:shopName" element={<Shop />} />
 
             {/* Protected Routes - Redesigned UI (5 main pages) */}
@@ -70,6 +75,9 @@ function App() {
 
           {/* Business AI Assistant - Available on all pages */}
           <BusinessAI />
+
+          {/* Cookie Notice Banner */}
+          <CookieNotice />
         </Router>
       </ThemeProvider>
     </AuthProvider>
