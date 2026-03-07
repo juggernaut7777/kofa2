@@ -29,6 +29,8 @@ class User(Base):
     bank_account_name = Column(String(255), nullable=True)
     payment_method = Column(String(50), default="bank_transfer")
     bot_style = Column(String(20), default="corporate")
+    subscription_tier = Column(String(20), default="free", index=True)  # free, grow, pro
+    subscription_expires_at = Column(DateTime, nullable=True)
     is_active = Column(Integer, default=1)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -182,3 +184,31 @@ class RefreshToken(Base):
     revoked = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)
     last_used_at = Column(DateTime, nullable=True)
+
+
+class UsageTracking(Base):
+    """Monthly usage counters per vendor — persisted in DB to survive restarts."""
+    __tablename__ = "usage_tracking"
+    
+    id = Column(GUID, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(GUID, ForeignKey("users.id"), nullable=False, index=True)
+    period = Column(String(7), nullable=False, index=True)  # "2026-03"
+    orders_count = Column(Integer, default=0)
+    ai_queries_count = Column(Integer, default=0)
+    whatsapp_messages_count = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class TeamMember(Base):
+    """Team member invitations — Pro tier only. Allows staff to access a vendor's dashboard."""
+    __tablename__ = "team_members"
+    
+    id = Column(GUID, primary_key=True, default=lambda: str(uuid.uuid4()))
+    owner_id = Column(GUID, ForeignKey("users.id"), nullable=False, index=True)  # The vendor who owns the account
+    member_email = Column(String(255), nullable=False)
+    member_user_id = Column(GUID, ForeignKey("users.id"), nullable=True)  # Linked after they accept
+    role = Column(String(20), default="staff")  # "staff", "manager"
+    status = Column(String(20), default="pending")  # "pending", "active", "revoked"
+    invited_at = Column(DateTime, default=datetime.utcnow)
+    accepted_at = Column(DateTime, nullable=True)

@@ -132,72 +132,32 @@ VENDOR_SETTINGS: dict = {
     "subscription_tier": "free",  # "free" or "pro"
 }
 
-# ============== FREEMIUM LIMITS ==============
-FREEMIUM_LIMITS = {
-    "free": {
-        "max_products": 5,
-        "max_orders_per_month": 30,
-        "max_bot_conversations_per_month": 50,
-        "max_image_uploads": 3,
-    },
-    "pro": {
-        "max_products": 999999,  # Unlimited
-        "max_orders_per_month": 999999,
-        "max_bot_conversations_per_month": 999999,
-        "max_image_uploads": 999999,
-    }
-}
+# ============== DB-BACKED SUBSCRIPTION & USAGE ==============
+from .services.subscription import subscription_service, SubscriptionTier
 
-# Usage tracking (resets monthly)
-USAGE_TRACKING: dict = {
-    "orders_this_month": 0,
-    "bot_conversations_this_month": 0,
-    "month_started": datetime.now().strftime("%Y-%m"),
-}
-
-def get_subscription_tier() -> str:
-    """Get current subscription tier."""
-    return VENDOR_SETTINGS.get("subscription_tier", "free")
-
-def check_limit(limit_type: str) -> dict:
+def check_limit(limit_type: str, user_id: str = "default") -> dict:
     """
     Check if user has hit a freemium limit.
+    Uses database-backed usage tracking (survives Heroku restarts).
     Returns: {"allowed": bool, "current": int, "max": int, "upgrade_needed": bool}
     """
-    tier = get_subscription_tier()
-    limits = FREEMIUM_LIMITS.get(tier, FREEMIUM_LIMITS["free"])
-    
-    # Reset monthly counters if new month
-    current_month = datetime.now().strftime("%Y-%m")
-    if USAGE_TRACKING.get("month_started") != current_month:
-        USAGE_TRACKING["orders_this_month"] = 0
-        USAGE_TRACKING["bot_conversations_this_month"] = 0
-        USAGE_TRACKING["month_started"] = current_month
-    
-    if limit_type == "products":
-        current = len(inventory_manager.list_products())
-        max_allowed = limits["max_products"]
-    elif limit_type == "orders":
-        current = USAGE_TRACKING.get("orders_this_month", 0)
-        max_allowed = limits["max_orders_per_month"]
-    elif limit_type == "bot_conversations":
-        current = USAGE_TRACKING.get("bot_conversations_this_month", 0)
-        max_allowed = limits["max_bot_conversations_per_month"]
-    elif limit_type == "image_uploads":
-        # Count products with images
-        products = inventory_manager.list_products()
-        current = sum(1 for p in products if p.get("image_url"))
-        max_allowed = limits["max_image_uploads"]
-    else:
-        return {"allowed": True, "current": 0, "max": 999999, "upgrade_needed": False}
-    
-    allowed = current < max_allowed
-    return {
-        "allowed": allowed,
-        "current": current,
-        "max": max_allowed,
-        "upgrade_needed": not allowed and tier == "free"
-    }
+    from .database import SessionLocal
+    db = SessionLocal()
+    try:
+        if limit_type == "products":
+            user_inventory = InventoryManager(user_id=user_id)
+            current_count = len(user_inventory.list_products())
+            return subscription_service.check_product_limit(db, user_id, current_count)
+        elif limit_type == "orders":
+            return subscription_service.check_order_limit(db, user_id)
+        elif limit_type == "bot_conversations" or limit_type == "ai_queries":
+            return subscription_service.check_ai_limit(db, user_id)
+        elif limit_type == "whatsapp":
+            return subscription_service.check_whatsapp_limit(db, user_id)
+        else:
+            return {"allowed": True, "current": 0, "max": 999999, "upgrade_needed": False}
+    finally:
+        db.close()
 
 def safe_order_id(user_id: str, prod_id: str) -> str:
     """Generate a safe order ID from user and product IDs."""
@@ -773,8 +733,14 @@ After payment, reply "I paid" to confirm your order! ✅"""
         "source": "chatbot"
     }
     
-    # Increment order usage counter for freemium tracking
-    USAGE_TRACKING["orders_this_month"] = USAGE_TRACKING.get("orders_this_month", 0) + 1
+    # Increment order usage counter in database (persists across restarts)
+    try:
+        from .database import SessionLocal as _UsageSession
+        _udb = _UsageSession()
+        subscription_service.increment_order_count(_udb, inventory_manager.user_id)
+        _udb.close()
+    except Exception:
+        pass  # Don't block order on tracking failure
     
     # Persist order to database
     try:
@@ -842,18 +808,24 @@ async def process_message(request: MessageRequest):
     user_id = request.user_id
     text = request.message_text
     
-    # Check freemium bot conversation limit
-    bot_limit = check_limit("bot_conversations")
+    # Check freemium bot conversation limit (DB-backed)
+    bot_limit = check_limit("whatsapp", user_id)
     if not bot_limit["allowed"]:
         return MessageResponse(
-            response=f"⚠️ Monthly conversation limit reached ({bot_limit['max']} messages). The vendor needs to upgrade to Pro for unlimited bot conversations!",
+            response=f"⚠️ Monthly message limit reached. Upgrade your plan for more WhatsApp messages!",
             intent="limit_reached",
             product=None,
             payment_link=None
         )
     
-    # Increment bot conversation counter
-    USAGE_TRACKING["bot_conversations_this_month"] = USAGE_TRACKING.get("bot_conversations_this_month", 0) + 1
+    # Increment WhatsApp message counter in database
+    try:
+        from .database import SessionLocal as _WaSession
+        _wadb = _WaSession()
+        subscription_service.increment_whatsapp_count(_wadb, user_id)
+        _wadb.close()
+    except Exception:
+        pass
     
     # Get conversation state for this user
     state = conversation_manager.get_state(user_id)
@@ -1680,55 +1652,125 @@ async def get_payment_account(user_id: str = "default"):
 # ============== FREEMIUM USAGE & SUBSCRIPTION ==============
 
 @router.get("/usage")
-async def get_usage_stats():
-    """Get current usage stats for freemium tracking."""
-    tier = get_subscription_tier()
-    limits = FREEMIUM_LIMITS.get(tier, FREEMIUM_LIMITS["free"])
+async def get_usage_stats(request: Request):
+    """Get current usage stats — all data from database, survives restarts."""
+    from .database import SessionLocal
     
-    # Get current usage
-    products_count = len(inventory_manager.list_products())
-    products_with_images = sum(1 for p in inventory_manager.list_products() if p.get("image_url"))
+    # Get user_id from auth token if available
+    user_id = "default"
+    auth_header = request.headers.get("authorization", "")
+    if auth_header.startswith("Bearer "):
+        try:
+            from .services.auth_security import decode_access_token
+            payload = decode_access_token(auth_header.split(" ")[1])
+            user_id = payload.get("sub", "default")
+        except Exception:
+            pass
     
-    return {
-        "tier": tier,
-        "usage": {
-            "products": {
-                "used": products_count,
-                "max": limits["max_products"],
-                "remaining": max(0, limits["max_products"] - products_count)
-            },
-            "orders_this_month": {
-                "used": USAGE_TRACKING.get("orders_this_month", 0),
-                "max": limits["max_orders_per_month"],
-                "remaining": max(0, limits["max_orders_per_month"] - USAGE_TRACKING.get("orders_this_month", 0))
-            },
-            "bot_conversations_this_month": {
-                "used": USAGE_TRACKING.get("bot_conversations_this_month", 0),
-                "max": limits["max_bot_conversations_per_month"],
-                "remaining": max(0, limits["max_bot_conversations_per_month"] - USAGE_TRACKING.get("bot_conversations_this_month", 0))
-            },
-            "image_uploads": {
-                "used": products_with_images,
-                "max": limits["max_image_uploads"],
-                "remaining": max(0, limits["max_image_uploads"] - products_with_images)
-            }
-        },
-        "month_started": USAGE_TRACKING.get("month_started", datetime.now().strftime("%Y-%m"))
-    }
+    db = SessionLocal()
+    try:
+        return subscription_service.get_usage_summary(db, user_id)
+    finally:
+        db.close()
 
 @router.post("/subscription/upgrade")
-async def upgrade_subscription(tier: str = "pro"):
-    """Upgrade subscription tier (for demo/testing - in production, integrate with payment)."""
-    if tier not in ["free", "pro"]:
-        raise HTTPException(status_code=400, detail="Invalid tier. Use 'free' or 'pro'")
+async def upgrade_subscription(tier: str = "pro", request: Request = None):
+    """Upgrade subscription tier (for demo/testing - in production, integrate with Paystack)."""
+    valid_tiers = ["free", "grow", "pro"]
+    if tier not in valid_tiers:
+        raise HTTPException(status_code=400, detail=f"Invalid tier. Use one of: {', '.join(valid_tiers)}")
     
-    VENDOR_SETTINGS["subscription_tier"] = tier
-    return {
-        "status": "success",
-        "message": f"Subscription upgraded to {tier.upper()}!",
-        "tier": tier,
-        "limits": FREEMIUM_LIMITS[tier]
-    }
+    from .database import SessionLocal
+    user_id = "default"
+    if request:
+        auth_header = request.headers.get("authorization", "")
+        if auth_header.startswith("Bearer "):
+            try:
+                from .services.auth_security import decode_access_token
+                payload = decode_access_token(auth_header.split(" ")[1])
+                user_id = payload.get("sub", "default")
+            except Exception:
+                pass
+    
+    db = SessionLocal()
+    try:
+        result = subscription_service.upgrade_subscription(db, user_id, SubscriptionTier(tier))
+        plan = subscription_service.get_plan(SubscriptionTier(tier))
+        return {
+            "status": "success",
+            "message": f"Subscription upgraded to {plan.name}!",
+            "tier": tier,
+            "price_monthly": plan.price_ngn_monthly,
+            "features": plan.features,
+        }
+    finally:
+        db.close()
+
+# ============== TEAM MEMBERS (Pro only) ==============
+
+class TeamInviteRequest(BaseModel):
+    email: str
+    role: str = "staff"  # "staff" or "manager"
+
+@router.get("/subscription/plans")
+async def get_subscription_plans():
+    """Get all available subscription plans with pricing."""
+    plans = subscription_service.get_all_plans()
+    return {"plans": [p.dict() for p in plans]}
+
+@router.get("/team/members")
+async def get_team_members(request: Request):
+    """Get all team members for the current vendor (Pro only)."""
+    from .database import SessionLocal
+    user_id = _get_user_from_request(request)
+    
+    db = SessionLocal()
+    try:
+        return {"members": subscription_service.get_team_members(db, user_id)}
+    finally:
+        db.close()
+
+@router.post("/team/invite")
+async def invite_team_member(invite: TeamInviteRequest, request: Request):
+    """Invite a team member (Pro only)."""
+    from .database import SessionLocal
+    user_id = _get_user_from_request(request)
+    
+    db = SessionLocal()
+    try:
+        result = subscription_service.invite_team_member(db, user_id, invite.email, invite.role)
+        if "error" in result:
+            raise HTTPException(status_code=403, detail=result)
+        return result
+    finally:
+        db.close()
+
+@router.delete("/team/members/{member_id}")
+async def revoke_team_member(member_id: str, request: Request):
+    """Remove a team member."""
+    from .database import SessionLocal
+    user_id = _get_user_from_request(request)
+    
+    db = SessionLocal()
+    try:
+        result = subscription_service.revoke_team_member(db, user_id, member_id)
+        if "error" in result:
+            raise HTTPException(status_code=404, detail=result["error"])
+        return result
+    finally:
+        db.close()
+
+def _get_user_from_request(request: Request) -> str:
+    """Helper to extract user_id from auth token."""
+    auth_header = request.headers.get("authorization", "")
+    if auth_header.startswith("Bearer "):
+        try:
+            from .services.auth_security import decode_access_token
+            payload = decode_access_token(auth_header.split(" ")[1])
+            return payload.get("sub", "default")
+        except Exception:
+            pass
+    return "default"
 
 
 # ============== SUBSCRIPTION & PAYMENT SYSTEM ==============
