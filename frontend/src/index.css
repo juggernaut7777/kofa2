@@ -27,6 +27,7 @@
     --brand-primary: #0095FF;
     --brand-light: #E6F4FF;
     --brand-glow: rgba(0, 149, 255, 0.15);
+    --brand-gradient: linear-gradient(135deg, #0095FF, #2563EB);
 
     /* Status Colors */
     --success: #22C55E;
@@ -47,6 +48,7 @@
 
     --border-subtle: rgba(255, 255, 255, 0.08);
     --border-strong: rgba(255, 255, 255, 0.15);
+    --brand-gradient: linear-gradient(135deg, #3B82F6, #60A5FA);
   }
 
   body {
