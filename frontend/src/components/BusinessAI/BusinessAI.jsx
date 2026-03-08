@@ -12,9 +12,11 @@ const BusinessAI = () => {
     const isDark = theme === 'dark'
     const location = useLocation()
 
-    // Hide on public shop pages
+    // Hide on public pages - only show when logged in
     const isShopPage = location.pathname.startsWith('/shop')
-    if (isShopPage) return null
+    const publicPages = ['/', '/login', '/signup', '/verify', '/privacy', '/terms']
+    const isPublicPage = publicPages.includes(location.pathname) || isShopPage
+    if (!user || isPublicPage) return null
 
     const [isOpen, setIsOpen] = useState(false)
     const [messages, setMessages] = useState([

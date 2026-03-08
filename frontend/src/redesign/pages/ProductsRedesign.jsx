@@ -217,7 +217,10 @@ const ProductsRedesign = () => {
     ]
 
     const filteredProducts = products.filter(p => {
-        const matchesSearch = p.name?.toLowerCase().includes(searchQuery.toLowerCase())
+        const q = searchQuery.toLowerCase()
+        const matchesSearch = !q ||
+            p.name?.toLowerCase().includes(q) ||
+            p.category?.toLowerCase().includes(q)
         if (activeFilter === 'low') return matchesSearch && p.stock > 0 && p.stock < 10
         if (activeFilter === 'out') return matchesSearch && p.stock === 0
         return matchesSearch
