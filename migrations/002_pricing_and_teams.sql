@@ -8,8 +8,8 @@
 -- =============================================
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'usage_tracking')
 CREATE TABLE usage_tracking (
-    id NVARCHAR(36) PRIMARY KEY,
-    user_id NVARCHAR(36) NOT NULL,
+    id NVARCHAR(50) PRIMARY KEY,
+    user_id NVARCHAR(50) NOT NULL,
     period NVARCHAR(7) NOT NULL,            -- "2026-03" (year-month)
     orders_count INT DEFAULT 0,
     ai_queries_count INT DEFAULT 0,
@@ -27,10 +27,10 @@ CREATE INDEX IX_usage_user_period ON usage_tracking(user_id, period);
 -- =============================================
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'team_members')
 CREATE TABLE team_members (
-    id NVARCHAR(36) PRIMARY KEY,
-    owner_id NVARCHAR(36) NOT NULL,         -- Vendor who owns the account
+    id NVARCHAR(50) PRIMARY KEY,
+    owner_id NVARCHAR(50) NOT NULL,         -- Vendor who owns the account
     member_email NVARCHAR(255) NOT NULL,
-    member_user_id NVARCHAR(36) NULL,       -- Linked after they accept invite
+    member_user_id NVARCHAR(50) NULL,       -- Linked after they accept invite
     role NVARCHAR(20) DEFAULT 'staff',      -- "staff", "manager"
     status NVARCHAR(20) DEFAULT 'pending',  -- "pending", "active", "revoked"
     invited_at DATETIME DEFAULT GETDATE(),
