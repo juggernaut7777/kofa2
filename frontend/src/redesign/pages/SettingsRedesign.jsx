@@ -126,20 +126,10 @@ const SettingsRedesign = () => {
         try {
             await apiCall(API_ENDPOINTS.BOT_PAUSE, {
                 method: 'POST',
-                body: JSON.stringify({ pause: botSettings.enabled })
+                body: JSON.stringify({ paused: botSettings.enabled })
             })
             setBotSettings({ ...botSettings, enabled: !botSettings.enabled })
         } catch (e) { alert('Failed to update bot status') }
-    }
-
-    const handleBotStyleChange = async (style) => {
-        try {
-            await apiCall(API_ENDPOINTS.BOT_STYLE, {
-                method: 'POST',
-                body: JSON.stringify({ style })
-            })
-            setBotSettings({ ...botSettings, style })
-        } catch (e) { alert('Failed to update bot style') }
     }
 
     const handleLogout = () => {
@@ -272,9 +262,9 @@ const SettingsRedesign = () => {
 
                     {/* Account Items */}
                     <div className={`rounded-2xl overflow-hidden mb-4 ${isDark ? 'bg-[#1A1A1F] border border-white/10' : 'bg-white shadow-sm'}`}>
-                        <SettingsItem icon={Lock} label="Password & Security" onClick={() => { }} />
-                        <SettingsItem icon={Bell} label="Notifications" onClick={() => { }} />
-                        <SettingsItem icon={Globe} label="Language" value="English" onClick={() => { }} />
+                        <SettingsItem icon={Lock} label="Password & Security" value="Coming Soon" onClick={() => alert('Password & Security settings coming soon!')} />
+                        <SettingsItem icon={Bell} label="Notifications" value="Coming Soon" onClick={() => alert('Push notifications coming soon!')} />
+                        <SettingsItem icon={Globe} label="Language" value="English" onClick={() => alert('Additional languages coming soon!')} />
                     </div>
 
                     {/* Logout */}
@@ -586,41 +576,12 @@ const SettingsRedesign = () => {
                                 )}
                             </div>
 
-                            {/* Bot Style */}
-                            <h3 className={`text-xs font-semibold uppercase tracking-wide mb-2 px-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>CUSTOMER BOT STYLE</h3>
-                            <div className={`rounded-2xl overflow-hidden mb-4 ${isDark ? 'bg-[#1A1A1F] border border-white/10' : 'bg-white shadow-sm'}`}>
-                                {[
-                                    { id: 'professional', label: 'Professional', desc: 'Formal business tone' },
-                                    { id: 'pidgin', label: 'Pidgin', desc: 'Nigerian Pidgin English' }
-                                ].map((style, idx) => (
-                                    <div key={style.id} onClick={() => handleBotStyleChange(style.id)}
-                                        className={`flex items-center justify-between p-4 cursor-pointer ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'} ${idx === 0 ? isDark ? 'border-b border-white/5' : 'border-b border-gray-50' : ''}`}>
-                                        <div>
-                                            <span className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>{style.label}</span>
-                                            <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{style.desc}</p>
-                                        </div>
-                                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${botSettings.style === style.id ? 'border-[#0095FF] bg-[#0095FF]' : isDark ? 'border-gray-600' : 'border-gray-300'
-                                            }`}>
-                                            {botSettings.style === style.id && <div className="w-2 h-2 rounded-full bg-white"></div>}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-
-                            {/* Auto Reply */}
-                            <div className={`rounded-2xl overflow-hidden ${isDark ? 'bg-[#1A1A1F] border border-white/10' : 'bg-white shadow-sm'}`}>
-                                <div className="flex items-center justify-between p-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-lg bg-blue-100 text-blue-500 flex items-center justify-center">
-                                            <Zap size={18} />
-                                        </div>
-                                        <div>
-                                            <p className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>Auto-Reply</p>
-                                            <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Instant responses to customers</p>
-                                        </div>
-                                    </div>
-                                    <ToggleSwitch enabled={botSettings.autoReply} onChange={(val) => setBotSettings({ ...botSettings, autoReply: val })} />
-                                </div>
+                            {/* Bot Mode Info */}
+                            <div className={`rounded-2xl p-4 ${isDark ? 'bg-white/5' : 'bg-blue-50'}`}>
+                                <p className={`text-xs font-semibold mb-1 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>Bot Mode</p>
+                                <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                                    Both the Customer Bot and Business AI Assistant respond in <strong className="text-[#0095FF]">Professional</strong> mode. Use the Pause/Resume button above to control whether the customer bot auto-replies.
+                                </p>
                             </div>
                         </>
                     )}
@@ -631,15 +592,15 @@ const SettingsRedesign = () => {
             {activeTab === 'support' && (
                 <div className="px-4 pb-32">
                     <div className={`rounded-2xl overflow-hidden mb-4 ${isDark ? 'bg-[#1A1A1F] border border-white/10' : 'bg-white shadow-sm'}`}>
-                        <SettingsItem icon={HelpCircle} label="Help Center" onClick={() => { }} iconColor="blue" />
-                        <SettingsItem icon={Send} label="Contact Support" onClick={() => { }} iconColor="green" />
-                        <SettingsItem icon={FileText} label="Terms of Service" onClick={() => { }} iconColor="gray" />
-                        <SettingsItem icon={FileText} label="Privacy Policy" onClick={() => { }} iconColor="gray" />
+                        <SettingsItem icon={HelpCircle} label="Help Center" onClick={() => alert('Need help? Send us a message via Contact Support below or email hello@kofa.ng')} iconColor="blue" />
+                        <SettingsItem icon={Send} label="Contact Support" onClick={() => window.open('https://wa.me/2349138857498?text=Hi%2C%20I%20need%20help%20with%20KOFA', '_blank')} iconColor="green" />
+                        <SettingsItem icon={FileText} label="Terms of Service" onClick={() => navigate('/terms')} iconColor="gray" />
+                        <SettingsItem icon={FileText} label="Privacy Policy" onClick={() => navigate('/privacy')} iconColor="gray" />
                     </div>
 
                     {/* App Version */}
                     <div className="text-center mt-8">
-                        <p className={`text-xs ${isDark ? 'text-gray-600' : 'text-gray-300'}`}>KOFA Merchant v1.0.2</p>
+                        <p className={`text-xs ${isDark ? 'text-gray-600' : 'text-gray-300'}`}>KOFA Merchant v1.0.3</p>
                     </div>
                 </div>
             )}
