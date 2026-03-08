@@ -114,7 +114,7 @@ PRICING_PLANS: Dict[SubscriptionTier, PricingPlan] = {
             instagram_bot=True,
             bulk_messaging=False,  # Coming Soon
             priority_support=True,
-            max_team_members=5,
+            max_team_members=3,
         ),
         features=[
             "Everything in Grow, plus:",

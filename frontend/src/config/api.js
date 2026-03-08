@@ -109,6 +109,11 @@ export const API_ENDPOINTS = {
   // Business AI Assistant
   BUSINESS_AI: '/business-ai',
 
+  // Team Members (Pro only)
+  TEAM_MEMBERS: '/team/members',
+  TEAM_INVITE: '/team/invite',
+  TEAM_REVOKE: (id) => `/team/members/${id}`,
+
   // Health check
   HEALTH: '/health'
 };
