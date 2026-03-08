@@ -150,7 +150,11 @@ const OrdersRedesign = () => {
     const invoiceFilters = [{ id: 'all', label: 'All' }, { id: 'pending', label: 'Pending' }, { id: 'paid', label: 'Paid' }]
 
     const filteredOrders = orders.filter(o => {
-        const matchesSearch = (o.customer_name || '').toLowerCase().includes(orderSearch.toLowerCase())
+        const q = orderSearch.toLowerCase()
+        const matchesSearch = !q ||
+            (o.customer_name || '').toLowerCase().includes(q) ||
+            (o.customer_phone || '').toLowerCase().includes(q) ||
+            (o.id || '').toLowerCase().includes(q)
         if (orderFilter === 'all') return matchesSearch
         return matchesSearch && o.status?.toLowerCase() === orderFilter
     })
