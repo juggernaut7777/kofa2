@@ -5,7 +5,8 @@ import { ThemeContext } from '../../context/ThemeContext'
 import { useAuth } from '../../context/AuthContext'
 import {
     ChevronLeft, Search, Clock, CheckCircle, XCircle, Truck, Package,
-    MessageSquare, Plus, FileText, Send, DollarSign, ShoppingCart, CreditCard, Banknote, Smartphone
+    MessageSquare, Plus, FileText, Send, DollarSign, ShoppingCart, CreditCard, Banknote, Smartphone,
+    AlertTriangle, Trash2, Wallet
 } from 'lucide-react'
 
 const OrdersRedesign = () => {
@@ -43,10 +44,21 @@ const OrdersRedesign = () => {
     const [quickSaleLoading, setQuickSaleLoading] = useState(false)
     const [confirmingPayment, setConfirmingPayment] = useState(null)
 
+    // Credit Book state
+    const [credits, setCredits] = useState([])
+    const [creditsLoading, setCreditsLoading] = useState(false)
+    const [creditFilter, setCreditFilter] = useState('unpaid')
+    const [creditSummary, setCreditSummary] = useState(null)
+    const [showAddCredit, setShowAddCredit] = useState(false)
+    const [newCredit, setNewCredit] = useState({ customer_name: '', customer_phone: '', amount: '', items_description: '', due_date: '', notes: '' })
+    const [payingCredit, setPayingCredit] = useState(null)
+    const [paymentAmount, setPaymentAmount] = useState('')
+
     useEffect(() => {
         loadOrders()
         loadInvoices()
         loadProducts()
+        loadCredits()
     }, [])
 
     const loadProducts = async () => {
@@ -73,6 +85,61 @@ const OrdersRedesign = () => {
             setInvoices(Array.isArray(data) ? data : [])
         } catch (e) { setInvoices([]) }
         finally { setInvoicesLoading(false) }
+    }
+
+    const loadCredits = async () => {
+        if (!user?.id) return
+        setCreditsLoading(true)
+        try {
+            const url = creditFilter === 'all'
+                ? `${API_ENDPOINTS.CREDIT_SALES}?user_id=${user.id}`
+                : `${API_ENDPOINTS.CREDIT_SALES}?user_id=${user.id}&status=${creditFilter}`
+            const data = await apiCall(url)
+            setCredits(data?.credit_sales || [])
+        } catch (e) { console.error('Credits error:', e) }
+        finally { setCreditsLoading(false) }
+
+        // Also load summary
+        try {
+            const summary = await apiCall(`${API_ENDPOINTS.CREDIT_SALES_SUMMARY}?user_id=${user.id}`)
+            setCreditSummary(summary?.summary || null)
+        } catch (e) { console.error('Credit summary error:', e) }
+    }
+
+    useEffect(() => { if (activeTab === 'credit') loadCredits() }, [creditFilter])
+
+    const handleAddCredit = async () => {
+        if (!newCredit.customer_name || !newCredit.amount) { alert('Name and amount required'); return }
+        try {
+            await apiCall(API_ENDPOINTS.CREDIT_SALES, {
+                method: 'POST',
+                body: JSON.stringify({ ...newCredit, amount: parseFloat(newCredit.amount), user_id: user?.id })
+            })
+            setShowAddCredit(false)
+            setNewCredit({ customer_name: '', customer_phone: '', amount: '', items_description: '', due_date: '', notes: '' })
+            loadCredits()
+        } catch (e) { alert('Failed to add credit sale') }
+    }
+
+    const handleRecordPayment = async () => {
+        if (!paymentAmount || parseFloat(paymentAmount) <= 0) { alert('Enter a valid amount'); return }
+        try {
+            await apiCall(API_ENDPOINTS.CREDIT_PAYMENT(payingCredit.id), {
+                method: 'POST',
+                body: JSON.stringify({ amount: parseFloat(paymentAmount) })
+            })
+            setPayingCredit(null)
+            setPaymentAmount('')
+            loadCredits()
+        } catch (e) { alert('Failed to record payment') }
+    }
+
+    const handleDeleteCredit = async (credit) => {
+        if (!window.confirm(`Write off ₦${credit.balance?.toLocaleString()} from ${credit.customer_name}?`)) return
+        try {
+            await apiCall(`${API_ENDPOINTS.DELETE_CREDIT(credit.id)}?user_id=${user?.id}`, { method: 'DELETE' })
+            loadCredits()
+        } catch (e) { alert('Failed to delete') }
     }
 
     const formatCurrency = (n) => `₦${parseFloat(n || 0).toLocaleString('en-NG', { minimumFractionDigits: 0 })}`
@@ -232,6 +299,16 @@ const OrdersRedesign = () => {
                             }`}
                     >
                         Invoices
+                    </button>
+                    <button
+                        onClick={() => { setActiveTab('credit'); loadCredits() }}
+                        className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1 ${activeTab === 'credit'
+                            ? 'bg-[#0095FF] text-white'
+                            : isDark ? 'text-gray-400' : 'text-gray-500'
+                            }`}
+                    >
+                        <Wallet size={16} />
+                        Credit
                     </button>
                 </div>
             </div>
@@ -567,6 +644,156 @@ const OrdersRedesign = () => {
                             <button onClick={handleCreateInvoice} className="flex-1 py-3 bg-[#0095FF] text-white rounded-xl font-semibold">Create</button>
                         </div>
                     </div>
+                </div>
+            )}
+
+            {/* CREDIT BOOK TAB */}
+            {activeTab === 'credit' && (
+                <div className="px-4 pb-6 space-y-4">
+                    {/* Summary Card */}
+                    {creditSummary && (
+                        <div className={`rounded-2xl p-4 ${isDark ? 'bg-gradient-to-r from-orange-500/20 to-red-500/20 border border-orange-500/30' : 'bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200'}`}>
+                            <div className="flex items-center justify-between mb-3">
+                                <h3 className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>Credit Summary</h3>
+                                <span className={`text-xs px-2 py-1 rounded-full font-medium ${creditSummary.overdue_count > 0 ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'}`}>
+                                    {creditSummary.overdue_count > 0 ? `${creditSummary.overdue_count} Overdue` : 'All Good'}
+                                </span>
+                            </div>
+                            <div className="grid grid-cols-3 gap-3">
+                                <div className="text-center">
+                                    <div className={`text-xl font-bold ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>₦{(creditSummary.total_owed || 0).toLocaleString()}</div>
+                                    <div className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Total Owed</div>
+                                </div>
+                                <div className="text-center">
+                                    <div className={`text-xl font-bold ${isDark ? 'text-green-400' : 'text-green-600'}`}>₦{(creditSummary.total_collected || 0).toLocaleString()}</div>
+                                    <div className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Collected</div>
+                                </div>
+                                <div className="text-center">
+                                    <div className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{creditSummary.unpaid_count + creditSummary.partial_count}</div>
+                                    <div className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Open</div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Filter + Add Button */}
+                    <div className="flex items-center gap-2">
+                        {['unpaid', 'partial', 'paid', 'all'].map(f => (
+                            <button key={f} onClick={() => setCreditFilter(f)}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors capitalize ${creditFilter === f
+                                        ? 'bg-[#0095FF] text-white'
+                                        : isDark ? 'bg-white/10 text-gray-400' : 'bg-gray-100 text-gray-500'
+                                    }`}>{f}</button>
+                        ))}
+                        <button onClick={() => setShowAddCredit(true)}
+                            className="ml-auto px-3 py-1.5 rounded-lg text-xs font-medium bg-orange-500 text-white flex items-center gap-1">
+                            <Plus size={14} /> Add Credit
+                        </button>
+                    </div>
+
+                    {/* Credit List */}
+                    {creditsLoading ? (
+                        <div className="text-center py-8"><div className={`${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Loading...</div></div>
+                    ) : credits.length === 0 ? (
+                        <div className={`text-center py-12 rounded-2xl ${isDark ? 'bg-white/5' : 'bg-gray-50'}`}>
+                            <Wallet size={40} className={`mx-auto mb-3 ${isDark ? 'text-gray-600' : 'text-gray-300'}`} />
+                            <p className={`font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>No credit sales yet</p>
+                            <p className={`text-sm mt-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Tap "Add Credit" when a customer buys on credit</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            {credits.map(c => (
+                                <div key={c.id} className={`rounded-2xl p-4 ${isDark ? 'bg-white/5 border border-white/10' : 'bg-white border border-gray-100 shadow-sm'} ${c.is_overdue ? (isDark ? 'border-red-500/30' : 'border-red-200') : ''}`}>
+                                    <div className="flex items-start justify-between">
+                                        <div>
+                                            <div className="flex items-center gap-2">
+                                                <h4 className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>{c.customer_name}</h4>
+                                                {c.is_overdue && <AlertTriangle size={14} className="text-red-400" />}
+                                            </div>
+                                            {c.customer_phone && <p className={`text-xs mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{c.customer_phone}</p>}
+                                            {c.items_description && <p className={`text-sm mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{c.items_description}</p>}
+                                        </div>
+                                        <div className="text-right">
+                                            <div className={`font-bold ${c.status === 'paid' ? 'text-green-500' : isDark ? 'text-orange-400' : 'text-orange-600'}`}>₦{(c.balance || 0).toLocaleString()}</div>
+                                            <span className={`text-xs px-2 py-0.5 rounded-full ${c.status === 'paid' ? 'bg-green-500/20 text-green-400'
+                                                    : c.status === 'partial' ? 'bg-yellow-500/20 text-yellow-400'
+                                                        : 'bg-red-500/20 text-red-400'
+                                                }`}>{c.status}</span>
+                                        </div>
+                                    </div>
+                                    {c.status !== 'paid' && (
+                                        <div className="flex gap-2 mt-3">
+                                            <button onClick={() => { setPayingCredit(c); setPaymentAmount('') }}
+                                                className="flex-1 py-2 rounded-xl text-xs font-semibold bg-green-500/20 text-green-400 flex items-center justify-center gap-1">
+                                                <Banknote size={14} /> Record Payment
+                                            </button>
+                                            {c.customer_phone && (
+                                                <a href={`https://wa.me/${c.customer_phone.replace(/[^0-9]/g, '')}?text=Hi ${c.customer_name}, this is a friendly reminder about your balance of ₦${(c.balance || 0).toLocaleString()}. Please pay at your earliest convenience.`}
+                                                    target="_blank" rel="noopener noreferrer"
+                                                    className="py-2 px-3 rounded-xl text-xs font-semibold bg-[#25D366]/20 text-[#25D366] flex items-center gap-1">
+                                                    <Send size={14} /> Remind
+                                                </a>
+                                            )}
+                                            <button onClick={() => handleDeleteCredit(c)}
+                                                className="py-2 px-3 rounded-xl text-xs font-semibold bg-red-500/20 text-red-400">
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </div>
+                                    )}
+                                    <div className={`text-xs mt-2 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
+                                        {new Date(c.created_at).toLocaleDateString()}
+                                        {c.due_date && <span className={c.is_overdue ? ' text-red-400' : ''}> · Due {new Date(c.due_date).toLocaleDateString()}</span>}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Add Credit Modal */}
+                    {showAddCredit && (
+                        <div className="fixed inset-0 z-50 bg-black/50 flex items-end">
+                            <div className={`w-full rounded-t-3xl p-6 ${isDark ? 'bg-[#1A1A1F]' : 'bg-white'}`}>
+                                <h3 className={`text-lg font-bold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>Add Credit Sale</h3>
+                                <div className="space-y-3">
+                                    <input placeholder="Customer Name *" value={newCredit.customer_name} onChange={e => setNewCredit({ ...newCredit, customer_name: e.target.value })}
+                                        className={`w-full px-4 py-3 rounded-xl outline-none ${isDark ? 'bg-white/10 text-white border border-white/10' : 'bg-gray-100'}`} />
+                                    <input placeholder="Phone (optional)" value={newCredit.customer_phone} onChange={e => setNewCredit({ ...newCredit, customer_phone: e.target.value })}
+                                        className={`w-full px-4 py-3 rounded-xl outline-none ${isDark ? 'bg-white/10 text-white border border-white/10' : 'bg-gray-100'}`} />
+                                    <input type="number" placeholder="Amount (₦) *" value={newCredit.amount} onChange={e => setNewCredit({ ...newCredit, amount: e.target.value })}
+                                        className={`w-full px-4 py-3 rounded-xl outline-none ${isDark ? 'bg-white/10 text-white border border-white/10' : 'bg-gray-100'}`} />
+                                    <input placeholder="Items sold (e.g. 2 bags of rice)" value={newCredit.items_description} onChange={e => setNewCredit({ ...newCredit, items_description: e.target.value })}
+                                        className={`w-full px-4 py-3 rounded-xl outline-none ${isDark ? 'bg-white/10 text-white border border-white/10' : 'bg-gray-100'}`} />
+                                    <input type="date" value={newCredit.due_date} onChange={e => setNewCredit({ ...newCredit, due_date: e.target.value })}
+                                        className={`w-full px-4 py-3 rounded-xl outline-none ${isDark ? 'bg-white/10 text-white border border-white/10' : 'bg-gray-100'}`} />
+                                </div>
+                                <div className="flex gap-3 mt-6">
+                                    <button onClick={() => setShowAddCredit(false)} className={`flex-1 py-3 rounded-xl font-semibold ${isDark ? 'bg-white/10 text-white' : 'bg-gray-100 text-gray-700'}`}>Cancel</button>
+                                    <button onClick={handleAddCredit} className="flex-1 py-3 bg-orange-500 text-white rounded-xl font-semibold">Add Credit</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Record Payment Modal */}
+                    {payingCredit && (
+                        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center px-4">
+                            <div className={`w-full max-w-sm rounded-2xl p-6 ${isDark ? 'bg-[#1A1A1F]' : 'bg-white'}`}>
+                                <h3 className={`text-lg font-bold mb-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>Record Payment</h3>
+                                <p className={`text-sm mb-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{payingCredit.customer_name} owes ₦{(payingCredit.balance || 0).toLocaleString()}</p>
+                                <input type="number" placeholder={`Amount (max ₦${(payingCredit.balance || 0).toLocaleString()})`}
+                                    value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)}
+                                    className={`w-full px-4 py-3 rounded-xl outline-none mb-3 ${isDark ? 'bg-white/10 text-white border border-white/10' : 'bg-gray-100'}`} />
+                                <button onClick={() => setPaymentAmount(String(payingCredit.balance || 0))}
+                                    className={`w-full py-2 rounded-xl text-xs font-medium mb-4 ${isDark ? 'bg-white/10 text-gray-400' : 'bg-gray-100 text-gray-500'}`}>
+                                    Pay Full Balance (₦{(payingCredit.balance || 0).toLocaleString()})
+                                </button>
+                                <div className="flex gap-3">
+                                    <button onClick={() => setPayingCredit(null)} className={`flex-1 py-3 rounded-xl font-semibold ${isDark ? 'bg-white/10 text-white' : 'bg-gray-100 text-gray-700'}`}>Cancel</button>
+                                    <button onClick={handleRecordPayment} className="flex-1 py-3 bg-green-500 text-white rounded-xl font-semibold">Confirm</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
         </div>
