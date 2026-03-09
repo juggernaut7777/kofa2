@@ -1447,24 +1447,42 @@ async def restock_product(product_id: str, restock: RestockRequest):
 
 
 @router.delete("/products/{product_id}")
-async def delete_product(product_id: str):
+async def delete_product(product_id: str, user_id: str = None):
     """Delete a product from inventory."""
-    # Find product first to verify it exists
-    product = inventory_manager.get_product_by_id(product_id)
+    from .database import SessionLocal
+    from .models import Product as ProductModel
     
-    if not product:
-        raise HTTPException(status_code=404, detail=f"Product {product_id} not found")
-    
-    # Delete from database
-    success = inventory_manager.delete_product(product_id)
-    
-    if not success:
-        raise HTTPException(status_code=500, detail="Failed to delete product")
-    
-    return {
-        "status": "success",
-        "message": f"Product '{product.get('name', 'Unknown')}' deleted successfully"
-    }
+    db = SessionLocal()
+    try:
+        # Build query - filter by product_id and optionally by user_id
+        query = db.query(ProductModel).filter(ProductModel.id == product_id)
+        if user_id:
+            query = query.filter(ProductModel.user_id == user_id)
+        
+        product = query.first()
+        if not product:
+            raise HTTPException(status_code=404, detail=f"Product {product_id} not found")
+        
+        product_name = product.name
+        db.delete(product)
+        db.commit()
+        
+        # Clear product cache for this user
+        if user_id:
+            from .cache import invalidate_cache
+            invalidate_cache(f"products:user:{user_id}")
+        
+        return {
+            "status": "success",
+            "message": f"Product '{product_name}' deleted successfully"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to delete product: {str(e)}")
+    finally:
+        db.close()
 
 # ============== PRODUCT IMAGE UPLOAD ==============
 
