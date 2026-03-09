@@ -4,7 +4,7 @@ import { apiCall, cachedApiCall, API_ENDPOINTS, CACHE_KEYS, API_BASE_URL } from 
 import { clearCache } from '../../utils/cache'
 import { ThemeContext } from '../../context/ThemeContext'
 import { useAuth } from '../../context/AuthContext'
-import { Plus, Search, ScanLine, Package, Upload, X, RefreshCw, Edit2, Image, Camera, Loader2 } from 'lucide-react'
+import { Plus, Search, ScanLine, Package, Upload, X, RefreshCw, Edit2, Image, Camera, Loader2, Trash2 } from 'lucide-react'
 import BarcodeScanner from '../../components/BarcodeScanner/BarcodeScanner'
 
 const ProductsRedesign = () => {
@@ -34,6 +34,13 @@ const ProductsRedesign = () => {
     const [imagePreview, setImagePreview] = useState(null)
 
     useEffect(() => { loadProducts() }, [])
+
+    // Also refresh when navigating back from another page
+    useEffect(() => {
+        const handleFocus = () => loadProducts(true)
+        window.addEventListener('focus', handleFocus)
+        return () => window.removeEventListener('focus', handleFocus)
+    }, [])
 
     useEffect(() => {
         if (location.state?.action === 'add') {
@@ -174,6 +181,20 @@ const ProductsRedesign = () => {
             })
             loadProducts()
         } catch (e) { alert('Failed to restock') }
+    }
+
+    // Delete product
+    const handleDeleteProduct = async (product) => {
+        if (!window.confirm(`Delete "${product.name}"? This cannot be undone.`)) return
+        try {
+            const deleteUrl = user?.id
+                ? `${API_ENDPOINTS.DELETE_PRODUCT(product.id)}?user_id=${user.id}`
+                : API_ENDPOINTS.DELETE_PRODUCT(product.id)
+            await apiCall(deleteUrl, { method: 'DELETE' })
+            loadProducts(true)
+        } catch (e) {
+            alert('Failed to delete product.')
+        }
     }
 
     const handleCSVImport = (e) => {
@@ -359,10 +380,16 @@ const ProductsRedesign = () => {
                                 </div>
                                 <div className="flex flex-col items-end justify-between">
                                     <span className="text-lg font-bold text-[#0095FF]">{formatCurrency(product.price)}</span>
-                                    <button onClick={() => handleEditProduct(product)}
-                                        className={`p-2 rounded-lg ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}>
-                                        <Edit2 size={16} className={isDark ? 'text-gray-500' : 'text-gray-400'} />
-                                    </button>
+                                    <div className="flex items-center gap-1">
+                                        <button onClick={() => handleEditProduct(product)}
+                                            className={`p-2 rounded-lg ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}>
+                                            <Edit2 size={16} className={isDark ? 'text-gray-500' : 'text-gray-400'} />
+                                        </button>
+                                        <button onClick={() => handleDeleteProduct(product)}
+                                            className={`p-2 rounded-lg ${isDark ? 'hover:bg-red-500/20' : 'hover:bg-red-50'}`}>
+                                            <Trash2 size={16} className="text-red-400" />
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
