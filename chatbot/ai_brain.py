@@ -60,6 +60,13 @@ AVAILABLE ACTIONS (respond with JSON):
 - BEST_SELLERS: {{"action": "BEST_SELLERS", "limit": 5}}
 - DAILY_SUMMARY: {{"action": "DAILY_SUMMARY"}}
 
+💸 EXPENSES:
+- LOG_EXPENSE: {{"action": "LOG_EXPENSE", "amount": 5000, "description": "Delivery fee for 3 packages", "category": "delivery"}}
+  Categories: rent, marketing, restock, delivery, misc
+
+💰 PAYMENTS:
+- CONFIRM_PAYMENT: {{"action": "CONFIRM_PAYMENT", "order_id": "abc123", "amount": 15000, "method": "transfer"}}
+
 EXAMPLES:
 User: "Add 50 red bags at 3000 naira"
 You: I'll add that to your inventory right away.
@@ -80,6 +87,14 @@ You: I'll remove that product from your inventory.
 User: "I got 100 more t-shirts delivered"
 You: Great! Let me update your stock.
 {{"action": "RESTOCK", "product": "t-shirts", "quantity": 100}}
+
+User: "I spent 5000 on transport for deliveries"
+You: Let me log that expense.
+{{"action": "LOG_EXPENSE", "amount": 5000, "description": "Transport for deliveries", "category": "delivery"}}
+
+User: "Customer paid 15000 for order abc123"
+You: I'll confirm that payment now.
+{{"action": "CONFIRM_PAYMENT", "order_id": "abc123", "amount": 15000, "method": "transfer"}}
 
 If the user's intent is unclear, ask clarifying questions.
 If it's just conversation, respond naturally without JSON.
@@ -348,6 +363,59 @@ Current Inventory ({len(products)} products):
                     action_result = summary
                 except Exception as e:
                     action_result = "📊 Daily summary is being set up. Add more sales data to see results!"
+
+            # ===== EXPENSES =====
+
+            elif action_type == "LOG_EXPENSE":
+                action_taken = "LOG_EXPENSE"
+                try:
+                    from .database import SessionLocal
+                    from .models import Expense as ExpenseModel
+                    import uuid as uuid_mod
+                    from datetime import datetime as dt
+
+                    db = SessionLocal()
+                    try:
+                        expense_id = str(uuid_mod.uuid4())
+                        new_expense = ExpenseModel(
+                            id=expense_id,
+                            user_id=user_id,
+                            amount=float(action_data.get("amount", 0)),
+                            description=action_data.get("description", "Business expense"),
+                            category=action_data.get("category", "misc"),
+                            expense_type="BUSINESS",
+                            date=dt.utcnow()
+                        )
+                        db.add(new_expense)
+                        db.commit()
+                        amt = float(action_data.get('amount', 0))
+                        action_result = f"✅ Expense logged: ₦{amt:,.0f} — {action_data.get('description', 'expense')}"
+                    finally:
+                        db.close()
+                except Exception as e:
+                    action_result = f"❌ Failed to log expense: {str(e)}"
+
+            elif action_type == "CONFIRM_PAYMENT":
+                action_taken = "CONFIRM_PAYMENT"
+                try:
+                    from .database import SessionLocal
+                    from sqlalchemy import text as sql_text
+
+                    db = SessionLocal()
+                    try:
+                        order_id = action_data.get("order_id", "")
+                        method = action_data.get("method", "transfer")
+                        db.execute(
+                            sql_text("UPDATE orders SET status = 'paid', payment_method = :method WHERE id = :oid"),
+                            {"method": method, "oid": order_id}
+                        )
+                        db.commit()
+                        amt = float(action_data.get('amount', 0))
+                        action_result = f"✅ Payment confirmed: ₦{amt:,.0f} for order {order_id} via {method}"
+                    finally:
+                        db.close()
+                except Exception as e:
+                    action_result = f"❌ Failed to confirm payment: {str(e)}"
                     
     except (json.JSONDecodeError, KeyError):
         pass  # No valid JSON action, just use AI response
