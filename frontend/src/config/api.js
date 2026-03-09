@@ -20,6 +20,9 @@ export const API_ENDPOINTS = {
   SEARCH_PRODUCTS: '/products/search',
   SCAN_PRODUCT: '/products/scan-product',
 
+  // Business AI
+  BUSINESS_AI: '/business-ai',
+
   // Orders
   ORDERS: '/orders',
   ORDER_BY_ID: (id) => `/orders/${id}`,
