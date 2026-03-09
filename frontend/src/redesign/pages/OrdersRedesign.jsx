@@ -681,8 +681,8 @@ const OrdersRedesign = () => {
                         {['unpaid', 'partial', 'paid', 'all'].map(f => (
                             <button key={f} onClick={() => setCreditFilter(f)}
                                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors capitalize ${creditFilter === f
-                                        ? 'bg-[#0095FF] text-white'
-                                        : isDark ? 'bg-white/10 text-gray-400' : 'bg-gray-100 text-gray-500'
+                                    ? 'bg-[#0095FF] text-white'
+                                    : isDark ? 'bg-white/10 text-gray-400' : 'bg-gray-100 text-gray-500'
                                     }`}>{f}</button>
                         ))}
                         <button onClick={() => setShowAddCredit(true)}
@@ -716,8 +716,8 @@ const OrdersRedesign = () => {
                                         <div className="text-right">
                                             <div className={`font-bold ${c.status === 'paid' ? 'text-green-500' : isDark ? 'text-orange-400' : 'text-orange-600'}`}>₦{(c.balance || 0).toLocaleString()}</div>
                                             <span className={`text-xs px-2 py-0.5 rounded-full ${c.status === 'paid' ? 'bg-green-500/20 text-green-400'
-                                                    : c.status === 'partial' ? 'bg-yellow-500/20 text-yellow-400'
-                                                        : 'bg-red-500/20 text-red-400'
+                                                : c.status === 'partial' ? 'bg-yellow-500/20 text-yellow-400'
+                                                    : 'bg-red-500/20 text-red-400'
                                                 }`}>{c.status}</span>
                                         </div>
                                     </div>
@@ -727,13 +727,6 @@ const OrdersRedesign = () => {
                                                 className="flex-1 py-2 rounded-xl text-xs font-semibold bg-green-500/20 text-green-400 flex items-center justify-center gap-1">
                                                 <Banknote size={14} /> Record Payment
                                             </button>
-                                            {c.customer_phone && (
-                                                <a href={`https://wa.me/${c.customer_phone.replace(/[^0-9]/g, '')}?text=Hi ${c.customer_name}, this is a friendly reminder about your balance of ₦${(c.balance || 0).toLocaleString()}. Please pay at your earliest convenience.`}
-                                                    target="_blank" rel="noopener noreferrer"
-                                                    className="py-2 px-3 rounded-xl text-xs font-semibold bg-[#25D366]/20 text-[#25D366] flex items-center gap-1">
-                                                    <Send size={14} /> Remind
-                                                </a>
-                                            )}
                                             <button onClick={() => handleDeleteCredit(c)}
                                                 className="py-2 px-3 rounded-xl text-xs font-semibold bg-red-500/20 text-red-400">
                                                 <Trash2 size={14} />
