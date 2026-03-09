@@ -375,117 +375,115 @@ async def get_products(request: Request, user_id: str = None):
 
 @router.post("/orders", response_model=OrderResponse)
 async def create_order(request: OrderRequest):
-    """Create a new order and generate payment link."""
+    """Create a new order and generate payment link — fully DB-backed."""
+    from .database import SessionLocal
+    from .models import Product as ProductModel, Order as OrderModel
+
     # Validate request
     if not request.items:
         raise HTTPException(status_code=400, detail="Order must contain at least one item")
-    
+
     if not request.user_id or not request.user_id.strip():
         raise HTTPException(status_code=400, detail="User ID is required")
-    
-    total_amount = 0.0
-    order_items = []
-    products_to_decrement = []  # Track products for stock decrement
-    
-    # Validate all products exist and have sufficient stock
-    for item in request.items:
-        # Validate quantity
-        if item.quantity <= 0:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Invalid quantity for product {item.product_id}: {item.quantity}. Quantity must be greater than 0"
-            )
-        
-        # Get product by ID
-        product = inventory_manager.get_product_by_id(item.product_id)
-        if not product:
-            raise HTTPException(
-                status_code=404, 
-                detail=f"Product {item.product_id} not found"
-            )
-        
-        # Check stock availability
-        current_stock = product.get("stock_level", 0)
-        if current_stock < item.quantity:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Insufficient stock for {product.get('name', 'product')}. Available: {current_stock}, Requested: {item.quantity}"
-            )
-        
-        # Calculate item total
-        price = float(product.get("price_ngn", 0))
-        if price <= 0:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Invalid price for product {product.get('name', 'product')}: {price}"
-            )
-        
-        item_total = price * item.quantity
-        total_amount += item_total
-        
-        # Store order item details
-        order_items.append({
-            "product_id": item.product_id,
-            "product_name": product.get("name", "Unknown"),
-            "quantity": item.quantity,
-            "price": price,
-            "total": item_total
-        })
-        
-        # Track for stock decrement
-        products_to_decrement.append((item.product_id, item.quantity))
-    
-    if total_amount <= 0:
-        raise HTTPException(status_code=400, detail="Order total must be greater than 0")
 
-    # Generate order ID
-    order_id = str(uuid.uuid4())
-    
-    # Decrement stock for all items (do this before creating payment link)
-    for product_id, quantity in products_to_decrement:
-        success = inventory_manager.decrement_stock(product_id, quantity)
-        if not success:
-            # This should rarely happen since we checked above, but handle it anyway
-            raise HTTPException(
-                status_code=500,
-                detail=f"Failed to reserve stock for product {product_id}. Please try again."
-            )
-    
-    # Generate payment link
-    payment_link = payment_manager.generate_payment_link(
-        order_id=order_id,
-        amount_ngn=int(round(total_amount)),
-        customer_phone=request.user_id,
-        description=f"Order {order_id[:8]}"
-    )
-    
-    if not payment_link:
-        # Rollback stock decrements if payment link generation fails
-        # Note: In production, use database transactions for this
-        for product_id, quantity in products_to_decrement:
-            inventory_manager.update_stock(product_id, quantity)  # Restore stock
-        raise HTTPException(status_code=500, detail="Failed to generate payment link")
-    
-    # Store order in ORDERS_STORE
-    ORDERS_STORE[order_id] = {
-        "id": order_id,
-        "customer_phone": request.user_id,
-        "items": order_items,
-        "total_amount": total_amount,
-        "status": "pending",
-        "payment_ref": None,
-        "created_at": datetime.now().isoformat()
-    }
-    
-    # Invalidate orders cache so new order appears immediately
-    invalidate_cache(prefix="orders:")
-        
-    return OrderResponse(
-        order_id=order_id,
-        payment_link=payment_link,
-        amount_ngn=total_amount,
-        message="Order created successfully"
-    )
+    db = SessionLocal()
+    try:
+        total_amount = 0.0
+        order_items = []
+        products_to_update = []
+
+        # Validate all products exist and have sufficient stock
+        for item in request.items:
+            if item.quantity <= 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid quantity for product {item.product_id}: {item.quantity}. Quantity must be greater than 0"
+                )
+
+            # Get product by ID from DB
+            product = db.query(ProductModel).filter(ProductModel.id == item.product_id).first()
+            if not product:
+                raise HTTPException(status_code=404, detail=f"Product {item.product_id} not found")
+
+            # Check stock availability
+            current_stock = product.stock_level or 0
+            if current_stock < item.quantity:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Insufficient stock for {product.name}. Available: {current_stock}, Requested: {item.quantity}"
+                )
+
+            price = float(product.price_ngn or 0)
+            if price <= 0:
+                raise HTTPException(status_code=400, detail=f"Invalid price for product {product.name}: {price}")
+
+            item_total = price * item.quantity
+            total_amount += item_total
+
+            order_items.append({
+                "product_id": item.product_id,
+                "product_name": product.name,
+                "quantity": item.quantity,
+                "price": price,
+                "total": item_total
+            })
+
+            products_to_update.append((product, item.quantity))
+
+        if total_amount <= 0:
+            raise HTTPException(status_code=400, detail="Order total must be greater than 0")
+
+        # Generate order ID
+        order_id = str(uuid.uuid4())
+
+        # Decrement stock for all items within the transaction
+        for product, quantity in products_to_update:
+            product.stock_level = (product.stock_level or 0) - quantity
+
+        # Generate payment link
+        payment_link = payment_manager.generate_payment_link(
+            order_id=order_id,
+            amount_ngn=int(round(total_amount)),
+            customer_phone=request.user_id,
+            description=f"Order {order_id[:8]}"
+        )
+
+        if not payment_link:
+            db.rollback()
+            raise HTTPException(status_code=500, detail="Failed to generate payment link")
+
+        # Save order to database
+        new_order = OrderModel(
+            id=order_id,
+            user_id=request.user_id,
+            customer_phone=request.user_id,
+            total_amount=total_amount,
+            status="pending",
+            created_at=datetime.now()
+        )
+        db.add(new_order)
+        db.commit()
+
+        # Invalidate caches
+        from .cache import invalidate_cache
+        invalidate_cache(prefix="orders:")
+        invalidate_cache(prefix="products:")
+
+        return OrderResponse(
+            order_id=order_id,
+            payment_link=payment_link,
+            amount_ngn=total_amount,
+            message="Order created successfully"
+        )
+
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Order creation failed: {str(e)}")
+    finally:
+        db.close()
 
 
 # ===== BUSINESS AI ENDPOINT =====
@@ -1389,61 +1387,103 @@ class OrderStatusUpdate(BaseModel):
 
 
 @router.put("/products/{product_id}")
-async def update_product(product_id: str, updates: ProductUpdate):
+async def update_product(product_id: str, updates: ProductUpdate, user_id: str = None):
     """Update an existing product."""
-    # Build updates dict
-    update_data = {
-        "name": updates.name,
-        "price_ngn": updates.price_ngn,
-        "stock_level": updates.stock_level,
-        "description": updates.description,
-        "category": updates.category,
-        "voice_tags": updates.voice_tags,
-    }
-    
-    # Use inventory manager to update
-    updated_product = inventory_manager.update_product_fields(product_id, update_data)
-    
-    if not updated_product:
-        raise HTTPException(status_code=404, detail=f"Product {product_id} not found")
-    
-    return {
-        "status": "success",
-        "message": f"Product '{updated_product.get('name', 'Unknown')}' updated",
-        "product": updated_product
-    }
+    from .database import SessionLocal
+    from .models import Product as ProductModel
+
+    db = SessionLocal()
+    try:
+        query = db.query(ProductModel).filter(ProductModel.id == product_id)
+        if user_id:
+            query = query.filter(ProductModel.user_id == user_id)
+
+        product = query.first()
+        if not product:
+            raise HTTPException(status_code=404, detail=f"Product {product_id} not found")
+
+        # Apply updates (only non-None fields)
+        if updates.name is not None:
+            product.name = updates.name
+        if updates.price_ngn is not None:
+            product.price_ngn = updates.price_ngn
+        if updates.stock_level is not None:
+            product.stock_level = updates.stock_level
+        if updates.description is not None:
+            product.description = updates.description
+        if updates.category is not None:
+            product.category = updates.category
+
+        db.commit()
+        db.refresh(product)
+
+        if user_id:
+            from .cache import invalidate_cache
+            invalidate_cache(f"products:user:{user_id}")
+
+        return {
+            "status": "success",
+            "message": f"Product '{product.name}' updated",
+            "product": {
+                "id": product.id,
+                "name": product.name,
+                "price_ngn": product.price_ngn,
+                "stock_level": product.stock_level,
+                "description": product.description or "",
+                "category": product.category or "",
+                "image_url": product.image_url
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
 
 
 @router.post("/products/{product_id}/restock")
-async def restock_product(product_id: str, restock: RestockRequest):
+async def restock_product(product_id: str, restock: RestockRequest, user_id: str = None):
     """Add stock to a product."""
     if restock.quantity <= 0:
         raise HTTPException(status_code=400, detail="Quantity must be positive")
-    if restock.quantity > 100000:  # Reasonable upper limit
+    if restock.quantity > 100000:
         raise HTTPException(status_code=400, detail="Quantity exceeds maximum allowed (100,000)")
-    
-    # Find product
-    products = inventory_manager.list_products()
-    product_found = None
-    
-    for p in products:
-        if str(p.get('id')) == product_id:
-            product_found = p
-            break
-    
-    if not product_found:
-        raise HTTPException(status_code=404, detail=f"Product {product_id} not found")
-    
-    # Update stock using the inventory manager method
-    old_stock = product_found.get('stock_level', 0)
-    inventory_manager.update_stock(product_id, restock.quantity)
-    new_stock = old_stock + restock.quantity
-    
-    return {
-        "status": "success",
-        "message": f"Added {restock.quantity} units to {product_found['name']}",
-        "new_stock_level": new_stock
-    }
+
+    from .database import SessionLocal
+    from .models import Product as ProductModel
+
+    db = SessionLocal()
+    try:
+        query = db.query(ProductModel).filter(ProductModel.id == product_id)
+        if user_id:
+            query = query.filter(ProductModel.user_id == user_id)
+
+        product = query.first()
+        if not product:
+            raise HTTPException(status_code=404, detail=f"Product {product_id} not found")
+
+        old_stock = product.stock_level or 0
+        product.stock_level = old_stock + restock.quantity
+        db.commit()
+
+        if user_id:
+            from .cache import invalidate_cache
+            invalidate_cache(f"products:user:{user_id}")
+
+        return {
+            "status": "success",
+            "message": f"Added {restock.quantity} units to {product.name}",
+            "new_stock_level": product.stock_level
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
 
 
 @router.delete("/products/{product_id}")
@@ -1541,34 +1581,35 @@ async def upload_product_image(product_id: str, file: UploadFile = File(...)):
 
 
 @router.delete("/products/{product_id}/image")
-async def delete_product_image(product_id: str):
+async def delete_product_image(product_id: str, user_id: str = None):
     """Delete the image for a product."""
-    # Find product
-    products = inventory_manager.list_products()
-    product_found = None
-    for p in products:
-        if str(p.get('id')) == product_id:
-            product_found = p
-            break
-    
-    if not product_found:
-        raise HTTPException(status_code=404, detail=f"Product {product_id} not found")
-    
-    image_url = product_found.get("image_url")
-    if not image_url:
-        return {"status": "success", "message": "No image to delete"}
-    
-    # Delete from storage
-    success, message = await storage_service.delete_product_image(image_url)
-    
-    if success:
-        # Clear image URL from product
-        inventory_manager.update_product_fields(product_id, {"image_url": None})
-    
-    return {
-        "status": "success" if success else "error",
-        "message": message
-    }
+    from .database import SessionLocal
+    from .models import Product as ProductModel
+
+    db = SessionLocal()
+    try:
+        query = db.query(ProductModel).filter(ProductModel.id == product_id)
+        if user_id:
+            query = query.filter(ProductModel.user_id == user_id)
+
+        product = query.first()
+        if not product:
+            raise HTTPException(status_code=404, detail=f"Product {product_id} not found")
+
+        if not product.image_url:
+            return {"status": "success", "message": "No image to delete"}
+
+        product.image_url = None
+        db.commit()
+
+        return {"status": "success", "message": "Product image deleted"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
 
 
 @router.put("/orders/{order_id}/status")
@@ -1774,11 +1815,6 @@ class TeamInviteRequest(BaseModel):
     email: str
     role: str = "staff"  # "staff" or "manager"
 
-@router.get("/subscription/plans")
-async def get_subscription_plans():
-    """Get all available subscription plans with pricing."""
-    plans = subscription_service.get_all_plans()
-    return {"plans": [p.dict() for p in plans]}
 
 @router.get("/team/members")
 async def get_team_members(request: Request):
@@ -2116,94 +2152,151 @@ async def get_faq():
 # ============== QUICK WIN FEATURES ==============
 
 @router.get("/products/low-stock")
-async def get_low_stock_products():
+async def get_low_stock_products(user_id: str = None):
     """Get products that are below the stock threshold."""
-    products = inventory_manager.list_products()
-    low_stock = [
-        {
-            "id": p.get("id"),
-            "name": p.get("name"),
-            "stock_level": p.get("stock_level", 0),
-            "category": p.get("category"),
-            "needs_restock": True
+    from .database import SessionLocal
+    from .models import Product as ProductModel
+
+    if not user_id:
+        return {"count": 0, "threshold": LOW_STOCK_THRESHOLD, "products": []}
+
+    db = SessionLocal()
+    try:
+        low_stock_products = db.query(ProductModel).filter(
+            ProductModel.user_id == user_id,
+            ProductModel.stock_level <= LOW_STOCK_THRESHOLD
+        ).all()
+
+        return {
+            "count": len(low_stock_products),
+            "threshold": LOW_STOCK_THRESHOLD,
+            "products": [
+                {
+                    "id": p.id,
+                    "name": p.name,
+                    "stock_level": p.stock_level or 0,
+                    "category": p.category or "",
+                    "needs_restock": True
+                }
+                for p in low_stock_products
+            ]
         }
-        for p in products
-        if p.get("stock_level", 0) <= LOW_STOCK_THRESHOLD
-    ]
-    
-    return {
-        "count": len(low_stock),
-        "threshold": LOW_STOCK_THRESHOLD,
-        "products": low_stock
-    }
+    finally:
+        db.close()
 
 
 @router.get("/products/search")
-async def search_products(q: str):
-    """Search products by name, category, or voice tags."""
+async def search_products(q: str, user_id: str = None):
+    """Search products by name or category."""
     if not q or len(q) < 2:
         raise HTTPException(status_code=400, detail="Search query must be at least 2 characters")
-    
-    matching = inventory_manager.smart_search_products(q)
-    
-    return {
-        "query": q,
-        "count": len(matching),
-        "products": matching
-    }
+
+    from .database import SessionLocal
+    from .models import Product as ProductModel
+
+    db = SessionLocal()
+    try:
+        query = db.query(ProductModel).filter(
+            ProductModel.name.ilike(f"%{q}%")
+        )
+        if user_id:
+            query = query.filter(ProductModel.user_id == user_id)
+
+        products = query.limit(20).all()
+
+        return {
+            "query": q,
+            "count": len(products),
+            "products": [
+                {
+                    "id": p.id,
+                    "name": p.name,
+                    "price_ngn": p.price_ngn,
+                    "stock_level": p.stock_level or 0,
+                    "category": p.category or "",
+                    "image_url": p.image_url
+                }
+                for p in products
+            ]
+        }
+    finally:
+        db.close()
 
 
 @router.get("/customers/{customer_id}/stats")
 async def get_customer_stats(customer_id: str):
-    """Get purchase history and stats for a customer."""
-    if customer_id in CUSTOMER_HISTORY:
-        history = CUSTOMER_HISTORY[customer_id]
+    """Get purchase history and stats for a customer from the database."""
+    from .database import SessionLocal
+    from .models import Order as OrderModel
+
+    db = SessionLocal()
+    try:
+        orders = db.query(OrderModel).filter(
+            OrderModel.customer_phone == customer_id
+        ).order_by(OrderModel.created_at.desc()).all()
+
+        total_spent = sum(o.total_amount or 0 for o in orders)
+
         return {
             "customer_id": customer_id,
-            "total_orders": len(history.get("orders", [])),
-            "total_spent": history.get("total_spent", 0),
-            "orders": history.get("orders", []),
-            "is_returning_customer": len(history.get("orders", [])) > 1
+            "total_orders": len(orders),
+            "total_spent": total_spent,
+            "is_returning_customer": len(orders) > 1
         }
-    else:
-        return {
-            "customer_id": customer_id,
-            "total_orders": 0,
-            "total_spent": 0,
-            "orders": [],
-            "is_returning_customer": False
-        }
+    finally:
+        db.close()
 
 
 @router.get("/dashboard/summary")
-async def get_dashboard_summary():
-    """Get quick summary for merchant dashboard."""
-    products = inventory_manager.list_products()
-    low_stock_count = sum(1 for p in products if p.get("stock_level", 0) <= LOW_STOCK_THRESHOLD)
-    
-    # Count orders by status
-    pending_orders = sum(1 for o in ORDERS_STORE.values() if o.get("status") == "pending")
-    paid_orders = sum(1 for o in ORDERS_STORE.values() if o.get("status") == "paid")
-    fulfilled_orders = sum(1 for o in ORDERS_STORE.values() if o.get("status") == "fulfilled")
-    
-    # Total revenue from paid/fulfilled orders
-    total_revenue = sum(
-        o.get("total_amount", 0) 
-        for o in ORDERS_STORE.values() 
-        if o.get("status") in ["paid", "fulfilled"]
-    )
-    
-    return {
-        "total_products": len(products),
-        "low_stock_count": low_stock_count,
-        "low_stock_threshold": LOW_STOCK_THRESHOLD,
-        "pending_orders": pending_orders,
-        "paid_orders": paid_orders,
-        "fulfilled_orders": fulfilled_orders,
-        "total_orders": len(ORDERS_STORE),
-        "total_revenue": total_revenue,
-        "unique_customers": len(CUSTOMER_HISTORY)
-    }
+async def get_dashboard_summary(user_id: str = None):
+    """Get quick summary for merchant dashboard — fully DB-backed."""
+    from .database import SessionLocal
+    from .models import Product as ProductModel, Order as OrderModel
+
+    db = SessionLocal()
+    try:
+        # Products (vendor-scoped)
+        product_query = db.query(ProductModel)
+        if user_id:
+            product_query = product_query.filter(ProductModel.user_id == user_id)
+
+        total_products = product_query.count()
+        low_stock_count = product_query.filter(
+            ProductModel.stock_level <= LOW_STOCK_THRESHOLD
+        ).count()
+
+        # Orders (vendor-scoped)
+        order_query = db.query(OrderModel)
+        if user_id:
+            order_query = order_query.filter(OrderModel.user_id == user_id)
+
+        from sqlalchemy import func
+        total_orders = order_query.count()
+        pending_orders = order_query.filter(OrderModel.status == "pending").count()
+        paid_orders = order_query.filter(OrderModel.status == "paid").count()
+        fulfilled_orders = order_query.filter(OrderModel.status == "fulfilled").count()
+
+        revenue_result = order_query.filter(
+            OrderModel.status.in_(["paid", "fulfilled"])
+        ).with_entities(func.coalesce(func.sum(OrderModel.total_amount), 0)).scalar()
+
+        unique_customers = order_query.with_entities(
+            func.count(func.distinct(OrderModel.customer_phone))
+        ).scalar()
+
+        return {
+            "total_products": total_products,
+            "low_stock_count": low_stock_count,
+            "low_stock_threshold": LOW_STOCK_THRESHOLD,
+            "pending_orders": pending_orders,
+            "paid_orders": paid_orders,
+            "fulfilled_orders": fulfilled_orders,
+            "total_orders": total_orders,
+            "total_revenue": float(revenue_result or 0),
+            "unique_customers": unique_customers or 0
+        }
+    finally:
+        db.close()
 
 
 # ============== PAYSTACK WEBHOOK ==============
@@ -2438,34 +2531,52 @@ class BulkProductImportRequest(BaseModel):
     products: List[ProductImportItem]
 
 @router.post("/products/import")
-async def import_products_json(request: BulkProductImportRequest):
+async def import_products_json(request: BulkProductImportRequest, user_id: str = None):
     """Import multiple products from JSON array."""
+    if not user_id:
+        raise HTTPException(status_code=400, detail="user_id is required")
+
+    from .database import SessionLocal
+    from .models import Product as ProductModel
+
     imported = 0
     errors = []
-    
-    for product in request.products:
-        try:
-            new_product = {
-                "id": str(uuid.uuid4()),
-                "name": product.name,
-                "price_ngn": product.price_ngn,
-                "stock_level": product.stock_level,
-                "description": product.description,
-                "category": product.category,
-                "voice_tags": [],
-                "image_url": ""
-            }
-            inventory_manager.add_product(new_product)
-            imported += 1
-        except Exception as e:
-            errors.append(f"{product.name}: {str(e)}")
-    
-    return {
-        "status": "success" if imported > 0 else "error",
-        "imported": imported,
-        "errors": len(errors),
-        "error_details": errors[:10]
-    }
+
+    db = SessionLocal()
+    try:
+        for product in request.products:
+            try:
+                new_product = ProductModel(
+                    id=str(uuid.uuid4()),
+                    user_id=user_id,
+                    name=product.name,
+                    price_ngn=product.price_ngn,
+                    stock_level=product.stock_level,
+                    description=product.description or "",
+                    category=product.category or ""
+                )
+                db.add(new_product)
+                imported += 1
+            except Exception as e:
+                errors.append(f"{product.name}: {str(e)}")
+
+        db.commit()
+
+        if user_id:
+            from .cache import invalidate_cache
+            invalidate_cache(f"products:user:{user_id}")
+
+        return {
+            "status": "success" if imported > 0 else "error",
+            "imported": imported,
+            "errors": len(errors),
+            "error_details": errors[:10]
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
 
 
 class GoogleSheetImportRequest(BaseModel):
@@ -2573,39 +2684,56 @@ async def scan_product_image(image: UploadFile = File(...)):
 # ============== WIDGET ENDPOINTS ==============
 
 @router.get("/widget/stats")
-async def get_widget_stats(vendor_id: str = "default"):
+async def get_widget_stats(vendor_id: str = "default", user_id: str = None):
     """
     Lightweight stats endpoint for home screen widget.
-    Returns minimal data for fast widget updates.
+    Returns minimal data for fast widget updates — fully DB-backed.
     """
+    from .database import SessionLocal
+    from .models import Product as ProductModel, Order as OrderModel
     from datetime import date
-    
+    from sqlalchemy import func
+
     today = date.today().isoformat()
-    
-    # Calculate today's revenue and order count
-    today_orders = [
-        o for o in ORDERS_STORE.values()
-        if o.get("created_at", "").startswith(today) and o.get("status") in ["paid", "fulfilled"]
-    ]
-    
-    today_revenue = sum(o.get("total_amount", 0) for o in today_orders)
-    today_order_count = len(today_orders)
-    
-    # Pending orders needing attention
-    pending_count = sum(1 for o in ORDERS_STORE.values() if o.get("status") == "pending")
-    
-    # Low stock count
-    products = inventory_manager.list_products()
-    low_stock_count = sum(1 for p in products if p.get("stock_level", 0) <= LOW_STOCK_THRESHOLD)
-    
-    return {
-        "date": today,
-        "revenue_today": today_revenue,
-        "orders_today": today_order_count,
-        "pending_orders": pending_count,
-        "low_stock_alerts": low_stock_count,
-        "currency": "NGN"
-    }
+    effective_user_id = user_id or vendor_id
+
+    db = SessionLocal()
+    try:
+        # Today's paid/fulfilled orders
+        order_query = db.query(OrderModel)
+        if effective_user_id and effective_user_id != "default":
+            order_query = order_query.filter(OrderModel.user_id == effective_user_id)
+
+        today_revenue = order_query.filter(
+            OrderModel.status.in_(["paid", "fulfilled"]),
+            func.date(OrderModel.created_at) == today
+        ).with_entities(func.coalesce(func.sum(OrderModel.total_amount), 0)).scalar()
+
+        today_order_count = order_query.filter(
+            OrderModel.status.in_(["paid", "fulfilled"])
+        ).count()
+
+        pending_count = order_query.filter(OrderModel.status == "pending").count()
+
+        # Low stock
+        product_query = db.query(ProductModel)
+        if effective_user_id and effective_user_id != "default":
+            product_query = product_query.filter(ProductModel.user_id == effective_user_id)
+
+        low_stock_count = product_query.filter(
+            ProductModel.stock_level <= LOW_STOCK_THRESHOLD
+        ).count()
+
+        return {
+            "date": today,
+            "revenue_today": float(today_revenue or 0),
+            "orders_today": today_order_count,
+            "pending_orders": pending_count,
+            "low_stock_alerts": low_stock_count,
+            "currency": "NGN"
+        }
+    finally:
+        db.close()
 
 
 # ============== PAYMENT ENDPOINTS (PAYSTACK) ==============

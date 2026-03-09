@@ -118,7 +118,10 @@ const ProductsRedesign = () => {
             let productId = editingProduct?.id
 
             if (editingProduct) {
-                await apiCall(API_ENDPOINTS.UPDATE_PRODUCT(productId), {
+                const updateUrl = user?.id
+                    ? `${API_ENDPOINTS.UPDATE_PRODUCT(productId)}?user_id=${user.id}`
+                    : API_ENDPOINTS.UPDATE_PRODUCT(productId)
+                await apiCall(updateUrl, {
                     method: 'PUT',
                     body: JSON.stringify(productData)
                 })
@@ -175,11 +178,14 @@ const ProductsRedesign = () => {
     const handleRestock = async (productId, amount) => {
         if (amount <= 0) return
         try {
-            await apiCall(API_ENDPOINTS.RESTOCK_PRODUCT(productId), {
+            const restockUrl = user?.id
+                ? `${API_ENDPOINTS.RESTOCK_PRODUCT(productId)}?user_id=${user.id}`
+                : API_ENDPOINTS.RESTOCK_PRODUCT(productId)
+            await apiCall(restockUrl, {
                 method: 'POST',
                 body: JSON.stringify({ quantity: amount })
             })
-            loadProducts()
+            loadProducts(true)
         } catch (e) { alert('Failed to restock') }
     }
 
