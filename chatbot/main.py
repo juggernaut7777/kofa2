@@ -1614,42 +1614,58 @@ async def delete_product_image(product_id: str, user_id: str = None):
 
 @router.put("/orders/{order_id}/status")
 async def update_order_status(order_id: str, update: OrderStatusUpdate):
-    """Update order status."""
+    """Update order status — fully DB-backed."""
+    from .database import SessionLocal
+    from .models import Order as OrderModel
+
     valid_statuses = ["pending", "paid", "fulfilled"]
     new_status = update.status.lower()
-    
+
     if new_status not in valid_statuses:
         raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {valid_statuses}")
-    
-    # Check if order exists in ORDERS_STORE
-    if order_id in ORDERS_STORE:
-        # Update the status field within the existing order
-        ORDERS_STORE[order_id]["status"] = new_status
-        ORDERS_STORE[order_id]["updated_at"] = datetime.now().isoformat()
-        
+
+    db = SessionLocal()
+    try:
+        order = db.query(OrderModel).filter(OrderModel.id == order_id).first()
+
+        if not order:
+            # Create a minimal order record if it doesn't exist
+            order = OrderModel(
+                id=order_id,
+                user_id="unknown",
+                customer_phone="unknown",
+                total_amount=0,
+                status=new_status,
+                created_at=datetime.now()
+            )
+            db.add(order)
+        else:
+            order.status = new_status
+            order.updated_at = datetime.now()
+
         if new_status == "paid":
-            ORDERS_STORE[order_id]["paid_at"] = datetime.now().isoformat()
+            order.paid_at = datetime.now()
         elif new_status == "fulfilled":
-            ORDERS_STORE[order_id]["fulfilled_at"] = datetime.now().isoformat()
-        
+            order.fulfilled_at = datetime.now()
+
+        db.commit()
+
         return {
             "status": "success",
             "message": f"Order {order_id} marked as {new_status}",
-            "order": ORDERS_STORE[order_id]
+            "order": {
+                "id": order.id,
+                "status": order.status,
+                "updated_at": order.updated_at.isoformat() if order.updated_at else None
+            }
         }
-    else:
-        # Order not in store - create a minimal record (for demo orders)
-        ORDERS_STORE[order_id] = {
-            "id": order_id,
-            "status": new_status,
-            "updated_at": datetime.now().isoformat()
-        }
-        
-        return {
-            "status": "success",
-            "message": f"Order {order_id} marked as {new_status}",
-            "order": ORDERS_STORE[order_id]
-        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
 
 
 
@@ -1675,7 +1691,257 @@ async def log_manual_sale(sale: ManualSale):
     }
 
 
-# ============== VENDOR SETTINGS ENDPOINTS ==============
+# ============== CREDIT SALES TRACKING ==============
+
+class CreditSaleCreate(BaseModel):
+    """Create a new credit sale (customer owes money)."""
+    customer_name: str
+    customer_phone: Optional[str] = None
+    amount: float
+    items_description: Optional[str] = None
+    due_date: Optional[str] = None  # ISO date string
+    notes: Optional[str] = None
+    user_id: str
+
+class CreditPaymentRecord(BaseModel):
+    """Record a payment against a credit sale."""
+    amount: float
+    notes: Optional[str] = None
+
+
+@router.post("/sales/credit")
+async def create_credit_sale(credit: CreditSaleCreate):
+    """Log a credit sale — customer took goods but will pay later."""
+    from .database import SessionLocal
+    from .models import CreditSale
+
+    if credit.amount <= 0:
+        raise HTTPException(status_code=400, detail="Amount must be greater than 0")
+
+    db = SessionLocal()
+    try:
+        due = None
+        if credit.due_date:
+            try:
+                due = datetime.fromisoformat(credit.due_date.replace("Z", "+00:00"))
+            except ValueError:
+                due = None
+
+        new_credit = CreditSale(
+            id=str(uuid.uuid4()),
+            user_id=credit.user_id,
+            customer_name=credit.customer_name,
+            customer_phone=credit.customer_phone,
+            amount=credit.amount,
+            amount_paid=0,
+            items_description=credit.items_description,
+            due_date=due,
+            status="unpaid",
+            notes=credit.notes,
+            created_at=datetime.now()
+        )
+        db.add(new_credit)
+        db.commit()
+        db.refresh(new_credit)
+
+        return {
+            "status": "success",
+            "message": f"Credit sale of ₦{credit.amount:,.0f} for {credit.customer_name} recorded",
+            "credit_sale": {
+                "id": new_credit.id,
+                "customer_name": new_credit.customer_name,
+                "customer_phone": new_credit.customer_phone,
+                "amount": new_credit.amount,
+                "amount_paid": new_credit.amount_paid,
+                "balance": new_credit.amount - new_credit.amount_paid,
+                "items_description": new_credit.items_description,
+                "due_date": new_credit.due_date.isoformat() if new_credit.due_date else None,
+                "status": new_credit.status,
+                "created_at": new_credit.created_at.isoformat()
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+
+@router.get("/sales/credit")
+async def list_credit_sales(user_id: str, status: str = None):
+    """Get all credit sales for a vendor, optionally filtered by status."""
+    from .database import SessionLocal
+    from .models import CreditSale
+
+    db = SessionLocal()
+    try:
+        query = db.query(CreditSale).filter(CreditSale.user_id == user_id)
+
+        if status and status in ["unpaid", "partial", "paid"]:
+            query = query.filter(CreditSale.status == status)
+
+        credits = query.order_by(CreditSale.created_at.desc()).all()
+
+        return {
+            "status": "success",
+            "count": len(credits),
+            "credit_sales": [
+                {
+                    "id": c.id,
+                    "customer_name": c.customer_name,
+                    "customer_phone": c.customer_phone,
+                    "amount": c.amount,
+                    "amount_paid": c.amount_paid,
+                    "balance": c.amount - (c.amount_paid or 0),
+                    "items_description": c.items_description,
+                    "due_date": c.due_date.isoformat() if c.due_date else None,
+                    "status": c.status,
+                    "notes": c.notes,
+                    "created_at": c.created_at.isoformat(),
+                    "paid_at": c.paid_at.isoformat() if c.paid_at else None,
+                    "is_overdue": c.due_date is not None and c.due_date < datetime.now() and c.status != "paid"
+                }
+                for c in credits
+            ]
+        }
+    finally:
+        db.close()
+
+
+@router.post("/sales/credit/{credit_id}/payment")
+async def record_credit_payment(credit_id: str, payment: CreditPaymentRecord):
+    """Record a payment against a credit sale (partial or full)."""
+    from .database import SessionLocal
+    from .models import CreditSale
+
+    if payment.amount <= 0:
+        raise HTTPException(status_code=400, detail="Payment amount must be greater than 0")
+
+    db = SessionLocal()
+    try:
+        credit = db.query(CreditSale).filter(CreditSale.id == credit_id).first()
+        if not credit:
+            raise HTTPException(status_code=404, detail="Credit sale not found")
+
+        if credit.status == "paid":
+            raise HTTPException(status_code=400, detail="This credit sale is already fully paid")
+
+        remaining = credit.amount - (credit.amount_paid or 0)
+        actual_payment = min(payment.amount, remaining)
+
+        credit.amount_paid = (credit.amount_paid or 0) + actual_payment
+
+        if credit.amount_paid >= credit.amount:
+            credit.status = "paid"
+            credit.paid_at = datetime.now()
+        else:
+            credit.status = "partial"
+
+        if payment.notes:
+            existing_notes = credit.notes or ""
+            credit.notes = f"{existing_notes}\n[Payment ₦{actual_payment:,.0f}] {payment.notes}".strip()
+
+        db.commit()
+
+        return {
+            "status": "success",
+            "message": f"₦{actual_payment:,.0f} payment recorded for {credit.customer_name}",
+            "credit_sale": {
+                "id": credit.id,
+                "customer_name": credit.customer_name,
+                "amount": credit.amount,
+                "amount_paid": credit.amount_paid,
+                "balance": credit.amount - credit.amount_paid,
+                "status": credit.status,
+                "paid_at": credit.paid_at.isoformat() if credit.paid_at else None
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+
+@router.get("/sales/credit/summary")
+async def get_credit_summary(user_id: str):
+    """Get credit sales summary — total owed, overdue count, etc."""
+    from .database import SessionLocal
+    from .models import CreditSale
+    from sqlalchemy import func
+
+    db = SessionLocal()
+    try:
+        credits = db.query(CreditSale).filter(CreditSale.user_id == user_id).all()
+
+        total_owed = sum((c.amount - (c.amount_paid or 0)) for c in credits if c.status != "paid")
+        total_collected = sum(c.amount_paid or 0 for c in credits)
+        unpaid_count = sum(1 for c in credits if c.status == "unpaid")
+        partial_count = sum(1 for c in credits if c.status == "partial")
+        paid_count = sum(1 for c in credits if c.status == "paid")
+        overdue_count = sum(
+            1 for c in credits
+            if c.due_date and c.due_date < datetime.now() and c.status != "paid"
+        )
+
+        # Top debtors
+        unpaid_credits = [c for c in credits if c.status != "paid"]
+        unpaid_credits.sort(key=lambda c: c.amount - (c.amount_paid or 0), reverse=True)
+        top_debtors = [
+            {"name": c.customer_name, "phone": c.customer_phone, "owed": c.amount - (c.amount_paid or 0)}
+            for c in unpaid_credits[:5]
+        ]
+
+        return {
+            "status": "success",
+            "summary": {
+                "total_owed": total_owed,
+                "total_collected": total_collected,
+                "unpaid_count": unpaid_count,
+                "partial_count": partial_count,
+                "paid_count": paid_count,
+                "overdue_count": overdue_count,
+                "total_credits": len(credits),
+                "top_debtors": top_debtors
+            }
+        }
+    finally:
+        db.close()
+
+
+@router.delete("/sales/credit/{credit_id}")
+async def delete_credit_sale(credit_id: str, user_id: str = None):
+    """Delete/write-off a credit sale."""
+    from .database import SessionLocal
+    from .models import CreditSale
+
+    db = SessionLocal()
+    try:
+        query = db.query(CreditSale).filter(CreditSale.id == credit_id)
+        if user_id:
+            query = query.filter(CreditSale.user_id == user_id)
+
+        credit = query.first()
+        if not credit:
+            raise HTTPException(status_code=404, detail="Credit sale not found")
+
+        db.delete(credit)
+        db.commit()
+
+        return {"status": "success", "message": f"Credit sale for {credit.customer_name} deleted"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+
 
 class PaymentAccountUpdate(BaseModel):
     """Vendor payment account details."""

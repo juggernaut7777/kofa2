@@ -212,3 +212,32 @@ class TeamMember(Base):
     status = Column(String(20), default="pending")  # "pending", "active", "revoked"
     invited_at = Column(DateTime, default=datetime.utcnow)
     accepted_at = Column(DateTime, nullable=True)
+
+
+class CreditSale(Base):
+    """Credit sale — tracks customers who owe money ('I'll pay later')."""
+    __tablename__ = "credit_sales"
+
+    id = Column(GUID, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(GUID, ForeignKey("users.id"), nullable=False, index=True)  # Vendor
+    customer_name = Column(String(255), nullable=False)
+    customer_phone = Column(String(20), nullable=True, index=True)
+    amount = Column(Float, nullable=False)  # Amount owed
+    amount_paid = Column(Float, default=0)  # Partial payments tracked
+    items_description = Column(Text, nullable=True)  # What was sold on credit
+    due_date = Column(DateTime, nullable=True)  # When payment is expected
+    status = Column(String(20), default="unpaid", index=True)  # unpaid, partial, paid
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    paid_at = Column(DateTime, nullable=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('unpaid', 'partial', 'paid')",
+            name="check_credit_status"
+        ),
+    )
+
+    user = relationship("User")
+

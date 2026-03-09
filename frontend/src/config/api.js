@@ -35,6 +35,12 @@ export const API_ENDPOINTS = {
   SALES_MARK_PAID: (id) => `/sales/mark-paid/${id}`,
   MANUAL_SALE: '/sales/manual',
 
+  // Credit Sales (who owes you money)
+  CREDIT_SALES: '/sales/credit',
+  CREDIT_SALES_SUMMARY: '/sales/credit/summary',
+  CREDIT_PAYMENT: (id) => `/sales/credit/${id}/payment`,
+  DELETE_CREDIT: (id) => `/sales/credit/${id}`,
+
   // Users/Vendors
   USERS: '/users',
   USER_BY_ID: (id) => `/users/${id}`,
