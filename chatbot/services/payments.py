@@ -226,29 +226,37 @@ class PaystackService:
     async def process_webhook(self, event: str, data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Process Paystack webhook events.
-        
-        Args:
-            event: Event type (e.g., "charge.success")
-            data: Event data
-            
-        Returns:
-            Processing result
+        Auto-updates order status in DB when payment is confirmed.
         """
         if event == "charge.success":
-            # Payment successful
+            # Payment successful — auto-mark order as paid
             reference = data.get("reference", "")
-            amount = data.get("amount", 0) / 100
+            amount = data.get("amount", 0) / 100  # Convert from kobo
             metadata = data.get("metadata", {})
             order_id = metadata.get("order_id")
             vendor_id = metadata.get("vendor_id", "default")
             customer_phone = metadata.get("customer_phone")
             
-            print(f"💰 Payment received: ₦{amount:,.0f} for order {order_id}")
+            logger.info(f"💰 Paystack payment received: ₦{amount:,.0f} for order {order_id}")
             
-            # Here you would:
-            # 1. Update order status to "paid"
-            # 2. Send push notification to vendor
-            # 3. Send WhatsApp confirmation to customer
+            # Update order status in database
+            if order_id:
+                try:
+                    from ..database import SessionLocal
+                    from sqlalchemy import text
+                    
+                    db = SessionLocal()
+                    try:
+                        db.execute(
+                            text("UPDATE orders SET status = 'paid', payment_method = 'paystack' WHERE id = :oid"),
+                            {"oid": order_id}
+                        )
+                        db.commit()
+                        logger.info(f"✅ Order {order_id} auto-marked as paid via Paystack")
+                    finally:
+                        db.close()
+                except Exception as e:
+                    logger.error(f"Failed to update order {order_id}: {e}")
             
             return {
                 "processed": True,
@@ -259,11 +267,9 @@ class PaystackService:
             }
         
         elif event == "transfer.success":
-            # Payout to vendor successful
             return {"processed": True, "type": "payout"}
         
         elif event == "transfer.failed":
-            # Payout failed
             return {"processed": True, "type": "payout_failed"}
         
         return {"processed": False, "reason": f"Unknown event: {event}"}

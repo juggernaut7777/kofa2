@@ -1,11 +1,12 @@
-import { useState, useEffect, useContext } from 'react'
+import { useState, useEffect, useContext, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { apiCall, API_ENDPOINTS } from '../../config/api'
+import { apiCall, API_BASE_URL, API_ENDPOINTS } from '../../config/api'
 import { ThemeContext } from '../../context/ThemeContext'
 import { useAuth } from '../../context/AuthContext'
 import {
     ChevronLeft, Plus, TrendingUp, TrendingDown, Home, Megaphone,
-    Package, Truck, Wrench, FileText, Edit2, Trash2, BarChart3, DollarSign
+    Package, Truck, Wrench, FileText, Edit2, Trash2, BarChart3, DollarSign,
+    Camera, Loader2
 } from 'lucide-react'
 
 const ExpensesRedesign = () => {
@@ -24,6 +25,8 @@ const ExpensesRedesign = () => {
     const [showAddModal, setShowAddModal] = useState(false)
     const [editingExpense, setEditingExpense] = useState(null)
     const [saving, setSaving] = useState(false)
+    const [scanning, setScanning] = useState(false)
+    const fileInputRef = useRef(null)
 
     const [newExpense, setNewExpense] = useState({
         description: '', amount: '', category: 'restock'
@@ -162,6 +165,43 @@ const ExpensesRedesign = () => {
     const getCategoryIcon = (cat) => categories.find(c => c.id === cat) || { icon: FileText, color: 'blue', label: 'Other' }
     const formatTime = (dateStr) => new Date(dateStr).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
 
+    // Receipt Scanner
+    const handleScanReceipt = async (e) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+        setScanning(true)
+        try {
+            const formData = new FormData()
+            formData.append('image', file)
+            if (user?.id) formData.append('user_id', user.id)
+
+            const res = await fetch(`${API_BASE_URL}${API_ENDPOINTS.SCAN_RECEIPT}`, {
+                method: 'POST',
+                body: formData
+            })
+            const data = await res.json()
+
+            if (data.status === 'success' && data.extracted) {
+                const { amount, description, category } = data.extracted
+                setNewExpense({
+                    description: description || '',
+                    amount: amount?.toString() || '',
+                    category: category || 'misc'
+                })
+                setEditingExpense(null)
+                setShowAddModal(true)
+                alert('✅ Receipt scanned! Review the details and tap Save.')
+            } else {
+                alert(data.detail || 'Could not read this receipt. Try a clearer photo.')
+            }
+        } catch (err) {
+            alert('Scan failed. Please try again.')
+        } finally {
+            setScanning(false)
+            if (fileInputRef.current) fileInputRef.current.value = ''
+        }
+    }
+
     return (
         <div className={`min-h-screen ${isDark ? 'bg-[#0F0F12]' : 'bg-white'}`}>
             {/* Header */}
@@ -277,11 +317,24 @@ const ExpensesRedesign = () => {
                         )}
                     </div>
 
-                    {/* Add Button */}
+                    {/* Add/Scan Buttons */}
                     <div className={`fixed bottom-20 left-0 right-0 p-4 ${isDark ? 'bg-[#0F0F12]' : 'bg-white'} border-t ${isDark ? 'border-white/10' : 'border-gray-100'}`}>
-                        <button onClick={() => { setEditingExpense(null); setNewExpense({ description: '', amount: '', category: 'restock' }); setShowAddModal(true) }} className="w-full py-3 bg-[#0095FF] text-white font-semibold rounded-xl flex items-center justify-center gap-2">
-                            <Plus size={20} /> Log Expense
-                        </button>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={scanning}
+                                className={`flex-1 py-3 font-semibold rounded-xl flex items-center justify-center gap-2 ${scanning ? 'bg-gray-300 text-gray-500' : 'bg-green-500 text-white'}`}
+                            >
+                                {scanning ? <><Loader2 size={18} className="animate-spin" /> Scanning...</> : <><Camera size={18} /> Scan Receipt</>}
+                            </button>
+                            <button
+                                onClick={() => { setEditingExpense(null); setNewExpense({ description: '', amount: '', category: 'restock' }); setShowAddModal(true) }}
+                                className="flex-1 py-3 bg-[#0095FF] text-white font-semibold rounded-xl flex items-center justify-center gap-2"
+                            >
+                                <Plus size={20} /> Log Expense
+                            </button>
+                        </div>
+                        <input ref={fileInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleScanReceipt} />
                     </div>
                 </>
             )}

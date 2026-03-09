@@ -57,6 +57,8 @@ export const API_ENDPOINTS = {
   ADD_EXPENSE: '/expenses/log',
   EXPENSE_SUMMARY: '/expenses/summary',
   LIST_EXPENSES: '/expenses/list',
+  SCAN_RECEIPT: '/expenses/scan-receipt',
+  CONFIRM_PAYMENT: '/expenses/confirm-payment',
 
   // Profit & Loss (backend uses /profit-loss prefix)
   PROFIT_TODAY: '/profit-loss/today',
