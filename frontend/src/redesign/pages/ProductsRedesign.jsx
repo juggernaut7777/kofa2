@@ -4,7 +4,7 @@ import { apiCall, cachedApiCall, API_ENDPOINTS, CACHE_KEYS, API_BASE_URL } from 
 import { clearCache } from '../../utils/cache'
 import { ThemeContext } from '../../context/ThemeContext'
 import { useAuth } from '../../context/AuthContext'
-import { Plus, Search, ScanLine, Package, Upload, X, RefreshCw, Edit2, Image, Camera } from 'lucide-react'
+import { Plus, Search, ScanLine, Package, Upload, X, RefreshCw, Edit2, Image, Camera, Loader2 } from 'lucide-react'
 import BarcodeScanner from '../../components/BarcodeScanner/BarcodeScanner'
 
 const ProductsRedesign = () => {
@@ -25,6 +25,8 @@ const ProductsRedesign = () => {
     const [editingProduct, setEditingProduct] = useState(null)
     const [uploadingImage, setUploadingImage] = useState(false)
     const [showBarcodeScanner, setShowBarcodeScanner] = useState(false)
+    const [scanningProduct, setScanningProduct] = useState(false)
+    const productCameraRef = useRef(null)
 
     const [newProduct, setNewProduct] = useState({
         name: '', price: '', stock: '', category: 'General', description: '', image: null
@@ -210,6 +212,50 @@ const ProductsRedesign = () => {
         e.target.value = ''
     }
 
+    // Snap-to-Add: photograph product → AI fills form
+    const handleSnapProduct = async (e) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+        setScanningProduct(true)
+        try {
+            const formData = new FormData()
+            formData.append('image', file)
+
+            const res = await fetch(`${API_BASE_URL}${API_ENDPOINTS.SCAN_PRODUCT}`, {
+                method: 'POST',
+                body: formData
+            })
+            const data = await res.json()
+
+            if (data.status === 'success' && data.product) {
+                const p = data.product
+                // Read image as preview too
+                const reader = new FileReader()
+                reader.onload = (ev) => setImagePreview(ev.target.result)
+                reader.readAsDataURL(file)
+
+                setNewProduct({
+                    name: p.name || '',
+                    price: p.suggested_price_ngn?.toString() || '',
+                    stock: '',
+                    category: (p.category || 'General').charAt(0).toUpperCase() + (p.category || 'general').slice(1),
+                    description: p.description || '',
+                    image: null
+                })
+                setEditingProduct(null)
+                setShowAddModal(true)
+                alert('✅ Product identified! Review details, set stock & price, then save.')
+            } else {
+                alert(data.detail || 'Could not identify product. Try a clearer photo.')
+            }
+        } catch (err) {
+            alert('Scan failed. Please try again.')
+        } finally {
+            setScanningProduct(false)
+            if (productCameraRef.current) productCameraRef.current.value = ''
+        }
+    }
+
     const filters = [
         { id: 'all', label: 'All Items' },
         { id: 'low', label: 'Low Stock' },
@@ -236,6 +282,15 @@ const ProductsRedesign = () => {
             <div className="px-4 pb-4 flex items-center justify-between">
                 <p className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Manage stock levels and pricing</p>
                 <div className="flex items-center gap-2">
+                    <input type="file" ref={productCameraRef} accept="image/*" capture="environment" className="hidden" onChange={handleSnapProduct} />
+                    <button
+                        className={`p-2 rounded-lg ${scanningProduct ? 'bg-green-100' : isDark ? 'bg-white/10 hover:bg-white/20' : 'bg-gray-100 hover:bg-gray-200'}`}
+                        title="Snap to Add Product"
+                        disabled={scanningProduct}
+                        onClick={() => productCameraRef.current?.click()}
+                    >
+                        {scanningProduct ? <Loader2 size={20} className="text-green-500 animate-spin" /> : <Camera size={20} className="text-green-500" />}
+                    </button>
                     <button className={`p-2 rounded-lg ${isDark ? 'bg-white/10 hover:bg-white/20' : 'bg-gray-100 hover:bg-gray-200'}`}
                         title="Scan Barcode" onClick={() => setShowBarcodeScanner(true)}>
                         <ScanLine size={20} className="text-[#0095FF]" />

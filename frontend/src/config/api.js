@@ -18,6 +18,7 @@ export const API_ENDPOINTS = {
   DELETE_PRODUCT_IMAGE: (id) => `/products/${id}/image`,
   LOW_STOCK_PRODUCTS: '/products/low-stock',
   SEARCH_PRODUCTS: '/products/search',
+  SCAN_PRODUCT: '/products/scan-product',
 
   // Orders
   ORDERS: '/orders',

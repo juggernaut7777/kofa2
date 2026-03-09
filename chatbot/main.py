@@ -1238,6 +1238,38 @@ async def test_customer_bot(request: CustomerBotTestRequest):
         }
 
 
+# ============== SNAP-TO-ADD PRODUCT (AI Vision) ==============
+
+@router.post("/products/scan-product")
+async def scan_product_image(image: UploadFile = File(...)):
+    """
+    Snap a product photo → AI identifies name, description, category, suggested price.
+    Vendor reviews and confirms before saving.
+    """
+    from .services.product_scanner import scan_product
+    
+    # Validate file type
+    allowed_types = ["image/jpeg", "image/png", "image/webp", "image/heic"]
+    content_type = image.content_type or "image/jpeg"
+    if content_type not in allowed_types:
+        raise HTTPException(status_code=400, detail=f"Unsupported image type: {content_type}")
+    
+    image_bytes = await image.read()
+    if len(image_bytes) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Image too large. Maximum 10MB.")
+    
+    result = await scan_product(image_bytes, content_type)
+    
+    if not result:
+        raise HTTPException(status_code=422, detail="Could not identify product. Try a clearer photo with good lighting.")
+    
+    return {
+        "status": "success",
+        "product": result,
+        "message": "Product identified! Review the details and save."
+    }
+
+
 @router.post("/products")
 async def create_product(product: ProductCreate):
     """Add a new product to inventory."""
