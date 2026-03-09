@@ -202,28 +202,40 @@ def get_vendor_name(user_id: str) -> str:
     finally:
         db.close()
 
-# Per-vendor settings storage (keyed by user_id)
-# In production, this should be stored in the database
-_VENDOR_SETTINGS_STORE: Dict[str, dict] = {}
-
+# Per-vendor settings — now DB-backed (survives restarts)
 def get_vendor_settings(user_id: str = "default") -> dict:
-    """Get settings for a specific vendor. Each vendor has their own isolated settings."""
-    if user_id not in _VENDOR_SETTINGS_STORE:
-        _VENDOR_SETTINGS_STORE[user_id] = {
-            "payment_account": {
-                "bank_name": "",
-                "account_number": "",
-                "account_name": "",
-            },
-            "business_info": {
-                "name": "KOFA Store",
-                "phone": "",
-                "address": "",
-            },
-            "payment_method": "bank_transfer",
-            "subscription_tier": "free",
-        }
-    return _VENDOR_SETTINGS_STORE[user_id]
+    """Get settings for a specific vendor from the database."""
+    from .database import SessionLocal
+    from .models import User
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.id == user_id).first()
+        if user:
+            return {
+                "payment_account": {
+                    "bank_name": user.bank_name or "",
+                    "account_number": user.bank_account_number or "",
+                    "account_name": user.bank_account_name or "",
+                },
+                "business_info": {
+                    "name": user.business_name or "KOFA Store",
+                    "phone": user.phone or "",
+                    "address": user.business_address or "",
+                },
+                "payment_method": user.payment_method or "bank_transfer",
+                "subscription_tier": user.subscription_tier or "free",
+            }
+    except Exception:
+        pass
+    finally:
+        db.close()
+    # Fallback for unknown user
+    return {
+        "payment_account": {"bank_name": "", "account_number": "", "account_name": ""},
+        "business_info": {"name": "KOFA Store", "phone": "", "address": ""},
+        "payment_method": "bank_transfer",
+        "subscription_tier": "free",
+    }
 
 class MessageRequest(BaseModel):
     """Incoming message payload."""
@@ -1833,44 +1845,35 @@ class PaymentReceipt(BaseModel):
     payment_method: str
     vendor_account: Optional[Dict] = None
 
-# Subscription plans
+# Subscription plans — aligned with landing page (Free, Grow, Pro)
 SUBSCRIPTION_PLANS = {
     "free": SubscriptionPlan(
         id="free",
         name="Free",
         price_ngn=0,
         duration_months=0,
-        features=["Up to 50 products", "Basic chatbot", "Manual order tracking"],
+        features=["Up to 50 products", "Basic AI chatbot", "Manual order tracking", "Expense logging"],
         max_products=50,
         max_messages=100
     ),
-    "starter": SubscriptionPlan(
-        id="starter",
-        name="Starter",
+    "grow": SubscriptionPlan(
+        id="grow",
+        name="Grow",
         price_ngn=5000,
         duration_months=1,
-        features=["Up to 200 products", "AI chatbot", "Order management", "Basic analytics"],
-        max_products=200,
-        max_messages=1000
+        features=["Up to 500 products", "AI Business Assistant", "Receipt Scanner", "Payment tracking", "Analytics", "WhatsApp bot"],
+        max_products=500,
+        max_messages=5000
     ),
-    "professional": SubscriptionPlan(
-        id="professional",
-        name="Professional",
+    "pro": SubscriptionPlan(
+        id="pro",
+        name="Pro",
         price_ngn=15000,
         duration_months=1,
-        features=["Unlimited products", "Advanced AI chatbot", "Full analytics", "Multi-channel sales", "Priority support"],
-        max_products=-1,  # unlimited
-        max_messages=-1   # unlimited
-    ),
-    "enterprise": SubscriptionPlan(
-        id="enterprise",
-        name="Enterprise",
-        price_ngn=50000,
-        duration_months=1,
-        features=["Everything in Professional", "Custom integrations", "Dedicated support", "White-label options"],
+        features=["Unlimited products", "Full AI suite", "Multi-channel sales", "Team members", "Priority support", "API access"],
         max_products=-1,
         max_messages=-1
-    )
+    ),
 }
 
 @router.get("/subscription/plans")

@@ -1,6 +1,6 @@
-import { useState, useEffect, useContext } from 'react'
+import { useState, useEffect, useContext, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { apiCall, cachedApiCall, API_ENDPOINTS, CACHE_KEYS } from '../../config/api'
+import { apiCall, cachedApiCall, API_ENDPOINTS, CACHE_KEYS, API_BASE_URL } from '../../config/api'
 import { useAuth } from '../../context/AuthContext'
 import { ThemeContext } from '../../context/ThemeContext'
 import {
@@ -17,7 +17,12 @@ import {
     Store,
     ExternalLink,
     Link2,
-    ShoppingCart
+    ShoppingCart,
+    Send,
+    Sparkles,
+    Loader2,
+    CheckCircle,
+    ChevronRight
 } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
@@ -34,6 +39,13 @@ const DashboardRedesign = () => {
     const [products, setProducts] = useState([])
     const [loading, setLoading] = useState(true)
     const [greeting, setGreeting] = useState('')
+
+    // AI Command Bar state
+    const [aiInput, setAiInput] = useState('')
+    const [aiLoading, setAiLoading] = useState(false)
+    const [aiResponse, setAiResponse] = useState(null)
+    const [conversationId, setConversationId] = useState(null)
+    const aiInputRef = useRef(null)
 
     useEffect(() => {
         const hour = new Date().getHours()
@@ -165,6 +177,107 @@ const DashboardRedesign = () => {
                         <span className="hidden sm:inline">Preview Store</span>
                     </button>
                 </div>
+            </div>
+
+            {/* === AI COMMAND BAR === */}
+            <div className={`rounded-2xl border overflow-hidden transition-all ${isDark ? 'bg-gradient-to-r from-[#0F0F12] to-[#1a1a2e] border-white/10' : 'bg-gradient-to-r from-white to-blue-50/50 border-gray-200 shadow-sm'}`}>
+                <div className="p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                        <Sparkles size={18} className="text-[#0095FF]" />
+                        <span className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-800'}`}>AI Assistant</span>
+                        <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>— type a command or tap a chip</span>
+                    </div>
+                    <form onSubmit={async (e) => {
+                        e.preventDefault()
+                        if (!aiInput.trim() || aiLoading) return
+                        setAiLoading(true)
+                        setAiResponse(null)
+                        try {
+                            const res = await apiCall(API_ENDPOINTS.BUSINESS_AI, {
+                                method: 'POST',
+                                body: JSON.stringify({
+                                    user_id: user?.id || 'demo-user',
+                                    message: aiInput.trim(),
+                                    conversation_id: conversationId
+                                })
+                            })
+                            setAiResponse({
+                                text: res.response,
+                                action: res.action_taken,
+                                result: res.action_result
+                            })
+                            setConversationId(res.conversation_id)
+                            if (res.action_taken) {
+                                setTimeout(() => loadData(), 1000)
+                            }
+                        } catch (err) {
+                            setAiResponse({ text: 'Something went wrong. Please try again.', error: true })
+                        } finally {
+                            setAiLoading(false)
+                            setAiInput('')
+                        }
+                    }} className="flex items-center gap-2">
+                        <input
+                            ref={aiInputRef}
+                            type="text"
+                            value={aiInput}
+                            onChange={(e) => setAiInput(e.target.value)}
+                            placeholder='Try: "sold 3 bags" or "add 50 red shoes at 15000"'
+                            className={`flex-1 px-4 py-3 rounded-xl text-sm outline-none transition-all ${isDark
+                                ? 'bg-white/10 text-white placeholder-gray-500 border border-white/10 focus:border-[#0095FF]'
+                                : 'bg-gray-100 text-gray-900 placeholder-gray-400 border border-gray-200 focus:border-[#0095FF] focus:bg-white'
+                                }`}
+                        />
+                        <button
+                            type="submit"
+                            disabled={aiLoading || !aiInput.trim()}
+                            className="p-3 rounded-xl bg-[#0095FF] text-white hover:bg-[#0080DD] disabled:opacity-50 transition-all"
+                        >
+                            {aiLoading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+                        </button>
+                    </form>
+
+                    {/* Quick Action Chips */}
+                    <div className="flex gap-2 mt-3 overflow-x-auto pb-1 scrollbar-hide">
+                        {[
+                            { label: '📦 Sold...', cmd: 'I sold ' },
+                            { label: '➕ Add product', cmd: 'Add ' },
+                            { label: '💸 Spent...', cmd: 'I spent ' },
+                            { label: '⚠️ Low stock', cmd: 'Show low stock items' },
+                            { label: '💰 Revenue', cmd: "What's my revenue today" },
+                            { label: '✅ Paid', cmd: 'Customer paid for order ' },
+                        ].map((chip) => (
+                            <button
+                                key={chip.label}
+                                onClick={() => {
+                                    setAiInput(chip.cmd)
+                                    aiInputRef.current?.focus()
+                                }}
+                                className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${isDark
+                                    ? 'bg-white/10 text-gray-300 hover:bg-white/20'
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                    }`}
+                            >
+                                {chip.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* AI Response */}
+                {aiResponse && (
+                    <div className={`px-4 pb-4 pt-0`}>
+                        <div className={`p-3 rounded-xl text-sm ${aiResponse.error
+                            ? 'bg-red-500/10 text-red-400 border border-red-500/20'
+                            : aiResponse.action
+                                ? isDark ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-green-50 text-green-700 border border-green-200'
+                                : isDark ? 'bg-white/5 text-gray-300 border border-white/10' : 'bg-gray-50 text-gray-700 border border-gray-200'
+                            }`}>
+                            {aiResponse.action && <CheckCircle size={14} className="inline mr-1.5 mb-0.5" />}
+                            <span style={{ whiteSpace: 'pre-wrap' }}>{aiResponse.text}</span>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Stats Grid - 2 columns on mobile, 4 on desktop */}
