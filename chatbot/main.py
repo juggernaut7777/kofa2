@@ -2153,6 +2153,40 @@ async def get_dashboard_summary():
     }
 
 
+# ============== PAYSTACK WEBHOOK ==============
+
+@router.post("/payments/webhook")
+async def paystack_webhook(request: Request):
+    """
+    Paystack webhook endpoint — auto-marks orders as paid.
+    When a customer pays via a Paystack link, this is called automatically.
+    """
+    try:
+        from .services.payments import paystack_service
+        
+        body = await request.body()
+        signature = request.headers.get("x-paystack-signature", "")
+        
+        # Verify webhook signature (if configured)
+        if paystack_service.config.webhook_secret and signature:
+            if not paystack_service.verify_webhook_signature(body, signature):
+                logger.warning("⚠️ Invalid Paystack webhook signature")
+                return {"status": "error", "message": "Invalid signature"}
+        
+        # Parse and process the event
+        import json as json_mod
+        payload = json_mod.loads(body)
+        event = payload.get("event", "")
+        data = payload.get("data", {})
+        
+        logger.info(f"📨 Paystack webhook: {event}")
+        result = await paystack_service.process_webhook(event, data)
+        
+        return {"status": "success", **result}
+    except Exception as e:
+        logger.error(f"Webhook processing error: {e}")
+        return {"status": "error", "message": str(e)}
+
 # ============== BOT CONTROL ENDPOINTS ==============
 
 class BotPauseRequest(BaseModel):

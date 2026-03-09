@@ -1,13 +1,16 @@
 # kofa/chatbot/routers/expenses.py
 """
 Expenses router - tracks vendor business expenses in database.
+Also handles receipt scanning (OCR) and payment confirmation.
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
 import uuid
+import logging
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -206,3 +209,110 @@ async def update_expense(expense_id: str, expense: ExpenseCreate):
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         db.close()
+
+
+# ============== RECEIPT SCANNER (OCR) ==============
+
+@router.post("/scan-receipt")
+async def scan_receipt_endpoint(image: UploadFile = File(...), user_id: str = Form(None)):
+    """
+    Scan a receipt photo and extract expense data using Gemini Vision AI.
+    Returns extracted fields for vendor to confirm before saving.
+    """
+    from ..services.receipt_scanner import scan_receipt
+    
+    # Validate file type
+    allowed_types = ["image/jpeg", "image/png", "image/webp", "image/heic"]
+    content_type = image.content_type or "image/jpeg"
+    if content_type not in allowed_types:
+        raise HTTPException(status_code=400, detail=f"Unsupported image type: {content_type}. Use JPEG, PNG, or WebP.")
+    
+    # Read image (limit to 10MB)
+    image_bytes = await image.read()
+    if len(image_bytes) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Image too large. Maximum 10MB.")
+    
+    # Scan with Gemini Vision
+    result = await scan_receipt(image_bytes, content_type)
+    
+    if not result:
+        raise HTTPException(status_code=422, detail="Could not extract data from this image. Try a clearer photo.")
+    
+    return {
+        "status": "success",
+        "extracted": result,
+        "message": "Receipt scanned successfully. Please confirm the details."
+    }
+
+
+# ============== PAYMENT CONFIRMATION ==============
+
+class PaymentConfirmation(BaseModel):
+    """Confirm a payment received for an order."""
+    order_id: str
+    amount: float
+    method: str = "transfer"  # cash, transfer, paystack
+    reference: Optional[str] = None  # bank reference or Paystack ref
+    user_id: Optional[str] = None
+
+
+@router.post("/confirm-payment")
+async def confirm_payment(payment: PaymentConfirmation):
+    """
+    Confirm a payment received for an order.
+    Marks the order as paid and logs the payment.
+    """
+    from ..database import SessionLocal
+    
+    db = SessionLocal()
+    try:
+        # Find the order
+        from sqlalchemy import text
+        result = db.execute(
+            text("SELECT id, total_amount, status FROM orders WHERE id = :oid"),
+            {"oid": payment.order_id}
+        ).fetchone()
+        
+        if not result:
+            raise HTTPException(status_code=404, detail="Order not found")
+        
+        order_id, order_total, order_status = result
+        
+        if order_status == "paid":
+            return {"status": "already_paid", "message": "This order is already marked as paid."}
+        
+        # Check if amount matches (allow ±5% tolerance)
+        if order_total and payment.amount < (order_total * 0.95):
+            return {
+                "status": "partial",
+                "message": f"Payment of ₦{payment.amount:,.0f} is less than order total ₦{order_total:,.0f}. Partial payment recorded.",
+                "order_total": order_total,
+                "amount_received": payment.amount,
+                "difference": order_total - payment.amount
+            }
+        
+        # Mark order as paid
+        db.execute(
+            text("UPDATE orders SET status = 'paid', payment_method = :method WHERE id = :oid"),
+            {"method": payment.method, "oid": payment.order_id}
+        )
+        db.commit()
+        
+        logger.info(f"💰 Payment confirmed: ₦{payment.amount:,.0f} for order {payment.order_id} via {payment.method}")
+        
+        return {
+            "status": "success",
+            "message": f"Payment of ₦{payment.amount:,.0f} confirmed for order {payment.order_id}",
+            "order_id": payment.order_id,
+            "amount": payment.amount,
+            "method": payment.method
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Payment confirmation error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+

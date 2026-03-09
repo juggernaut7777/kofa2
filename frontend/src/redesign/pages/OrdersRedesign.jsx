@@ -41,6 +41,7 @@ const OrdersRedesign = () => {
         product_id: '', quantity: 1, payment_method: 'cash', customer_name: '', customer_phone: ''
     })
     const [quickSaleLoading, setQuickSaleLoading] = useState(false)
+    const [confirmingPayment, setConfirmingPayment] = useState(null)
 
     useEffect(() => {
         loadOrders()
@@ -106,6 +107,32 @@ const OrdersRedesign = () => {
             await apiCall(API_ENDPOINTS.MARK_INVOICE_PAID(invoiceId), { method: 'PUT' })
             loadInvoices()
         } catch (e) { alert('Failed to mark as paid') }
+    }
+
+    const handleConfirmPayment = async (order) => {
+        if (!confirm(`Confirm payment of ${formatCurrency(order.total_amount)} for order #${order.id}?`)) return
+        setConfirmingPayment(order.id)
+        try {
+            const res = await apiCall(API_ENDPOINTS.CONFIRM_PAYMENT, {
+                method: 'POST',
+                body: JSON.stringify({
+                    order_id: order.id,
+                    amount: order.total_amount,
+                    method: 'transfer',
+                    user_id: user?.id
+                })
+            })
+            if (res.status === 'success' || res.status === 'already_paid') {
+                alert('✅ Payment confirmed!')
+                loadOrders()
+            } else if (res.status === 'partial') {
+                alert(res.message)
+                loadOrders()
+            } else {
+                alert(res.message || 'Payment confirmation failed')
+            }
+        } catch (e) { alert('Failed to confirm payment') }
+        finally { setConfirmingPayment(null) }
     }
 
     const handleCreateInvoice = async () => {
@@ -419,6 +446,13 @@ const OrdersRedesign = () => {
                                         <div className={`flex gap-2 mt-4 pt-4 border-t ${isDark ? 'border-white/10' : 'border-gray-100'}`}>
                                             <button onClick={() => handleShareWhatsApp(order)} className={`flex-1 py-2 rounded-xl font-medium text-sm flex items-center justify-center gap-1 ${isDark ? 'bg-white/10 text-white' : 'bg-gray-100 text-gray-700'}`}>
                                                 <MessageSquare size={16} /> Share
+                                            </button>
+                                            <button
+                                                onClick={() => handleConfirmPayment(order)}
+                                                disabled={confirmingPayment === order.id}
+                                                className="flex-1 py-2 bg-green-500 text-white rounded-xl font-medium text-sm flex items-center justify-center gap-1"
+                                            >
+                                                <DollarSign size={16} /> {confirmingPayment === order.id ? 'Confirming...' : 'Paid'}
                                             </button>
                                             <button onClick={() => handleMarkComplete(order.id)} className="flex-1 py-2 bg-[#0095FF] text-white rounded-xl font-medium text-sm flex items-center justify-center gap-1">
                                                 <CheckCircle size={16} /> Complete
