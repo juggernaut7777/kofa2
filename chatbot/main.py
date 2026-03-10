@@ -2188,6 +2188,139 @@ async def get_payment_account(user_id: str = "default"):
     }
 
 
+# ============== BOT CONNECTIONS (WhatsApp/Instagram API) ==============
+
+class WhatsAppConnectionRequest(BaseModel):
+    """Connect WhatsApp Business API."""
+    phone_id: str
+    access_token: str
+    business_id: str = ""
+
+class InstagramConnectionRequest(BaseModel):
+    """Connect Instagram API."""
+    access_token: str
+    page_id: str = ""
+
+
+@router.get("/vendor/bot-connections")
+async def get_bot_connections(user_id: str = "default"):
+    """Get WhatsApp/Instagram connection status for a vendor."""
+    from .database import SessionLocal
+    from .models import User
+
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            return {"status": "success", "whatsapp": {"connected": False}, "instagram": {"connected": False}}
+        return {
+            "status": "success",
+            "whatsapp": {
+                "connected": bool(user.whatsapp_connected),
+                "phone_id": user.whatsapp_phone_id or "",
+                "business_id": user.whatsapp_business_id or "",
+                "has_token": bool(user.whatsapp_access_token),
+            },
+            "instagram": {
+                "connected": bool(user.instagram_connected),
+                "page_id": user.instagram_page_id or "",
+                "has_token": bool(user.instagram_access_token),
+            }
+        }
+    finally:
+        db.close()
+
+
+@router.put("/vendor/bot-connections/whatsapp")
+async def connect_whatsapp(req: WhatsAppConnectionRequest, user_id: str = "default"):
+    """Save WhatsApp Business API credentials."""
+    from .database import SessionLocal
+    from .models import User
+
+    if not req.phone_id or not req.access_token:
+        raise HTTPException(status_code=400, detail="Phone ID and Access Token are required")
+
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="Vendor not found")
+        user.whatsapp_phone_id = req.phone_id
+        user.whatsapp_access_token = req.access_token
+        user.whatsapp_business_id = req.business_id or ""
+        user.whatsapp_connected = 1
+        db.commit()
+        return {"status": "success", "message": "WhatsApp Business API connected successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+
+@router.put("/vendor/bot-connections/instagram")
+async def connect_instagram(req: InstagramConnectionRequest, user_id: str = "default"):
+    """Save Instagram API credentials."""
+    from .database import SessionLocal
+    from .models import User
+
+    if not req.access_token:
+        raise HTTPException(status_code=400, detail="Access Token is required")
+
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="Vendor not found")
+        user.instagram_access_token = req.access_token
+        user.instagram_page_id = req.page_id or ""
+        user.instagram_connected = 1
+        db.commit()
+        return {"status": "success", "message": "Instagram API connected successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+
+@router.delete("/vendor/bot-connections/{platform}")
+async def disconnect_bot(platform: str, user_id: str = "default"):
+    """Disconnect a bot platform (whatsapp or instagram)."""
+    from .database import SessionLocal
+    from .models import User
+
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="Vendor not found")
+        if platform == "whatsapp":
+            user.whatsapp_phone_id = None
+            user.whatsapp_access_token = None
+            user.whatsapp_business_id = None
+            user.whatsapp_connected = 0
+        elif platform == "instagram":
+            user.instagram_access_token = None
+            user.instagram_page_id = None
+            user.instagram_connected = 0
+        else:
+            raise HTTPException(status_code=400, detail="Invalid platform. Use 'whatsapp' or 'instagram'.")
+        db.commit()
+        return {"status": "success", "message": f"{platform.title()} disconnected"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+
 # ============== FREEMIUM USAGE & SUBSCRIPTION ==============
 
 @router.get("/usage")

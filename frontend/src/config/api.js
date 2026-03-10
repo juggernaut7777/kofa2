@@ -47,6 +47,12 @@ export const API_ENDPOINTS = {
   NOTIFICATION_READ: (id) => `/notifications/${id}/read`,
   NOTIFICATIONS_READ_ALL: '/notifications/read-all',
 
+  // Bot Connections (WhatsApp/Instagram API)
+  BOT_CONNECTIONS: '/vendor/bot-connections',
+  CONNECT_WHATSAPP: '/vendor/bot-connections/whatsapp',
+  CONNECT_INSTAGRAM: '/vendor/bot-connections/instagram',
+  DISCONNECT_BOT: (platform) => `/vendor/bot-connections/${platform}`,
+
   // Users/Vendors
   USERS: '/users',
   USER_BY_ID: (id) => `/users/${id}`,
