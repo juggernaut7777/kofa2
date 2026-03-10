@@ -241,3 +241,19 @@ class CreditSale(Base):
 
     user = relationship("User")
 
+
+class Notification(Base):
+    """In-app notification for vendors — sale alerts, low stock, credit reminders, etc."""
+    __tablename__ = "notifications"
+
+    id = Column(GUID, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(GUID, ForeignKey("users.id"), nullable=False, index=True)
+    type = Column(String(50), nullable=False, index=True)  # "sale", "low_stock", "credit_due", "system"
+    title = Column(String(255), nullable=False)
+    message = Column(Text, nullable=False)
+    is_read = Column(Integer, default=0, index=True)  # 0=unread, 1=read
+    link = Column(String(255), nullable=True)  # Optional deep link, e.g. "/orders"
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+    user = relationship("User")
+

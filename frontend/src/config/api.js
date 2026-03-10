@@ -41,6 +41,12 @@ export const API_ENDPOINTS = {
   CREDIT_PAYMENT: (id) => `/sales/credit/${id}/payment`,
   DELETE_CREDIT: (id) => `/sales/credit/${id}`,
 
+  // Notifications (in-app alerts)
+  NOTIFICATIONS: '/notifications',
+  NOTIFICATIONS_UNREAD: '/notifications/unread-count',
+  NOTIFICATION_READ: (id) => `/notifications/${id}/read`,
+  NOTIFICATIONS_READ_ALL: '/notifications/read-all',
+
   // Users/Vendors
   USERS: '/users',
   USER_BY_ID: (id) => `/users/${id}`,
