@@ -31,6 +31,15 @@ class User(Base):
     bot_style = Column(String(20), default="corporate")
     subscription_tier = Column(String(20), default="free", index=True)  # free, grow, pro
     subscription_expires_at = Column(DateTime, nullable=True)
+    # WhatsApp Business API connection
+    whatsapp_phone_id = Column(String(100), nullable=True)
+    whatsapp_access_token = Column(String(500), nullable=True)
+    whatsapp_business_id = Column(String(100), nullable=True)
+    whatsapp_connected = Column(Integer, default=0)
+    # Instagram API connection
+    instagram_access_token = Column(String(500), nullable=True)
+    instagram_page_id = Column(String(100), nullable=True)
+    instagram_connected = Column(Integer, default=0)
     is_active = Column(Integer, default=1)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

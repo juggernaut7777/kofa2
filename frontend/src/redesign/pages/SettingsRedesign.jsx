@@ -46,6 +46,10 @@ const SettingsRedesign = () => {
         instagram: { connected: false, status: 'disconnected' },
         paystack: { connected: false, status: 'disconnected' }
     })
+    const [connectModal, setConnectModal] = useState(null) // 'whatsapp' | 'instagram' | null
+    const [connectForm, setConnectForm] = useState({})
+    const [connectLoading, setConnectLoading] = useState(false)
+    const [connectError, setConnectError] = useState('')
 
     // Team Members state
     const [teamMembers, setTeamMembers] = useState([])
@@ -59,6 +63,7 @@ const SettingsRedesign = () => {
     useEffect(() => {
         loadBotSettings()
         loadUsageSummary()
+        loadBotConnections()
     }, [])
 
     const loadUsageSummary = async () => {
@@ -171,9 +176,56 @@ const SettingsRedesign = () => {
         { id: 'support', label: 'Support' }
     ]
 
+    const loadBotConnections = async () => {
+        try {
+            const res = await apiCall(`${API_ENDPOINTS.BOT_CONNECTIONS}?user_id=${user?.id || 'default'}`)
+            const data = await res.json()
+            if (data.status === 'success') {
+                setIntegrations(prev => ({
+                    ...prev,
+                    whatsapp: { connected: data.whatsapp?.connected || false, phone_id: data.whatsapp?.phone_id || '', business_id: data.whatsapp?.business_id || '' },
+                    instagram: { connected: data.instagram?.connected || false, page_id: data.instagram?.page_id || '' }
+                }))
+            }
+        } catch (e) { /* ignore */ }
+    }
+
+    const handleConnectPlatform = async (platform) => {
+        setConnectLoading(true)
+        setConnectError('')
+        try {
+            const endpoint = platform === 'whatsapp' ? API_ENDPOINTS.CONNECT_WHATSAPP : API_ENDPOINTS.CONNECT_INSTAGRAM
+            const res = await apiCall(`${endpoint}?user_id=${user?.id || 'default'}`, {
+                method: 'PUT',
+                body: JSON.stringify(connectForm)
+            })
+            const data = await res.json()
+            if (data.status === 'success') {
+                setConnectModal(null)
+                setConnectForm({})
+                loadBotConnections()
+            } else {
+                setConnectError(data.detail || 'Connection failed')
+            }
+        } catch (e) {
+            setConnectError('Network error')
+        } finally {
+            setConnectLoading(false)
+        }
+    }
+
+    const handleDisconnectPlatform = async (platform) => {
+        if (!confirm(`Disconnect ${platform}? Your bot will stop responding on this platform.`)) return
+        try {
+            await apiCall(`${API_ENDPOINTS.DISCONNECT_BOT(platform)}?user_id=${user?.id || 'default'}`, { method: 'DELETE' })
+            loadBotConnections()
+        } catch (e) { /* ignore */ }
+    }
+
     const handleTabChange = (tabId) => {
         setActiveTab(tabId)
         if (tabId === 'team') loadTeamMembers()
+        if (tabId === 'integrations') loadBotConnections()
     }
 
     const isPro = usageSummary?.tier === 'pro'
@@ -425,39 +477,53 @@ const SettingsRedesign = () => {
                         {/* WhatsApp */}
                         <div className={`flex items-center justify-between p-4 ${isDark ? 'border-b border-white/5' : 'border-b border-gray-50'}`}>
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-lg bg-green-100 text-green-500 flex items-center justify-center">
+                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${integrations.whatsapp.connected ? 'bg-green-100 text-green-500' : 'bg-gray-100 text-gray-400'}`}>
                                     <MessageSquare size={18} />
                                 </div>
                                 <div>
                                     <p className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>WhatsApp Business</p>
                                     <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                                        {integrations.whatsapp.connected ? 'Connected' : 'Not connected'}
+                                        {integrations.whatsapp.connected ? `Connected — Phone ID: ...${(integrations.whatsapp.phone_id || '').slice(-4)}` : 'Not connected — requires Meta Business API'}
                                     </p>
                                 </div>
                             </div>
                             {integrations.whatsapp.connected ? (
-                                <span className="flex items-center gap-1 text-sm text-green-500 font-medium">
-                                    <span className="w-2 h-2 rounded-full bg-green-500"></span> Active
-                                </span>
+                                <div className="flex items-center gap-2">
+                                    <span className="flex items-center gap-1 text-sm text-green-500 font-medium">
+                                        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> Active
+                                    </span>
+                                    <button onClick={() => handleDisconnectPlatform('whatsapp')} className="text-red-400 text-xs underline ml-2">Disconnect</button>
+                                </div>
                             ) : (
-                                <button className="text-[#0095FF] font-semibold text-sm border border-[#0095FF] px-3 py-1 rounded-lg">Connect</button>
+                                <button onClick={() => { setConnectModal('whatsapp'); setConnectForm({ phone_id: '', access_token: '', business_id: '' }); setConnectError('') }}
+                                    className="text-[#0095FF] font-semibold text-sm border border-[#0095FF] px-3 py-1 rounded-lg hover:bg-[#0095FF] hover:text-white transition-all">Setup</button>
                             )}
                         </div>
 
                         {/* Instagram */}
                         <div className={`flex items-center justify-between p-4 ${isDark ? 'border-b border-white/5' : 'border-b border-gray-50'}`}>
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-lg bg-orange-100 text-orange-500 flex items-center justify-center">
+                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${integrations.instagram.connected ? 'bg-orange-100 text-orange-500' : 'bg-gray-100 text-gray-400'}`}>
                                     <Instagram size={18} />
                                 </div>
                                 <div>
                                     <p className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>Instagram Shop</p>
                                     <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                                        {integrations.instagram.connected ? 'Connected' : 'Not connected'}
+                                        {integrations.instagram.connected ? `Connected — Page: ...${(integrations.instagram.page_id || '').slice(-4)}` : 'Not connected — requires Instagram Graph API'}
                                     </p>
                                 </div>
                             </div>
-                            <button className="text-[#0095FF] font-semibold text-sm border border-[#0095FF] px-3 py-1 rounded-lg">Connect</button>
+                            {integrations.instagram.connected ? (
+                                <div className="flex items-center gap-2">
+                                    <span className="flex items-center gap-1 text-sm text-green-500 font-medium">
+                                        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> Active
+                                    </span>
+                                    <button onClick={() => handleDisconnectPlatform('instagram')} className="text-red-400 text-xs underline ml-2">Disconnect</button>
+                                </div>
+                            ) : (
+                                <button onClick={() => { setConnectModal('instagram'); setConnectForm({ access_token: '', page_id: '' }); setConnectError('') }}
+                                    className="text-[#0095FF] font-semibold text-sm border border-[#0095FF] px-3 py-1 rounded-lg hover:bg-[#0095FF] hover:text-white transition-all">Setup</button>
+                            )}
                         </div>
 
                         {/* Paystack */}
@@ -473,7 +539,107 @@ const SettingsRedesign = () => {
                                     </p>
                                 </div>
                             </div>
-                            <button className="text-[#0095FF] font-semibold text-sm border border-[#0095FF] px-3 py-1 rounded-lg">Connect</button>
+                            <button className="text-[#0095FF] font-semibold text-sm border border-[#0095FF] px-3 py-1 rounded-lg hover:bg-[#0095FF] hover:text-white transition-all">Connect</button>
+                        </div>
+                    </div>
+
+                    {/* How to get API keys info box */}
+                    <div className={`mt-4 rounded-2xl p-5 ${isDark ? 'bg-blue-500/10 border border-blue-500/20' : 'bg-blue-50'}`}>
+                        <p className={`text-sm font-semibold mb-2 ${isDark ? 'text-blue-300' : 'text-blue-700'}`}>📋 How to get your API keys</p>
+                        <div className={`text-xs space-y-2 ${isDark ? 'text-blue-200/70' : 'text-blue-600'}`}>
+                            <p><strong>WhatsApp Business API:</strong> Go to <a href="https://developers.facebook.com" target="_blank" rel="noreferrer" className="underline">developers.facebook.com</a> → Create App → Add WhatsApp → Get Phone Number ID & Access Token from the API Setup page.</p>
+                            <p><strong>Instagram API:</strong> Same Facebook Developer Portal → Add Instagram Graph API → Generate a Page Token for your business Instagram account.</p>
+                            <p className={`${isDark ? 'text-yellow-300/80' : 'text-orange-600'}`}>💡 You need a CAC-registered business to verify your Meta Business account for production access.</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* WHATSAPP SETUP MODAL */}
+            {connectModal === 'whatsapp' && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setConnectModal(null)}>
+                    <div className={`w-full max-w-md rounded-2xl p-6 ${isDark ? 'bg-[#1A1A1F] border border-white/10' : 'bg-white shadow-xl'}`} onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center gap-3 mb-5">
+                            <div className="w-10 h-10 rounded-lg bg-green-100 text-green-500 flex items-center justify-center">
+                                <MessageSquare size={20} />
+                            </div>
+                            <div>
+                                <h3 className={`font-bold text-lg ${isDark ? 'text-white' : 'text-gray-900'}`}>Connect WhatsApp Business</h3>
+                                <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Meta Cloud API credentials</p>
+                            </div>
+                        </div>
+
+                        {connectError && <p className="text-red-500 text-sm mb-3 bg-red-100/20 p-2 rounded-lg">{connectError}</p>}
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className={`text-sm font-medium block mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Phone Number ID *</label>
+                                <input value={connectForm.phone_id || ''} onChange={e => setConnectForm({ ...connectForm, phone_id: e.target.value })}
+                                    placeholder="e.g. 123456789012345"
+                                    className={`w-full px-4 py-3 rounded-xl text-sm ${isDark ? 'bg-white/5 border border-white/10 text-white placeholder-gray-600' : 'bg-gray-50 border border-gray-200 text-gray-900 placeholder-gray-400'}`} />
+                            </div>
+                            <div>
+                                <label className={`text-sm font-medium block mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Permanent Access Token *</label>
+                                <input value={connectForm.access_token || ''} onChange={e => setConnectForm({ ...connectForm, access_token: e.target.value })}
+                                    type="password" placeholder="EAAx..."
+                                    className={`w-full px-4 py-3 rounded-xl text-sm ${isDark ? 'bg-white/5 border border-white/10 text-white placeholder-gray-600' : 'bg-gray-50 border border-gray-200 text-gray-900 placeholder-gray-400'}`} />
+                            </div>
+                            <div>
+                                <label className={`text-sm font-medium block mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Business ID (optional)</label>
+                                <input value={connectForm.business_id || ''} onChange={e => setConnectForm({ ...connectForm, business_id: e.target.value })}
+                                    placeholder="e.g. 987654321"
+                                    className={`w-full px-4 py-3 rounded-xl text-sm ${isDark ? 'bg-white/5 border border-white/10 text-white placeholder-gray-600' : 'bg-gray-50 border border-gray-200 text-gray-900 placeholder-gray-400'}`} />
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3 mt-6">
+                            <button onClick={() => setConnectModal(null)}
+                                className={`flex-1 py-3 rounded-xl font-semibold text-sm ${isDark ? 'bg-white/10 text-white' : 'bg-gray-100 text-gray-600'}`}>Cancel</button>
+                            <button onClick={() => handleConnectPlatform('whatsapp')} disabled={connectLoading || !connectForm.phone_id || !connectForm.access_token}
+                                className="flex-1 py-3 rounded-xl font-semibold text-sm bg-green-500 text-white disabled:opacity-40 hover:bg-green-600 transition-all">
+                                {connectLoading ? 'Connecting...' : 'Connect WhatsApp'}</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* INSTAGRAM SETUP MODAL */}
+            {connectModal === 'instagram' && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setConnectModal(null)}>
+                    <div className={`w-full max-w-md rounded-2xl p-6 ${isDark ? 'bg-[#1A1A1F] border border-white/10' : 'bg-white shadow-xl'}`} onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center gap-3 mb-5">
+                            <div className="w-10 h-10 rounded-lg bg-orange-100 text-orange-500 flex items-center justify-center">
+                                <Instagram size={20} />
+                            </div>
+                            <div>
+                                <h3 className={`font-bold text-lg ${isDark ? 'text-white' : 'text-gray-900'}`}>Connect Instagram</h3>
+                                <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Instagram Graph API credentials</p>
+                            </div>
+                        </div>
+
+                        {connectError && <p className="text-red-500 text-sm mb-3 bg-red-100/20 p-2 rounded-lg">{connectError}</p>}
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className={`text-sm font-medium block mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Access Token *</label>
+                                <input value={connectForm.access_token || ''} onChange={e => setConnectForm({ ...connectForm, access_token: e.target.value })}
+                                    type="password" placeholder="EAAx..."
+                                    className={`w-full px-4 py-3 rounded-xl text-sm ${isDark ? 'bg-white/5 border border-white/10 text-white placeholder-gray-600' : 'bg-gray-50 border border-gray-200 text-gray-900 placeholder-gray-400'}`} />
+                            </div>
+                            <div>
+                                <label className={`text-sm font-medium block mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Instagram Page ID (optional)</label>
+                                <input value={connectForm.page_id || ''} onChange={e => setConnectForm({ ...connectForm, page_id: e.target.value })}
+                                    placeholder="e.g. 17841400..."
+                                    className={`w-full px-4 py-3 rounded-xl text-sm ${isDark ? 'bg-white/5 border border-white/10 text-white placeholder-gray-600' : 'bg-gray-50 border border-gray-200 text-gray-900 placeholder-gray-400'}`} />
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3 mt-6">
+                            <button onClick={() => setConnectModal(null)}
+                                className={`flex-1 py-3 rounded-xl font-semibold text-sm ${isDark ? 'bg-white/10 text-white' : 'bg-gray-100 text-gray-600'}`}>Cancel</button>
+                            <button onClick={() => handleConnectPlatform('instagram')} disabled={connectLoading || !connectForm.access_token}
+                                className="flex-1 py-3 rounded-xl font-semibold text-sm bg-gradient-to-r from-orange-500 to-pink-500 text-white disabled:opacity-40 hover:from-orange-600 hover:to-pink-600 transition-all">
+                                {connectLoading ? 'Connecting...' : 'Connect Instagram'}</button>
                         </div>
                     </div>
                 </div>
