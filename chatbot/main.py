@@ -573,7 +573,7 @@ async def business_ai_chat(body: BusinessAIRequest, request: Request):
 async def get_orders(status: Optional[str] = None):
     """
     Get all orders for merchant dashboard.
-    Fetches from database, falling back to ORDERS_STORE + mock demo orders.
+    Fetches from database. Returns orders with items and status.
     PERFORMANCE OPTIMIZED: Uses eager loading + 60-second caching.
     """
     # Build cache key based on status filter
@@ -627,19 +627,8 @@ async def get_orders(status: Optional[str] = None):
         finally:
             db.close()
     except Exception as db_error:
-        logger.warning(f"Database query failed, using memory store: {db_error}")
-        # Fallback to ORDERS_STORE
-        for order_id, order in ORDERS_STORE.items():
-            all_orders.append({
-                "id": order.get("id", order_id),
-                "customer_phone": order.get("customer_phone", "Unknown"),
-                "items": order.get("items", []),
-                "total_amount": order.get("total_amount", 0),
-                "status": order.get("status", "pending"),
-                "payment_ref": order.get("payment_ref"),
-                "created_at": order.get("created_at", datetime.now().isoformat()),
-                "source": "memory"
-            })
+        logger.warning(f"Database query failed: {db_error}")
+        # No fallback — database is the source of truth
     
     # Filter by status if needed (for database fallback case)
     if status and all_orders:
@@ -696,13 +685,27 @@ def create_chatbot_order(user_id: str, product: dict, quantity: int = 1) -> tupl
     # Generate order ID (shorter format for easy reference)
     order_id = str(uuid.uuid4())[:8].upper()
 
-    # Decrement stock first
-    success = inventory_manager.decrement_stock(product_id, quantity)
-    if not success:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to reserve stock for {product_name}. Please try again."
-        )
+    # Decrement stock via database
+    from .database import SessionLocal
+    from .models import Product as ProductModel, Order as OrderModel, OrderItem as OrderItemModel
+
+    db = SessionLocal()
+    try:
+        db_product = db.query(ProductModel).filter(ProductModel.id == product_id).first()
+        if not db_product or db_product.stock_level < quantity:
+            db.close()
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to reserve stock for {product_name}. Please try again."
+            )
+        db_product.stock_level -= quantity
+        db.commit()
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        db.close()
+        raise HTTPException(status_code=500, detail=f"Stock update failed: {str(e)}")
 
     # Get vendor payment account details
     payment_account = VENDOR_SETTINGS.get("payment_account", {})
@@ -744,77 +747,53 @@ After payment, reply "I paid" to confirm your order! ✅"""
         "total": total_amount
     }]
 
-    # Store order in ORDERS_STORE (in-memory for quick access)
-    ORDERS_STORE[order_id] = {
-        "id": order_id,
-        "customer_phone": user_id,
-        "items": order_items,
-        "total_amount": total_amount,
-        "status": "pending",
-        "payment_ref": None,
-        "created_at": datetime.now().isoformat(),
-        "source": "chatbot"
-    }
-    
-    # Increment order usage counter in database (persists across restarts)
+    # Increment order usage counter
     try:
-        from .database import SessionLocal as _UsageSession
-        _udb = _UsageSession()
-        subscription_service.increment_order_count(_udb, inventory_manager.user_id)
+        _udb = SessionLocal()
+        subscription_service.increment_order_count(_udb, user_id)
         _udb.close()
     except Exception:
-        pass  # Don't block order on tracking failure
-    
+        pass
+
     # Persist order to database
     try:
-        from .database import SessionLocal
-        from .models import Order as OrderModel, OrderItem as OrderItemModel
-        
-        db = SessionLocal()
+        db_order = OrderModel(
+            id=order_id,
+            user_id=user_id,
+            customer_phone=user_id,
+            total_amount=total_amount,
+            status="pending",
+            notes=f"Chatbot order for {product_name}"
+        )
+        db.add(db_order)
+
+        db_order_item = OrderItemModel(
+            order_id=order_id,
+            product_id=product_id,
+            product_name=product_name,
+            quantity=quantity,
+            price=price,
+            total=total_amount
+        )
+        db.add(db_order_item)
+        db.commit()
+
+        # Sale notification
         try:
-            # Create order record
-            db_order = OrderModel(
-                id=order_id,
-                user_id=inventory_manager.user_id,  # Vendor/owner ID
-                customer_phone=user_id,
-                total_amount=total_amount,
-                status="pending",
-                notes=f"Chatbot order for {product_name}"
+            create_notification(
+                user_id=user_id,
+                notif_type="sale",
+                title="\ud83d\udcb0 Chatbot Sale!",
+                message=f"\u20a6{total_amount:,.0f} \u2014 {product_name} x{quantity}",
+                link="/orders"
             )
-            db.add(db_order)
-            
-            # Create order item record
-            db_order_item = OrderItemModel(
-                order_id=order_id,
-                product_id=product_id,
-                product_name=product_name,
-                quantity=quantity,
-                price=price,
-                total=total_amount
-            )
-            db.add(db_order_item)
-            
-            db.commit()
-        except Exception as db_error:
-            db.rollback()
-            logger.error(f"Failed to persist order to database: {db_error}")
-            # Continue anyway - order is in memory
-        finally:
-            db.close()
-    except Exception as import_error:
-        logger.error(f"Database import error: {import_error}")
-
-    # Update customer history
-    if user_id not in CUSTOMER_HISTORY:
-        CUSTOMER_HISTORY[user_id] = {"orders": [], "total_spent": 0}
-
-    CUSTOMER_HISTORY[user_id]["orders"].append({
-        "order_id": order_id,
-        "product_name": product_name,
-        "amount": total_amount,
-        "timestamp": datetime.now().isoformat()
-    })
-    CUSTOMER_HISTORY[user_id]["total_spent"] += total_amount
+        except Exception:
+            pass
+    except Exception as db_error:
+        db.rollback()
+        logger.error(f"Failed to persist chatbot order: {db_error}")
+    finally:
+        db.close()
 
     return order_id, payment_info
 
@@ -862,33 +841,42 @@ async def process_message(request: MessageRequest):
     
     # ========== PAYMENT CONFIRMATION: Handle "I paid" messages ==========
     if intent == Intent.PAYMENT_CONFIRMATION:
-        # Check for pending order in state or ORDERS_STORE
+        # Check for pending order in database
         order = None
         order_id = None
         
-        # First check state for pending order
-        if state.pending_order_id and state.pending_order_id in ORDERS_STORE:
-            order_id = state.pending_order_id
-            order = ORDERS_STORE[order_id]
-        else:
-            # Fallback: find any pending order for this user
-            for oid, o in ORDERS_STORE.items():
-                if o.get("customer_phone") == user_id and o.get("status") == "pending":
-                    order_id = oid
-                    order = o
-                    break
+        try:
+            from .database import SessionLocal as _PayDB
+            from .models import Order as _PayOrder
+            _pdb = _PayDB()
+            
+            # First check state for pending order
+            if state.pending_order_id:
+                db_order = _pdb.query(_PayOrder).filter(_PayOrder.id == state.pending_order_id).first()
+                if db_order:
+                    order_id = db_order.id
+                    order = {"total_amount": db_order.total_amount, "status": db_order.status}
+            
+            if not order:
+                # Fallback: find any pending order for this user
+                db_order = _pdb.query(_PayOrder).filter(
+                    _PayOrder.customer_phone == user_id,
+                    _PayOrder.status == "pending"
+                ).order_by(_PayOrder.created_at.desc()).first()
+                if db_order:
+                    order_id = db_order.id
+                    order = {"total_amount": db_order.total_amount, "status": db_order.status}
+            
+            if order and db_order:
+                db_order.status = "paid"
+                db_order.paid_at = datetime.now()
+                _pdb.commit()
+            
+            _pdb.close()
+        except Exception as e:
+            logger.error(f"Payment confirmation DB error: {e}")
         
         if order:
-            # Update order status
-            order["status"] = "paid"
-            order["paid_at"] = datetime.now().isoformat()
-            
-            # Track customer purchase history
-            if user_id not in CUSTOMER_HISTORY:
-                CUSTOMER_HISTORY[user_id] = {"orders": [], "total_spent": 0}
-            CUSTOMER_HISTORY[user_id]["orders"].append(order_id)
-            CUSTOMER_HISTORY[user_id]["total_spent"] += order.get("total_amount", 0)
-            
             # Clear pending state
             state.pending_order_id = None
             
@@ -966,20 +954,30 @@ async def process_message(request: MessageRequest):
     if intent == Intent.GREETING:
         state.reset()  # Clear any previous context
         
-        # Customer recognition - check if returning customer
-        if user_id in CUSTOMER_HISTORY:
-            history = CUSTOMER_HISTORY[user_id]
-            order_count = len(history.get("orders", []))
-            total_spent = history.get("total_spent", 0)
-            
-            if order_count > 0:
-                response_text = (
-                    f"🎉 *Welcome back, valued customer!*\n\n"
-                    f"You've made {order_count} order(s) with us totaling ₦{total_spent:,}.\n\n"
-                    f"What can I help you with today? Just tell me what you're looking for!"
-                )
-            else:
-                response_text = response_formatter.format_greeting()
+        # Customer recognition — check if returning customer (via DB)
+        order_count = 0
+        total_spent = 0
+        try:
+            from .database import SessionLocal as _GreetDB
+            from .models import Order as _GreetOrder
+            from sqlalchemy import func
+            _gdb = _GreetDB()
+            stats = _gdb.query(
+                func.count(_GreetOrder.id),
+                func.coalesce(func.sum(_GreetOrder.total_amount), 0)
+            ).filter(_GreetOrder.customer_phone == user_id).first()
+            order_count = stats[0] if stats else 0
+            total_spent = float(stats[1]) if stats else 0
+            _gdb.close()
+        except Exception:
+            pass
+
+        if order_count > 0:
+            response_text = (
+                f"🎉 *Welcome back, valued customer!*\n\n"
+                f"You've made {order_count} order(s) with us totaling ₦{total_spent:,}.\n\n"
+                f"What can I help you with today? Just tell me what you're looking for!"
+            )
         else:
             response_text = response_formatter.format_greeting()
         
