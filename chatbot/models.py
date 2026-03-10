@@ -257,3 +257,16 @@ class Notification(Base):
 
     user = relationship("User")
 
+
+class AIConversation(Base):
+    """Persisted AI conversation history — survives server restarts."""
+    __tablename__ = "ai_conversations"
+
+    id = Column(GUID, primary_key=True, default=lambda: str(uuid.uuid4()))
+    conversation_id = Column(String(36), nullable=False, unique=True, index=True)
+    user_id = Column(GUID, ForeignKey("users.id"), nullable=False, index=True)
+    messages = Column(Text, nullable=False, default="[]")  # JSON array of {role, content}
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("User")

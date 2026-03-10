@@ -500,8 +500,50 @@ async def create_order(request: OrderRequest):
 
 
 # ===== BUSINESS AI ENDPOINT =====
-# Conversation history storage for Business AI
-BUSINESS_AI_CONVERSATIONS: Dict[str, List[Dict]] = {}
+# Conversation history — now DB-backed (survives restarts)
+
+def _get_ai_history(conversation_id: str) -> list:
+    """Load AI conversation history from database."""
+    from .database import SessionLocal
+    from .models import AIConversation
+    import json
+    db = SessionLocal()
+    try:
+        row = db.query(AIConversation).filter(AIConversation.conversation_id == conversation_id).first()
+        if row:
+            return json.loads(row.messages or "[]")
+        return []
+    except Exception:
+        return []
+    finally:
+        db.close()
+
+def _save_ai_history(conversation_id: str, user_id: str, messages: list):
+    """Save AI conversation history to database (last 10 messages)."""
+    from .database import SessionLocal
+    from .models import AIConversation
+    import json
+    db = SessionLocal()
+    try:
+        row = db.query(AIConversation).filter(AIConversation.conversation_id == conversation_id).first()
+        trimmed = messages[-10:]  # Keep last 10
+        if row:
+            row.messages = json.dumps(trimmed)
+            row.updated_at = datetime.now()
+        else:
+            row = AIConversation(
+                id=str(uuid.uuid4()),
+                conversation_id=conversation_id,
+                user_id=user_id,
+                messages=json.dumps(trimmed)
+            )
+            db.add(row)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to save AI conversation: {e}")
+    finally:
+        db.close()
 
 @router.post("/business-ai")
 @limiter.limit("10/minute")  # Protect AI credits
@@ -524,8 +566,8 @@ async def business_ai_chat(body: BusinessAIRequest, request: Request):
         # Get or create conversation ID
         conversation_id = body.conversation_id or str(uuid.uuid4())
         
-        # Get conversation history (scoped by conversation_id which is per-vendor)
-        history = BUSINESS_AI_CONVERSATIONS.get(conversation_id, [])
+        # Get conversation history from database (persists across restarts)
+        history = _get_ai_history(conversation_id)
         
         # PRIVACY: Create vendor-scoped inventory manager
         vendor_inventory = get_vendor_inventory(body.user_id)
@@ -544,8 +586,8 @@ async def business_ai_chat(body: BusinessAIRequest, request: Request):
         history.append({"role": "user", "content": body.message})
         history.append({"role": "assistant", "content": result["response"]})
         
-        # Keep only last 10 messages for context
-        BUSINESS_AI_CONVERSATIONS[conversation_id] = history[-10:]
+        # Save to database (keeps last 10 messages)
+        _save_ai_history(conversation_id, body.user_id, history)
         
         return BusinessAIResponse(
             response=result["response"],
