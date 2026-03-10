@@ -104,14 +104,8 @@ limiter = Limiter(key_func=_get_vendor_or_ip)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# In‑memory store for demo purposes (User preferences)
+# In-memory store for demo purposes (User preferences)
 USERS: dict = {}
-
-# Orders store - tracks orders created by chatbot
-ORDERS_STORE: dict = {}
-
-# Customer purchase history tracking
-CUSTOMER_HISTORY: dict = {}
 
 # Low stock threshold
 LOW_STOCK_THRESHOLD = 5
