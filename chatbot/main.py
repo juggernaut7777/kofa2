@@ -469,6 +469,19 @@ async def create_order(request: OrderRequest):
         invalidate_cache(prefix="orders:")
         invalidate_cache(prefix="products:")
 
+        # Send sale notification to vendor
+        try:
+            item_names = ", ".join([i.get("product_name", "item") for i in order_items_data])
+            create_notification(
+                user_id=request.user_id,
+                notif_type="sale",
+                title="💰 New Sale!",
+                message=f"₦{total_amount:,.0f} — {item_names}",
+                link="/orders"
+            )
+        except Exception:
+            pass  # Don't fail order creation if notification fails
+
         return OrderResponse(
             order_id=order_id,
             payment_link=payment_link,
@@ -1942,10 +1955,127 @@ async def delete_credit_sale(credit_id: str, user_id: str = None):
         db.close()
 
 
+# ============== IN-APP NOTIFICATIONS ==============
+
+def create_notification(user_id: str, notif_type: str, title: str, message: str, link: str = None):
+    """Helper: create an in-app notification for a vendor."""
+    from .database import SessionLocal
+    from .models import Notification
+
+    db = SessionLocal()
+    try:
+        notif = Notification(
+            id=str(uuid.uuid4()),
+            user_id=user_id,
+            type=notif_type,
+            title=title,
+            message=message,
+            link=link,
+            is_read=0,
+            created_at=datetime.now()
+        )
+        db.add(notif)
+        db.commit()
+        return notif.id
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to create notification: {e}")
+        return None
+    finally:
+        db.close()
+
+
+@router.get("/notifications")
+async def get_notifications(user_id: str, unread_only: bool = False, limit: int = 50):
+    """Get notifications for a vendor."""
+    from .database import SessionLocal
+    from .models import Notification
+
+    db = SessionLocal()
+    try:
+        query = db.query(Notification).filter(Notification.user_id == user_id)
+        if unread_only:
+            query = query.filter(Notification.is_read == 0)
+        notifications = query.order_by(Notification.created_at.desc()).limit(limit).all()
+
+        unread_count = db.query(Notification).filter(
+            Notification.user_id == user_id, Notification.is_read == 0
+        ).count()
+
+        return {
+            "status": "success",
+            "unread_count": unread_count,
+            "notifications": [
+                {
+                    "id": n.id,
+                    "type": n.type,
+                    "title": n.title,
+                    "message": n.message,
+                    "is_read": bool(n.is_read),
+                    "link": n.link,
+                    "created_at": n.created_at.isoformat()
+                }
+                for n in notifications
+            ]
+        }
+    finally:
+        db.close()
+
+
+@router.put("/notifications/{notif_id}/read")
+async def mark_notification_read(notif_id: str):
+    """Mark a notification as read."""
+    from .database import SessionLocal
+    from .models import Notification
+
+    db = SessionLocal()
+    try:
+        notif = db.query(Notification).filter(Notification.id == notif_id).first()
+        if notif:
+            notif.is_read = 1
+            db.commit()
+        return {"status": "success"}
+    finally:
+        db.close()
+
+
+@router.put("/notifications/read-all")
+async def mark_all_read(user_id: str):
+    """Mark all notifications as read for a vendor."""
+    from .database import SessionLocal
+    from .models import Notification
+
+    db = SessionLocal()
+    try:
+        db.query(Notification).filter(
+            Notification.user_id == user_id, Notification.is_read == 0
+        ).update({"is_read": 1})
+        db.commit()
+        return {"status": "success", "message": "All notifications marked as read"}
+    finally:
+        db.close()
+
+
+@router.get("/notifications/unread-count")
+async def get_unread_count(user_id: str):
+    """Get just the unread count for the notification badge."""
+    from .database import SessionLocal
+    from .models import Notification
+
+    db = SessionLocal()
+    try:
+        count = db.query(Notification).filter(
+            Notification.user_id == user_id, Notification.is_read == 0
+        ).count()
+        return {"status": "success", "unread_count": count}
+    finally:
+        db.close()
+
 
 class PaymentAccountUpdate(BaseModel):
     """Vendor payment account details."""
     bank_name: str
+
     account_number: str
     account_name: str
 

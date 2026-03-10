@@ -27,6 +27,7 @@ import {
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Badge } from '../../components/ui/Badge'
+import NotificationBell from '../../components/NotificationBell'
 
 const DashboardRedesign = () => {
     const navigate = useNavigate()
@@ -150,6 +151,7 @@ const DashboardRedesign = () => {
 
                 {/* Store Preview Button */}
                 <div className="flex items-center gap-2">
+                    <NotificationBell isDark={isDark} />
                     <button
                         onClick={() => {
                             const storeUrl = `${window.location.origin}/shop/${encodeURIComponent(user?.businessName || user?.business_name || 'shop')}`
