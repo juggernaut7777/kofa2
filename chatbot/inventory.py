@@ -357,9 +357,9 @@ class InventoryManager:
                 """
                 UPDATE products
                 SET stock_level = stock_level - :quantity,
-                    updated_at = NOW()
+                    updated_at = GETDATE()
                 WHERE id = :product_id
-                  AND vendor_id = :vendor_id
+                  AND user_id = :vendor_id
                   AND stock_level >= :quantity
                 """,
                 {
