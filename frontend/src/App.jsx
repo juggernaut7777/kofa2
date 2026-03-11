@@ -2,6 +2,8 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
 import PrivateRoute from './components/PrivateRoute'
+import ErrorBoundary from './components/ErrorBoundary'
+import { ToastProvider } from './components/Toast'
 import BusinessAI from './components/BusinessAI/BusinessAI'
 
 // Redesigned pages (new Stitch UI)
@@ -29,6 +31,7 @@ function App() {
   return (
     <AuthProvider>
       <ThemeProvider>
+        <ToastProvider>
         <Router>
           <Routes>
             {/* Public Routes */}
@@ -43,32 +46,32 @@ function App() {
             {/* Protected Routes - Redesigned UI (5 main pages) */}
             <Route path="/dashboard" element={
               <PrivateRoute>
-                <LayoutRedesign><DashboardRedesign /></LayoutRedesign>
+                <LayoutRedesign><ErrorBoundary><DashboardRedesign /></ErrorBoundary></LayoutRedesign>
               </PrivateRoute>
             } />
             <Route path="/products" element={
               <PrivateRoute>
-                <LayoutRedesign><ProductsRedesign /></LayoutRedesign>
+                <LayoutRedesign><ErrorBoundary><ProductsRedesign /></ErrorBoundary></LayoutRedesign>
               </PrivateRoute>
             } />
             <Route path="/orders" element={
               <PrivateRoute>
-                <LayoutRedesign><OrdersRedesign /></LayoutRedesign>
+                <LayoutRedesign><ErrorBoundary><OrdersRedesign /></ErrorBoundary></LayoutRedesign>
               </PrivateRoute>
             } />
             <Route path="/insights" element={
               <PrivateRoute>
-                <LayoutRedesign><InsightsRedesign /></LayoutRedesign>
+                <LayoutRedesign><ErrorBoundary><InsightsRedesign /></ErrorBoundary></LayoutRedesign>
               </PrivateRoute>
             } />
             <Route path="/expenses" element={
               <PrivateRoute>
-                <LayoutRedesign><ExpensesRedesign /></LayoutRedesign>
+                <LayoutRedesign><ErrorBoundary><ExpensesRedesign /></ErrorBoundary></LayoutRedesign>
               </PrivateRoute>
             } />
             <Route path="/settings" element={
               <PrivateRoute>
-                <LayoutRedesign><SettingsRedesign /></LayoutRedesign>
+                <LayoutRedesign><ErrorBoundary><SettingsRedesign /></ErrorBoundary></LayoutRedesign>
               </PrivateRoute>
             } />
           </Routes>
@@ -79,6 +82,7 @@ function App() {
           {/* Cookie Notice Banner */}
           <CookieNotice />
         </Router>
+        </ToastProvider>
       </ThemeProvider>
     </AuthProvider>
   )
