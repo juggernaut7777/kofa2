@@ -90,3 +90,8 @@ GO
 IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('users') AND name = 'instagram_connected')
     ALTER TABLE users ADD instagram_connected INT DEFAULT 0;
 GO
+
+-- 007: Add payment_method to orders table (referenced by raw SQL in expenses.py, ai_brain.py, payments.py)
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('orders') AND name = 'payment_method')
+    ALTER TABLE orders ADD payment_method VARCHAR(50) NULL;
+GO
