@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Bell, X, Check, CheckCheck, ShoppingCart, AlertTriangle, CreditCard, Info } from 'lucide-react'
-import { apiCall, API_ENDPOINTS } from '../../config/api'
-import { useAuth } from '../../context/AuthContext'
+import { apiCall, API_ENDPOINTS } from '../config/api'
+import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 
 const ICON_MAP = {
