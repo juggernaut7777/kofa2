@@ -345,42 +345,6 @@ class InventoryManager:
                 logger.error(f"Error in decrement_stock for product {product_id}: {e}")
                 return False
 
-    def _decrement_stock_fallback(self, product_id: str, quantity: int) -> bool:
-        """
-        Fallback method using atomic SQL update if RPC is not available.
-        """
-        db = self._get_db()
-        try:
-            # Use atomic SQL update to prevent race conditions
-            # This checks stock availability AND decrements in a single statement
-            result = db.execute(
-                """
-                UPDATE products
-                SET stock_level = stock_level - :quantity,
-                    updated_at = GETDATE()
-                WHERE id = :product_id
-                  AND user_id = :vendor_id
-                  AND stock_level >= :quantity
-                """,
-                {
-                    "product_id": product_id,
-                    "vendor_id": self.user_id,
-                    "quantity": quantity
-                }
-            )
-
-            db.commit()
-
-            # Check if the update affected any rows
-            # If stock_level < quantity, no rows will be updated
-            return result.rowcount > 0
-
-        except Exception as e:
-            db.rollback()
-            logger.error(f"Error in decrement_stock fallback for product {product_id}: {e}")
-            return False
-        finally:
-            self._close_db()
 
     def update_stock(self, product_id: str, quantity_delta: int) -> Optional[dict]:
         """Updates stock level (positive for restock, negative for sale)."""

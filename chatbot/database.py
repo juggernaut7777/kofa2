@@ -11,7 +11,7 @@ load_dotenv()
 # SECURITY: All credentials MUST come from environment variables
 # No hardcoded defaults for sensitive values
 
-DB_TYPE = os.getenv("DB_TYPE", "mysql")
+DB_TYPE = os.getenv("DB_TYPE", "mssql")
 
 def get_required_env(key: str) -> str:
     """Get required environment variable or raise error."""

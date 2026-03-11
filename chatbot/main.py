@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, APIRouter, UploadFile, File, Request
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import PlainTextResponse, JSONResponse
+from starlette.middleware.gzip import GZipMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, validator
 from typing import Optional, List, Dict
@@ -67,20 +68,58 @@ from .routers import (
     instagram, tiktok, auth, storefront, sales
 )
 
+# ===== PRODUCTION MODE =====
+PRODUCTION = os.getenv("PRODUCTION", "false").lower() == "true"
+
 app = FastAPI(
     title="KOFA Commerce Engine",
     description="AI-powered commerce platform for modern merchants",
-    version="2.0.0"
+    version="2.0.0",
+    docs_url=None if PRODUCTION else "/docs",
+    redoc_url=None if PRODUCTION else "/redoc",
 )
 
-# Configure CORS - SECURITY: Allow any frontend origin regex to prevent 400s
+# ===== MIDDLEWARE STACK (order matters!) =====
+
+# 1. CORS — tightened to actual frontend domains
+ALLOWED_ORIGINS = [
+    "https://www.kofaapp.me",
+    "https://kofaapp.me",
+    "https://kofa2.vercel.app",
+    "http://localhost:5173",
+    "http://localhost:3000",
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# 2. GZip compression — compress responses > 500 bytes
+app.add_middleware(GZipMiddleware, minimum_size=500)
+
+
+# 3. Security headers — prevent XSS, clickjacking, MIME sniffing
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
+
+
+# 4. Global exception handler — clean JSON errors, never expose stack traces
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Unhandled exception on {request.method} {request.url.path}: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error. Please try again later."},
+    )
 
 # ===== PER-VENDOR RATE LIMITING =====
 def _get_vendor_or_ip(request: Request) -> str:
