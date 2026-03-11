@@ -20,7 +20,12 @@ try:
     import redis
     redis_url = os.getenv('REDIS_URL')
     if redis_url:
-        _redis_client = redis.from_url(redis_url, decode_responses=True)
+        # Heroku Redis uses self-signed certs — disable strict SSL verification
+        _redis_client = redis.from_url(
+            redis_url,
+            decode_responses=True,
+            ssl_cert_reqs=None
+        )
         # Test connection
         _redis_client.ping()
         _redis_available = True
