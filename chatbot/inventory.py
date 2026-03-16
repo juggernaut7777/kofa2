@@ -329,6 +329,24 @@ class InventoryManager:
                 # Decrement stock
                 product.stock_level = product.stock_level - quantity
                 
+                # === LOW STOCK NOTIFICATION ===
+                # If stock drops to 5 or below, create an in-app notification
+                LOW_STOCK_THRESHOLD = 5
+                if product.stock_level <= LOW_STOCK_THRESHOLD and product.stock_level >= 0:
+                    try:
+                        from .models import Notification as NotifModel
+                        notif = NotifModel(
+                            user_id=self.user_id,
+                            type="low_stock",
+                            title="Low Stock Alert",
+                            message=f"⚠️ {product.name} is running low — only {product.stock_level} left in stock!",
+                            data={"product_id": product_id, "stock_level": product.stock_level, "product_name": product.name},
+                        )
+                        db.add(notif)
+                        logger.info(f"Low stock notification created for {product.name} (stock: {product.stock_level})")
+                    except Exception as notif_err:
+                        logger.warning(f"Failed to create low stock notification: {notif_err}")
+                
                 self._log_debug("decrement_stock completed", {
                     "product_id": product_id,
                     "success": True,
