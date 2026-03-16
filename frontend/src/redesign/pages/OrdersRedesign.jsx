@@ -8,6 +8,7 @@ import {
     MessageSquare, Plus, FileText, Send, DollarSign, ShoppingCart, CreditCard, Banknote, Smartphone,
     AlertTriangle, Trash2, Wallet
 } from 'lucide-react'
+import ExportButton from '../../components/ExportButton'
 
 const OrdersRedesign = () => {
     const navigate = useNavigate()
@@ -266,7 +267,7 @@ const OrdersRedesign = () => {
                     <ChevronLeft size={24} />
                 </button>
                 <h1 className="text-lg font-semibold">Orders & Invoices</h1>
-                <div className="w-10"></div>
+                <div className="w-10"><ExportButton type="orders" label="Export" isDark={isDark} /></div>
             </header>
 
             {/* Top Tabs */}

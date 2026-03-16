@@ -8,6 +8,7 @@ import {
     Package, Truck, Wrench, FileText, Edit2, Trash2, BarChart3, DollarSign,
     Camera, Loader2
 } from 'lucide-react'
+import ExportButton from '../../components/ExportButton'
 
 const ExpensesRedesign = () => {
     const navigate = useNavigate()
@@ -210,7 +211,7 @@ const ExpensesRedesign = () => {
                     <ChevronLeft size={24} />
                 </button>
                 <h1 className="text-lg font-semibold">Financials</h1>
-                <div className="w-10"></div>
+                <div className="w-10"><ExportButton type="expenses" label="Export" isDark={isDark} /></div>
             </header>
 
             {/* Top Tabs */}

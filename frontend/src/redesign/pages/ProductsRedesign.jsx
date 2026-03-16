@@ -6,6 +6,7 @@ import { ThemeContext } from '../../context/ThemeContext'
 import { useAuth } from '../../context/AuthContext'
 import { Plus, Search, ScanLine, Package, Upload, X, RefreshCw, Edit2, Image, Camera, Loader2, Trash2 } from 'lucide-react'
 import BarcodeScanner from '../../components/BarcodeScanner/BarcodeScanner'
+import ExportButton from '../../components/ExportButton'
 
 const ProductsRedesign = () => {
     const navigate = useNavigate()
@@ -308,6 +309,7 @@ const ProductsRedesign = () => {
 
             <div className="px-4 pb-4 flex items-center justify-between">
                 <p className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Manage stock levels and pricing</p>
+                <ExportButton type="products" label="Export" isDark={isDark} />
                 <div className="flex items-center gap-2">
                     <input type="file" ref={productCameraRef} accept="image/*" capture="environment" className="hidden" onChange={handleSnapProduct} />
                     <button
