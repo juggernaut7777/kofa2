@@ -9,7 +9,7 @@ from typing import Optional
 # Groq API configuration
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
-GROQ_MODEL = "llama-3.1-8b-instant"  # 14,400 requests/day FREE!
+GROQ_MODEL = "llama-3.3-70b-versatile"  # Free tier: better quality than 3.1-8b
 
 
 async def send_to_groq(

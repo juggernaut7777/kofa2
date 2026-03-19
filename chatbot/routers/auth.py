@@ -6,8 +6,19 @@ from datetime import datetime
 import uuid
 import hashlib
 import os
+import logging
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
+
+# Try to import bcrypt for secure password hashing
+try:
+    import bcrypt
+    _BCRYPT_AVAILABLE = True
+    logger.info("bcrypt available — using secure password hashing")
+except ImportError:
+    _BCRYPT_AVAILABLE = False
+    logger.warning("bcrypt not installed — falling back to SHA256 (INSECURE, install bcrypt ASAP)")
 
 # Import verification email function
 try:
@@ -25,15 +36,35 @@ except ImportError:
         from datetime import datetime, timedelta
         return datetime.utcnow() + timedelta(minutes=15)
 
-# Simple password hashing (in production, use bcrypt)
 def hash_password(password: str) -> str:
-    """Hash password with salt using SHA256."""
-    salt = os.environ.get("AUTH_SALT", "kofa-salt-2024")
-    return hashlib.sha256(f"{password}{salt}".encode()).hexdigest()
+    """Hash password securely. Uses bcrypt if available, SHA256 as fallback."""
+    if _BCRYPT_AVAILABLE:
+        return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    else:
+        salt = os.environ.get("AUTH_SALT")
+        if not salt:
+            raise ValueError("AUTH_SALT environment variable is required when bcrypt is not installed")
+        return hashlib.sha256(f"{password}{salt}".encode()).hexdigest()
 
 def verify_password(password: str, password_hash: str) -> bool:
-    """Verify password against hash."""
-    return hash_password(password) == password_hash
+    """Verify password. Supports both bcrypt and legacy SHA256 hashes."""
+    # Bcrypt hashes start with $2b$ or $2a$
+    if password_hash.startswith('$2b$') or password_hash.startswith('$2a$'):
+        if _BCRYPT_AVAILABLE:
+            return bcrypt.checkpw(password.encode('utf-8'), password_hash.encode('utf-8'))
+        return False
+    else:
+        # Legacy SHA256 hash — verify and upgrade to bcrypt on success
+        salt = os.environ.get("AUTH_SALT", "")
+        legacy_match = hashlib.sha256(f"{password}{salt}".encode()).hexdigest() == password_hash
+        return legacy_match
+
+def _upgrade_hash_if_needed(db, user, password: str):
+    """Upgrade legacy SHA256 hash to bcrypt on successful login."""
+    if _BCRYPT_AVAILABLE and user.password_hash and not user.password_hash.startswith('$2b$'):
+        user.password_hash = hash_password(password)
+        db.commit()
+        logger.info(f"Upgraded password hash to bcrypt for user {user.email}")
 
 
 class RegisterRequest(BaseModel):
@@ -92,13 +123,8 @@ class AuthResponse(BaseModel):
     requires_verification: Optional[bool] = False
 
 
-# In-memory user store (will be replaced with database)
-# Format: {email: {user_data}}
-USERS_STORE = {}
-
-# Verification codes store
-# Format: {email: {code, expiry, user_data}}
-VERIFICATION_CODES = {}
+# Legacy in-memory stores — NO LONGER USED
+# All data is now persisted in the database
 
 
 @router.post("/register", response_model=AuthResponse)
@@ -273,39 +299,56 @@ async def verify_email(request: VerifyCodeRequest):
 async def resend_verification_code(email: str):
     """
     Resend verification code to email.
+    Reads from DATABASE (not in-memory) so it survives Heroku restarts.
     """
     try:
+        from ..database import SessionLocal
+        from ..models import VerificationCode
+
         email = email.lower().strip()
-        
-        # Get existing verification data
-        verification_data = VERIFICATION_CODES.get(email)
-        if not verification_data:
-            raise HTTPException(status_code=400, detail="No pending verification for this email")
-        
-        # Generate new code
-        verification_code = generate_verification_code()
-        verification_expiry = get_verification_expiry()
-        
-        # Update verification data
-        verification_data["code"] = verification_code
-        verification_data["expiry"] = verification_expiry
-        VERIFICATION_CODES[email] = verification_data
-        
-        # Resend email
-        email_result = await send_verification_email(
-            to_email=email,
-            verification_code=verification_code,
-            first_name=verification_data["first_name"]
-        )
-        
-        if not email_result.get("success"):
-            raise HTTPException(status_code=500, detail="Failed to send verification email")
-        
-        return {
-            "success": True,
-            "message": "New verification code sent to your email"
-        }
-        
+
+        db = SessionLocal()
+        try:
+            # Get existing verification data from DATABASE
+            verification_data = db.query(VerificationCode).filter(
+                VerificationCode.email == email
+            ).first()
+
+            if not verification_data:
+                raise HTTPException(status_code=400, detail="No pending verification for this email")
+
+            # Generate new code
+            verification_code = generate_verification_code()
+            verification_expiry = get_verification_expiry()
+
+            # Update in database
+            verification_data.code = verification_code
+            verification_data.expires_at = verification_expiry
+            db.commit()
+
+            # Resend email
+            email_result = await send_verification_email(
+                to_email=email,
+                verification_code=verification_code,
+                first_name=verification_data.first_name
+            )
+
+            if not email_result.get("success"):
+                raise HTTPException(status_code=500, detail="Failed to send verification email")
+
+            return {
+                "success": True,
+                "message": "New verification code sent to your email"
+            }
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(status_code=500, detail=f"Failed to resend code: {str(e)}")
+        finally:
+            db.close()
+
     except HTTPException:
         raise
     except Exception as e:
@@ -342,6 +385,9 @@ async def login(request: LoginRequest):
             if not verify_password(request.password, user.password_hash):
                 raise HTTPException(status_code=401, detail="Invalid email/phone or password")
             
+            # Upgrade legacy SHA256 hash to bcrypt on successful login
+            _upgrade_hash_if_needed(db, user, request.password)
+            
             return AuthResponse(
                 success=True,
                 user_id=str(user.id),
@@ -367,38 +413,31 @@ async def login(request: LoginRequest):
 @router.get("/me")
 async def get_current_user(user_id: str):
     """
-    Get current user profile.
+    Get current user profile — reads directly from database.
     """
     try:
         from ..database import SessionLocal
         from ..models import User
-        
+
         db = SessionLocal()
         try:
             user = db.query(User).filter(User.id == user_id).first()
-            
+
             if not user:
                 raise HTTPException(status_code=404, detail="User not found")
-            
-            # Get stored data for first_name
-            stored_data = None
-            for email, data in USERS_STORE.items():
-                if data.get("user_id") == user_id:
-                    stored_data = data
-                    break
-            
+
             return {
                 "user_id": user.id,
                 "email": user.email,
-                "first_name": stored_data.get("first_name") if stored_data else (user.business_name.split()[0] if user.business_name else "User"),
+                "first_name": user.first_name or (user.business_name.split()[0] if user.business_name else "User"),
                 "business_name": user.business_name,
                 "phone": user.phone,
                 "bot_style": user.bot_style
             }
-            
+
         finally:
             db.close()
-            
+
     except HTTPException:
         raise
     except Exception as e:
