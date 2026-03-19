@@ -136,6 +136,11 @@ export const API_ENDPOINTS = {
   TEAM_INVITE: '/team/invite',
   TEAM_REVOKE: (id) => `/team/members/${id}`,
 
+  // CRM (Customers)
+  CUSTOMERS_LIST: '/customers/list',
+  CUSTOMERS_STATS: '/customers/stats',
+  CUSTOMER_BY_ID: (id) => `/customers/${id}`,
+
   // Health check
   HEALTH: '/health'
 };

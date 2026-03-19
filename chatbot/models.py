@@ -95,12 +95,15 @@ class Order(Base):
     
     id = Column(GUID, primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(GUID, ForeignKey("users.id"), nullable=False, index=True)
+    customer_name = Column(String(255), nullable=True)  # Customer's name
     customer_phone = Column(String(20), nullable=False, index=True)
+    customer_id = Column(GUID, nullable=True, index=True)  # FK to customers table (CRM link)
     total_amount = Column(Float, nullable=False)
     currency = Column(String(3), default="NGN")  # Multi-currency support
     exchange_rate = Column(Float, default=1.0)  # Rate to NGN at time of order
     status = Column(String(20), nullable=False, default="pending", index=True)
     payment_ref = Column(String(100), nullable=True)
+    payment_method = Column(String(50), nullable=True)  # cash, transfer, pos, credit
     notes = Column(Text, nullable=True)
     channel = Column(String(20), default="whatsapp")  # whatsapp, instagram, web, walkin
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
@@ -276,6 +279,34 @@ class AIConversation(Base):
     user_id = Column(GUID, ForeignKey("users.id"), nullable=False, index=True)
     messages = Column(Text, nullable=False, default="[]")  # JSON array of {role, content}
     created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("User")
+
+
+class Customer(Base):
+    """Customer CRM — unified multi-channel customer profiles.
+    
+    Auto-created when a customer interacts via any channel:
+    WhatsApp, Instagram, storefront, or walk-in sale.
+    Phone number is the primary merge key across channels.
+    """
+    __tablename__ = "customers"
+
+    id = Column(GUID, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(GUID, ForeignKey("users.id"), nullable=False, index=True)  # Which vendor owns this customer
+    name = Column(String(255), nullable=True)  # Customer's display name
+    phone = Column(String(20), nullable=True, index=True)  # Primary phone (merge key)
+    email = Column(String(255), nullable=True)
+    whatsapp_id = Column(String(50), nullable=True, index=True)  # WhatsApp sender number
+    instagram_id = Column(String(100), nullable=True, index=True)  # Instagram sender ID
+    channel = Column(String(20), default="walkin")  # First interaction: whatsapp/instagram/web/walkin
+    tags = Column(Text, nullable=True)  # JSON array: ["vip","wholesale","new"]
+    notes = Column(Text, nullable=True)  # Vendor's private notes
+    total_orders = Column(Integer, default=0)  # Auto-incremented on each sale
+    total_spent = Column(Float, default=0)  # Running total in NGN
+    last_order_date = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user = relationship("User")
