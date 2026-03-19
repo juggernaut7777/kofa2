@@ -1,7 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useContext, useState } from 'react'
 import { ThemeContext } from '../../context/ThemeContext'
-import { Home, Package, ClipboardList, Wallet, Settings, Menu, X, FileText, CreditCard, HelpCircle, BarChart3 } from 'lucide-react'
+import { Home, Package, ClipboardList, Wallet, Settings, Menu, X, FileText, CreditCard, HelpCircle, BarChart3, Users } from 'lucide-react'
 
 const LayoutRedesign = ({ children }) => {
     const location = useLocation()
@@ -14,11 +14,12 @@ const LayoutRedesign = ({ children }) => {
         { path: '/dashboard', label: 'Home', icon: Home },
         { path: '/products', label: 'Inventory', icon: Package },
         { path: '/orders', label: 'Orders', icon: ClipboardList },
-        { path: '/expenses', label: 'Expenses', icon: Wallet },
+        { path: '/customers', label: 'Customers', icon: Users },
         { path: '/settings', label: 'Settings', icon: Settings },
     ]
 
     const sidebarItems = [
+        { path: '/expenses', label: 'Expenses', icon: Wallet },
         { path: '/expenses', label: 'Reports & Analytics', icon: BarChart3, state: { tab: 'reports' } },
         { path: '/orders', label: 'Credit Sales', icon: CreditCard, state: { tab: 'credit' } },
         { path: '/products', label: 'Stock Adjustments', icon: Package, state: { tab: 'adjustments' } },
