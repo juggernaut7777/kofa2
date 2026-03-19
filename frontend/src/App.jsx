@@ -14,7 +14,8 @@ import {
   OrdersRedesign,
   InsightsRedesign,
   ExpensesRedesign,
-  SettingsRedesign
+  SettingsRedesign,
+  CustomersPage
 } from './redesign'
 
 // Public pages
@@ -72,6 +73,11 @@ function App() {
             <Route path="/settings" element={
               <PrivateRoute>
                 <LayoutRedesign><ErrorBoundary><SettingsRedesign /></ErrorBoundary></LayoutRedesign>
+              </PrivateRoute>
+            } />
+            <Route path="/customers" element={
+              <PrivateRoute>
+                <LayoutRedesign><ErrorBoundary><CustomersPage /></ErrorBoundary></LayoutRedesign>
               </PrivateRoute>
             } />
           </Routes>

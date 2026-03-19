@@ -8,6 +8,9 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
 import uuid
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -65,6 +68,22 @@ async def record_sale(request: RecordSaleRequest):
         )
         
         db.add(new_order)
+        
+        # === CRM: Auto-create or update customer ===
+        try:
+            from .customers import find_or_create_customer
+            customer = find_or_create_customer(
+                db,
+                user_id=request.user_id,
+                phone=request.customer_phone,
+                name=request.customer_name,
+                channel="walkin",
+                order_amount=request.total_amount,
+            )
+            new_order.customer_id = customer.id
+        except Exception as crm_err:
+            logger.warning(f"CRM auto-create failed: {crm_err}")
+        
         db.commit()
         
         return {
