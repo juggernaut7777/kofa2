@@ -1,12 +1,14 @@
 """
 Bulk Operations Service for CSV import/export and mass updates.
 Enables vendors to manage inventory at scale.
+Uses SQLAlchemy (Azure SQL) — no Supabase dependency.
 """
 import csv
 import io
 from typing import List, Dict, Optional, Tuple
 from dataclasses import dataclass
 from datetime import datetime
+import uuid
 
 
 @dataclass
@@ -27,31 +29,13 @@ class ExportResult:
 
 
 class BulkOperationsService:
-    """Handle bulk import/export and mass updates for inventory."""
+    """Handle bulk import/export and mass updates for inventory via SQLAlchemy."""
     
     # Expected CSV columns for product import
     PRODUCT_COLUMNS = [
         "name", "price_ngn", "stock_level", "category", 
         "description", "voice_tags", "image_url"
     ]
-    
-    def __init__(self):
-        self._supabase = None
-        self._init_supabase()
-    
-    def _init_supabase(self):
-        """Initialize Supabase client if available."""
-        try:
-            import os
-            from supabase import create_client
-            
-            url = os.getenv("SUPABASE_URL", "")
-            key = os.getenv("SUPABASE_KEY", "")
-            
-            if url and key:
-                self._supabase = create_client(url, key)
-        except Exception as e:
-            print(f"⚠️ Supabase not available for bulk ops: {e}")
     
     def parse_csv(self, csv_content: str) -> Tuple[List[Dict], List[Dict]]:
         """
@@ -128,16 +112,11 @@ class BulkOperationsService:
         update_existing: bool = False
     ) -> ImportResult:
         """
-        Import products from CSV.
-        
-        Args:
-            vendor_id: Vendor to import for
-            csv_content: Raw CSV string
-            update_existing: If True, update products with same name
-            
-        Returns:
-            ImportResult with counts and any errors
+        Import products from CSV using SQLAlchemy.
         """
+        from ..database import SessionLocal
+        from ..models import Product
+        
         valid_products, parse_errors = self.parse_csv(csv_content)
         
         if not valid_products and parse_errors:
@@ -151,36 +130,52 @@ class BulkOperationsService:
         created_ids = []
         import_errors = parse_errors.copy()
         
-        for product in valid_products:
-            try:
-                product["vendor_id"] = vendor_id
-                
-                if self._supabase:
-                    # Check if product exists (by name)
-                    existing = self._supabase.table("products").select("id").eq(
-                        "vendor_id", vendor_id
-                    ).eq("name", product["name"]).execute()
+        db = SessionLocal()
+        try:
+            for product_data in valid_products:
+                try:
+                    # Check if product exists (by name for this vendor)
+                    existing = db.query(Product).filter(
+                        Product.user_id == vendor_id,
+                        Product.name == product_data["name"]
+                    ).first()
                     
-                    if existing.data and update_existing:
-                        # Update existing
-                        self._supabase.table("products").update(product).eq(
-                            "id", existing.data[0]["id"]
-                        ).execute()
-                        created_ids.append(existing.data[0]["id"])
-                    elif not existing.data:
-                        # Create new
-                        result = self._supabase.table("products").insert(product).execute()
-                        if result.data:
-                            created_ids.append(result.data[0]["id"])
-                else:
-                    # Mock mode - just count as success
-                    created_ids.append(f"mock-{len(created_ids)}")
-                    
-            except Exception as e:
-                import_errors.append({
-                    "product": product["name"],
-                    "error": str(e)
-                })
+                    if existing and update_existing:
+                        existing.price_ngn = product_data["price_ngn"]
+                        existing.stock_level = product_data["stock_level"]
+                        if product_data["category"]:
+                            existing.category = product_data["category"]
+                        if product_data["description"]:
+                            existing.description = product_data["description"]
+                        if product_data["image_url"]:
+                            existing.image_url = product_data["image_url"]
+                        created_ids.append(existing.id)
+                    elif not existing:
+                        new_product = Product(
+                            id=str(uuid.uuid4()),
+                            user_id=vendor_id,
+                            name=product_data["name"],
+                            price_ngn=product_data["price_ngn"],
+                            stock_level=product_data["stock_level"],
+                            category=product_data.get("category"),
+                            description=product_data.get("description"),
+                            image_url=product_data.get("image_url"),
+                        )
+                        db.add(new_product)
+                        created_ids.append(new_product.id)
+                        
+                except Exception as e:
+                    import_errors.append({
+                        "product": product_data["name"],
+                        "error": str(e)
+                    })
+            
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            import_errors.append({"error": f"Database error: {str(e)}"})
+        finally:
+            db.close()
         
         return ImportResult(
             success_count=len(created_ids),
@@ -190,44 +185,39 @@ class BulkOperationsService:
         )
     
     async def export_products(self, vendor_id: str) -> ExportResult:
-        """
-        Export all vendor products to CSV.
+        """Export all vendor products to CSV using SQLAlchemy."""
+        from ..database import SessionLocal
+        from ..models import Product
         
-        Args:
-            vendor_id: Vendor to export for
+        db = SessionLocal()
+        try:
+            products = db.query(Product).filter(
+                Product.user_id == vendor_id
+            ).order_by(Product.name).all()
             
-        Returns:
-            ExportResult with CSV content
-        """
-        products = []
-        
-        if self._supabase:
-            result = self._supabase.table("products").select("*").eq(
-                "vendor_id", vendor_id
-            ).execute()
-            products = result.data or []
-        
-        # Build CSV
-        output = io.StringIO()
-        writer = csv.DictWriter(output, fieldnames=self.PRODUCT_COLUMNS)
-        writer.writeheader()
-        
-        for product in products:
-            writer.writerow({
-                "name": product.get("name", ""),
-                "price_ngn": product.get("price_ngn", 0),
-                "stock_level": product.get("stock_level", 0),
-                "category": product.get("category", ""),
-                "description": product.get("description", ""),
-                "voice_tags": ",".join(product.get("voice_tags", [])),
-                "image_url": product.get("image_url", "")
-            })
-        
-        return ExportResult(
-            csv_content=output.getvalue(),
-            row_count=len(products),
-            exported_at=datetime.now()
-        )
+            # Build CSV
+            output = io.StringIO()
+            writer = csv.DictWriter(output, fieldnames=self.PRODUCT_COLUMNS)
+            writer.writeheader()
+            
+            for p in products:
+                writer.writerow({
+                    "name": p.name or "",
+                    "price_ngn": p.price_ngn or 0,
+                    "stock_level": p.stock_level or 0,
+                    "category": p.category or "",
+                    "description": p.description or "",
+                    "voice_tags": "",
+                    "image_url": p.image_url or ""
+                })
+            
+            return ExportResult(
+                csv_content=output.getvalue(),
+                row_count=len(products),
+                exported_at=datetime.now()
+            )
+        finally:
+            db.close()
     
     async def bulk_update_prices(
         self, 
@@ -235,103 +225,80 @@ class BulkOperationsService:
         percent_change: float,
         category: Optional[str] = None
     ) -> Dict:
-        """
-        Update prices by percentage.
+        """Update prices by percentage using SQLAlchemy."""
+        from ..database import SessionLocal
+        from ..models import Product
         
-        Args:
-            vendor_id: Target vendor
-            percent_change: e.g., 10 for +10%, -5 for -5%
-            category: Optional category filter
-            
-        Returns:
-            Summary of updates
-        """
-        if not self._supabase:
-            return {"success": False, "error": "Database not available"}
-        
+        db = SessionLocal()
         try:
-            # Get products to update
-            query = self._supabase.table("products").select("id, name, price_ngn").eq(
-                "vendor_id", vendor_id
-            )
-            
+            query = db.query(Product).filter(Product.user_id == vendor_id)
             if category:
-                query = query.eq("category", category)
+                query = query.filter(Product.category == category)
             
-            result = query.execute()
-            products = result.data or []
+            products = query.all()
             
             if not products:
                 return {"success": True, "updated_count": 0, "message": "No products found"}
             
-            # Calculate and update new prices
             multiplier = 1 + (percent_change / 100)
-            updated_count = 0
             
             for product in products:
-                new_price = round(product["price_ngn"] * multiplier, 2)
-                
-                self._supabase.table("products").update({
-                    "price_ngn": new_price
-                }).eq("id", product["id"]).execute()
-                
-                updated_count += 1
+                product.price_ngn = round(product.price_ngn * multiplier, 2)
+            
+            db.commit()
             
             return {
                 "success": True,
-                "updated_count": updated_count,
+                "updated_count": len(products),
                 "percent_change": percent_change,
                 "category": category or "all"
             }
             
         except Exception as e:
+            db.rollback()
             return {"success": False, "error": str(e)}
+        finally:
+            db.close()
     
     async def bulk_restock(
         self, 
         vendor_id: str, 
         restock_data: List[Dict]
     ) -> Dict:
-        """
-        Bulk restock multiple products.
+        """Bulk restock multiple products using SQLAlchemy."""
+        from ..database import SessionLocal
+        from ..models import Product
         
-        Args:
-            vendor_id: Target vendor
-            restock_data: List of {"product_id": str, "quantity": int}
-            
-        Returns:
-            Summary of updates
-        """
-        if not self._supabase:
-            return {"success": False, "error": "Database not available"}
-        
+        db = SessionLocal()
         updated = 0
         errors = []
         
-        for item in restock_data:
-            try:
-                product_id = item.get("product_id")
-                quantity = item.get("quantity", 0)
-                
-                # Get current stock
-                result = self._supabase.table("products").select("stock_level").eq(
-                    "id", product_id
-                ).eq("vendor_id", vendor_id).execute()
-                
-                if result.data:
-                    current_stock = result.data[0]["stock_level"]
-                    new_stock = current_stock + quantity
+        try:
+            for item in restock_data:
+                try:
+                    product_id = item.get("product_id")
+                    quantity = item.get("quantity", 0)
                     
-                    self._supabase.table("products").update({
-                        "stock_level": new_stock
-                    }).eq("id", product_id).execute()
+                    product = db.query(Product).filter(
+                        Product.id == product_id,
+                        Product.user_id == vendor_id
+                    ).first()
                     
-                    updated += 1
-                else:
-                    errors.append({"product_id": product_id, "error": "Product not found"})
-                    
-            except Exception as e:
-                errors.append({"product_id": item.get("product_id"), "error": str(e)})
+                    if product:
+                        product.stock_level = (product.stock_level or 0) + quantity
+                        updated += 1
+                    else:
+                        errors.append({"product_id": product_id, "error": "Product not found"})
+                        
+                except Exception as e:
+                    errors.append({"product_id": item.get("product_id"), "error": str(e)})
+            
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            errors.append({"error": f"Database error: {str(e)}"})
+        finally:
+            db.close()
         
         return {
             "success": True,
