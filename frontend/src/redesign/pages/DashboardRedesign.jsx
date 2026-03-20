@@ -28,6 +28,8 @@ import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Ca
 import { Button } from '../../components/ui/Button'
 import { Badge } from '../../components/ui/Badge'
 import NotificationBell from '../../components/NotificationBell'
+import OnboardingWizard from '../../components/OnboardingWizard/OnboardingWizard'
+import StorefrontLinkCard from '../../components/StorefrontLinkCard/StorefrontLinkCard'
 
 const DashboardRedesign = () => {
     const navigate = useNavigate()
@@ -40,6 +42,7 @@ const DashboardRedesign = () => {
     const [products, setProducts] = useState([])
     const [loading, setLoading] = useState(true)
     const [greeting, setGreeting] = useState('')
+    const [showOnboarding, setShowOnboarding] = useState(false)
 
     // AI Command Bar state
     const [aiInput, setAiInput] = useState('')
@@ -99,6 +102,16 @@ const DashboardRedesign = () => {
             setLoading(false)
         }
     }
+
+    // Check if onboarding should show
+    useEffect(() => {
+        if (!loading) {
+            const onboardingDone = localStorage.getItem('kofa_onboarding_done')
+            if (!onboardingDone && products.length === 0) {
+                setShowOnboarding(true)
+            }
+        }
+    }, [loading, products])
 
     const formatCurrency = (n) => {
         if (n == null || isNaN(n)) return '₦0'
@@ -180,6 +193,14 @@ const DashboardRedesign = () => {
                     </button>
                 </div>
             </div>
+
+            {/* Onboarding Wizard - shows for new vendors */}
+            {showOnboarding && (
+                <OnboardingWizard
+                    hasProducts={products.length > 0}
+                    onDismiss={() => setShowOnboarding(false)}
+                />
+            )}
 
             {/* === AI COMMAND BAR === */}
             <div className={`rounded-2xl border overflow-hidden transition-all ${isDark ? 'bg-gradient-to-r from-[#0F0F12] to-[#1a1a2e] border-white/10' : 'bg-gradient-to-r from-white to-blue-50/50 border-gray-200 shadow-sm'}`}>
@@ -430,6 +451,9 @@ const DashboardRedesign = () => {
                         </div>
                     </CardContent>
                 </Card>
+
+                {/* Storefront Link */}
+                <StorefrontLinkCard />
             </div>
         </div>
     )
