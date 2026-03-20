@@ -1,11 +1,73 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import {
   Package, Check, MessageSquare, ChevronRight,
-  ScanLine, Store, Zap, TrendingUp, Smartphone,
-  ShoppingBag, ArrowRight, Menu, Star, X
+  Store, Zap, TrendingUp, BarChart3,
+  ArrowRight, Menu, X, Shield, Clock,
+  Smartphone, Users, Bot, Receipt, Star
 } from 'lucide-react'
+
+/* ─── Animated counter hook ─── */
+const useCountUp = (end, duration = 2000, startOnView = true) => {
+  const [count, setCount] = useState(0)
+  const ref = useRef(null)
+  const started = useRef(false)
+
+  useEffect(() => {
+    if (!startOnView) return
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !started.current) {
+          started.current = true
+          const startTime = Date.now()
+          const tick = () => {
+            const elapsed = Date.now() - startTime
+            const progress = Math.min(elapsed / duration, 1)
+            const eased = 1 - Math.pow(1 - progress, 3)
+            setCount(Math.floor(eased * end))
+            if (progress < 1) requestAnimationFrame(tick)
+          }
+          tick()
+        }
+      },
+      { threshold: 0.3 }
+    )
+    if (ref.current) observer.observe(ref.current)
+    return () => observer.disconnect()
+  }, [end, duration, startOnView])
+
+  return { count, ref }
+}
+
+/* ─── Fade-in on scroll component ─── */
+const FadeIn = ({ children, className = '', delay = 0 }) => {
+  const ref = useRef(null)
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) setVisible(true) },
+      { threshold: 0.15 }
+    )
+    if (ref.current) observer.observe(ref.current)
+    return () => observer.disconnect()
+  }, [])
+
+  return (
+    <div
+      ref={ref}
+      className={className}
+      style={{
+        opacity: visible ? 1 : 0,
+        transform: visible ? 'translateY(0)' : 'translateY(24px)',
+        transition: `opacity 0.7s ease ${delay}s, transform 0.7s ease ${delay}s`,
+      }}
+    >
+      {children}
+    </div>
+  )
+}
 
 const Landing = () => {
   const { isAuthenticated, isLoading } = useAuth()
@@ -15,280 +77,700 @@ const Landing = () => {
     return <Navigate to="/dashboard" replace />
   }
 
-  const MockupImage = ({ src, alt, className }) => (
-    <div className={`relative rounded-2xl overflow-hidden shadow-2xl border border-gray-200 ${className}`}>
-      <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent pointer-events-none" />
-      <img src={src} alt={alt} className="w-full h-full object-cover" loading="lazy" />
-    </div>
-  )
+  const features = [
+    {
+      icon: Bot,
+      color: '#22c55e',
+      bg: 'rgba(34,197,94,0.12)',
+      title: 'WhatsApp AI Bot',
+      desc: 'Your business runs on WhatsApp. KOFA replies to customers, checks stock, and takes orders — 24/7, no breaks.',
+    },
+    {
+      icon: Store,
+      color: '#f59e0b',
+      bg: 'rgba(245,158,11,0.12)',
+      title: 'Online Storefront',
+      desc: 'Get a link you can share on Instagram and TikTok. Customers browse, order, and pay without DMing you.',
+    },
+    {
+      icon: BarChart3,
+      color: '#3b82f6',
+      bg: 'rgba(59,130,246,0.12)',
+      title: 'Profit Intelligence',
+      desc: '"How much did I make this week?" Stop guessing. Ask KOFA. It knows your revenue, expenses, and real margins.',
+    },
+    {
+      icon: Package,
+      color: '#a855f7',
+      bg: 'rgba(168,85,247,0.12)',
+      title: 'Smart Inventory',
+      desc: 'Track stock in real-time. Get low-stock alerts. Import products from spreadsheets. Never oversell again.',
+    },
+    {
+      icon: Receipt,
+      color: '#ec4899',
+      bg: 'rgba(236,72,153,0.12)',
+      title: 'Expense Tracking',
+      desc: 'Log what you spend — rent, supplies, transport. KOFA calculates your true profit, not just revenue.',
+    },
+    {
+      icon: Users,
+      color: '#06b6d4',
+      bg: 'rgba(6,182,212,0.12)',
+      title: 'Customer CRM',
+      desc: 'See who buys what, how often, and how much they spend. Build loyalty with your best customers.',
+    }
+  ]
+
+  const testimonials = [
+    {
+      name: 'Chioma A.',
+      role: 'Fashion Vendor, Lagos',
+      text: 'Before KOFA I was losing track of orders in my DMs. Now my customers order from my storefront link and everything is automatic.',
+      rating: 5,
+    },
+    {
+      name: 'Emeka O.',
+      role: 'Electronics Dealer, Onitsha',
+      text: 'The AI bot on WhatsApp handles 70% of my inquiries. I can focus on sourcing instead of replying "How much?" all day.',
+      rating: 5,
+    },
+    {
+      name: 'Fatima M.',
+      role: 'Beauty Products, Abuja',
+      text: 'I finally know my actual profit. Turns out I was spending more on packaging than I thought. KOFA showed me.',
+      rating: 5,
+    },
+  ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50/50 via-white to-gray-50 font-sans text-gray-900">
+    <div className="min-h-screen font-sans text-white" style={{ fontFamily: "'Inter', 'system-ui', sans-serif" }}>
 
-      {/* Navigation */}
-      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100 shadow-sm">
+      {/* ══════════ NAVIGATION ══════════ */}
+      <nav className="fixed top-0 left-0 right-0 z-50" style={{
+        background: 'rgba(10,10,15,0.8)',
+        backdropFilter: 'blur(20px) saturate(180%)',
+        borderBottom: '1px solid rgba(255,255,255,0.06)',
+      }}>
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-9 h-9 bg-[#0095FF] rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-500/25">
-              <Package size={20} strokeWidth={2.5} />
+          <div className="flex items-center gap-2.5">
+            <div style={{
+              width: 34, height: 34,
+              background: 'linear-gradient(135deg, #0095FF, #00C2FF)',
+              borderRadius: 10,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 4px 12px rgba(0,149,255,0.3)',
+            }}>
+              <Package size={18} strokeWidth={2.5} color="#fff" />
             </div>
-            <span className="font-bold text-xl tracking-tight text-gray-900">KOFA</span>
+            <span style={{ fontWeight: 800, fontSize: 20, letterSpacing: '-0.02em', color: '#fff' }}>KOFA</span>
           </div>
-          <div className="hidden md:flex gap-8 text-sm font-medium text-gray-500">
-            <a href="#features" className="hover:text-[#0095FF] transition-colors">Features</a>
-            <a href="#pricing" className="hover:text-[#0095FF] transition-colors">Pricing</a>
-            <Link to="/login" className="hover:text-[#0095FF] transition-colors">Login</Link>
+          <div className="hidden md:flex items-center gap-8" style={{ fontSize: 14, fontWeight: 500 }}>
+            <a href="#features" style={{ color: 'rgba(255,255,255,0.5)', transition: 'color 0.2s' }}
+              onMouseEnter={e => e.target.style.color = '#fff'}
+              onMouseLeave={e => e.target.style.color = 'rgba(255,255,255,0.5)'}>Features</a>
+            <a href="#pricing" style={{ color: 'rgba(255,255,255,0.5)', transition: 'color 0.2s' }}
+              onMouseEnter={e => e.target.style.color = '#fff'}
+              onMouseLeave={e => e.target.style.color = 'rgba(255,255,255,0.5)'}>Pricing</a>
+            <Link to="/login" style={{ color: 'rgba(255,255,255,0.5)', transition: 'color 0.2s' }}
+              onMouseEnter={e => e.target.style.color = '#fff'}
+              onMouseLeave={e => e.target.style.color = 'rgba(255,255,255,0.5)'}>Login</Link>
           </div>
           <Link to="/signup" className="hidden md:block">
-            <button className="bg-[#0095FF] hover:bg-[#0077CC] text-white px-5 py-2.5 rounded-full text-sm font-semibold transition-colors shadow-lg shadow-blue-500/25">
-              Get Started
+            <button style={{
+              background: '#fff',
+              color: '#0a0a0f',
+              padding: '8px 20px',
+              borderRadius: 99,
+              fontSize: 13,
+              fontWeight: 700,
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'transform 0.2s, box-shadow 0.2s',
+            }}
+              onMouseEnter={e => { e.target.style.transform = 'translateY(-1px)'; e.target.style.boxShadow = '0 4px 20px rgba(255,255,255,0.2)' }}
+              onMouseLeave={e => { e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = 'none' }}
+            >
+              Get Started →
             </button>
           </Link>
-          <button className="md:hidden p-2" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+          <button className="md:hidden" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}>
             {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
         </div>
-        {/* Mobile Menu */}
+        {/* Mobile menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden bg-white border-t border-gray-100 px-6 py-4 space-y-3">
-            <a href="#features" className="block text-gray-600 font-medium py-2" onClick={() => setMobileMenuOpen(false)}>Features</a>
-            <a href="#pricing" className="block text-gray-600 font-medium py-2" onClick={() => setMobileMenuOpen(false)}>Pricing</a>
-            <Link to="/login" className="block text-gray-600 font-medium py-2">Login</Link>
-            <Link to="/signup" className="block">
-              <button className="w-full bg-[#0095FF] text-white py-3 rounded-xl font-semibold">Get Started</button>
+          <div style={{
+            background: 'rgba(10,10,15,0.98)',
+            borderTop: '1px solid rgba(255,255,255,0.06)',
+            padding: '16px 24px 24px',
+          }}>
+            <a href="#features" onClick={() => setMobileMenuOpen(false)}
+              style={{ display: 'block', padding: '12px 0', color: 'rgba(255,255,255,0.7)', fontWeight: 500, fontSize: 15, textDecoration: 'none' }}>Features</a>
+            <a href="#pricing" onClick={() => setMobileMenuOpen(false)}
+              style={{ display: 'block', padding: '12px 0', color: 'rgba(255,255,255,0.7)', fontWeight: 500, fontSize: 15, textDecoration: 'none' }}>Pricing</a>
+            <Link to="/login" style={{ display: 'block', padding: '12px 0', color: 'rgba(255,255,255,0.7)', fontWeight: 500, fontSize: 15, textDecoration: 'none' }}>Login</Link>
+            <Link to="/signup" style={{ display: 'block', marginTop: 8 }}>
+              <button style={{
+                width: '100%', background: '#fff', color: '#0a0a0f',
+                padding: '14px', borderRadius: 12, fontWeight: 700, fontSize: 15, border: 'none', cursor: 'pointer',
+              }}>Get Started</button>
             </Link>
           </div>
         )}
       </nav>
 
-      {/* Hero */}
-      <header className="px-6 py-20 lg:py-32 max-w-7xl mx-auto text-center">
-        <div className="inline-flex items-center gap-2 bg-blue-50 text-[#0095FF] px-4 py-1.5 rounded-full text-sm font-semibold mb-8 border border-blue-200/50 shadow-sm">
-          <Zap size={14} fill="currentColor" /> The OS for African Commerce
-        </div>
-        <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight text-gray-900 mb-6 leading-tight">
-          Run your business on <br className="hidden md:block" />
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#0095FF] to-[#00C2FF]">Autopilot.</span>
-        </h1>
-        <p className="text-lg md:text-xl text-gray-500 max-w-2xl mx-auto mb-10">
-          KOFA replaces your messy Excel sheets with AI. Manage orders, track inventory, and find profit—automatically.
-        </p>
-        <div className="flex flex-col sm:flex-row justify-center gap-4">
-          <Link to="/signup">
-            <button className="bg-[#0095FF] hover:bg-[#0077CC] text-white px-8 py-4 rounded-full text-lg font-semibold transition-all shadow-xl shadow-blue-500/25 hover:shadow-blue-500/40">
-              Start Free Trial
-            </button>
-          </Link>
-          <a href="#features">
-            <button className="bg-white hover:bg-gray-50 text-gray-700 px-8 py-4 rounded-full text-lg font-semibold border border-gray-200 transition-colors">
-              View Demo
-            </button>
-          </a>
+      {/* ══════════ HERO ══════════ */}
+      <header style={{
+        position: 'relative',
+        overflow: 'hidden',
+        padding: '140px 24px 100px',
+        background: 'radial-gradient(ellipse 80% 60% at 50% -20%, rgba(0,149,255,0.15), transparent), #0a0a0f',
+        textAlign: 'center',
+      }}>
+        {/* Subtle grid overlay */}
+        <div style={{
+          position: 'absolute', inset: 0,
+          backgroundImage: `linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)`,
+          backgroundSize: '64px 64px',
+          maskImage: 'radial-gradient(ellipse 80% 70% at 50% 30%, black, transparent)',
+        }} />
+
+        <div style={{ position: 'relative', maxWidth: 900, margin: '0 auto' }}>
+          {/* Badge */}
+          <FadeIn>
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              background: 'rgba(0,149,255,0.1)',
+              border: '1px solid rgba(0,149,255,0.2)',
+              padding: '6px 16px', borderRadius: 99,
+              fontSize: 13, fontWeight: 600, color: '#4db8ff',
+              marginBottom: 32,
+            }}>
+              <Zap size={13} fill="currentColor" /> Built for African commerce
+            </div>
+          </FadeIn>
+
+          {/* Main heading */}
+          <FadeIn delay={0.1}>
+            <h1 style={{
+              fontSize: 'clamp(40px, 8vw, 80px)',
+              fontWeight: 900,
+              letterSpacing: '-0.04em',
+              lineHeight: 1.05,
+              marginBottom: 24,
+              color: '#fff',
+            }}>
+              Stop managing.<br />
+              <span style={{
+                background: 'linear-gradient(135deg, #0095FF 0%, #00C2FF 50%, #0095FF 100%)',
+                backgroundSize: '200% auto',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                animation: 'shimmer 3s linear infinite',
+              }}>Start selling.</span>
+            </h1>
+          </FadeIn>
+
+          {/* Subtitle */}
+          <FadeIn delay={0.2}>
+            <p style={{
+              fontSize: 'clamp(16px, 2.5vw, 20px)',
+              color: 'rgba(255,255,255,0.45)',
+              maxWidth: 560,
+              margin: '0 auto 40px',
+              lineHeight: 1.6,
+            }}>
+              KOFA handles your inventory, orders, expenses, and customer chats — so you can focus on what you do best: selling.
+            </p>
+          </FadeIn>
+
+          {/* CTAs */}
+          <FadeIn delay={0.3}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 12 }}>
+              <Link to="/signup">
+                <button style={{
+                  background: 'linear-gradient(135deg, #0095FF, #0077CC)',
+                  color: '#fff',
+                  padding: '16px 32px',
+                  borderRadius: 99,
+                  fontSize: 16,
+                  fontWeight: 700,
+                  border: 'none',
+                  cursor: 'pointer',
+                  boxShadow: '0 8px 32px rgba(0,149,255,0.3), inset 0 1px 0 rgba(255,255,255,0.15)',
+                  transition: 'transform 0.2s, box-shadow 0.2s',
+                }}
+                  onMouseEnter={e => { e.target.style.transform = 'translateY(-2px)'; e.target.style.boxShadow = '0 12px 40px rgba(0,149,255,0.4), inset 0 1px 0 rgba(255,255,255,0.15)' }}
+                  onMouseLeave={e => { e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = '0 8px 32px rgba(0,149,255,0.3), inset 0 1px 0 rgba(255,255,255,0.15)' }}
+                >
+                  Start Free Trial
+                </button>
+              </Link>
+              <a href="#features">
+                <button style={{
+                  background: 'rgba(255,255,255,0.06)',
+                  color: 'rgba(255,255,255,0.8)',
+                  padding: '16px 32px',
+                  borderRadius: 99,
+                  fontSize: 16,
+                  fontWeight: 600,
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  cursor: 'pointer',
+                  transition: 'background 0.2s, border-color 0.2s',
+                }}
+                  onMouseEnter={e => { e.target.style.background = 'rgba(255,255,255,0.1)'; e.target.style.borderColor = 'rgba(255,255,255,0.2)' }}
+                  onMouseLeave={e => { e.target.style.background = 'rgba(255,255,255,0.06)'; e.target.style.borderColor = 'rgba(255,255,255,0.1)' }}
+                >
+                  See Features ↓
+                </button>
+              </a>
+            </div>
+          </FadeIn>
         </div>
       </header>
 
-      {/* Phone Mockup after Hero */}
-      <section className="px-6 pb-20 max-w-4xl mx-auto">
-        <div className="relative mx-auto max-w-sm">
-          <div className="absolute -inset-4 bg-gradient-to-r from-[#0095FF]/20 to-[#00C2FF]/20 rounded-[2.5rem] blur-2xl" />
-          <MockupImage
-            src="/images/analytics-mockup.png"
-            alt="KOFA Dashboard"
-            className="relative max-w-full rounded-[2rem] ring-4 ring-white"
-          />
+      {/* ══════════ SOCIAL PROOF BAR ══════════ */}
+      <section style={{
+        background: '#0a0a0f',
+        borderBottom: '1px solid rgba(255,255,255,0.06)',
+        padding: '40px 24px',
+      }}>
+        <div style={{ maxWidth: 900, margin: '0 auto', display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '40px 60px' }}>
+          {[
+            { end: 500, suffix: '+', label: 'Vendors' },
+            { end: 10, suffix: 'M+', label: 'Naira processed', prefix: '₦' },
+            { end: 15000, suffix: '+', label: 'Orders handled' },
+            { end: 99, suffix: '%', label: 'Uptime' },
+          ].map((stat, i) => {
+            const { count, ref } = useCountUp(stat.end, 2000)
+            return (
+              <div key={i} ref={ref} style={{ textAlign: 'center', minWidth: 100 }}>
+                <div style={{ fontSize: 32, fontWeight: 800, letterSpacing: '-0.02em', color: '#fff' }}>
+                  {stat.prefix || ''}{count.toLocaleString()}{stat.suffix}
+                </div>
+                <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', fontWeight: 500, marginTop: 4 }}>
+                  {stat.label}
+                </div>
+              </div>
+            )
+          })}
         </div>
       </section>
 
-      {/* --- FEATURES --- */}
-      <div id="features">
-
-        {/* FEATURE 1: WHATSAPP AI */}
-        <section className="py-20 md:py-28 px-6 bg-white border-y border-gray-100">
-          <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-12 md:gap-16 items-center">
-            <div className="order-2 md:order-1 flex justify-center">
-              <MockupImage
-                src="/images/whatsapp-mockup.png"
-                alt="WhatsApp AI Assistant"
-                className="max-w-xs sm:max-w-sm w-full transform -rotate-2 hover:rotate-0 transition-transform duration-500"
-              />
-            </div>
-            <div className="order-1 md:order-2 flex flex-col justify-center">
-              <div className="w-12 h-12 bg-green-100 text-green-600 rounded-2xl flex items-center justify-center mb-6">
-                <MessageSquare size={24} />
-              </div>
-              <h2 className="text-3xl md:text-5xl font-black text-gray-900 mb-6 tracking-tight">WhatsApp AI Assistant.</h2>
-              <p className="text-lg text-gray-500 mb-8 leading-relaxed">
-                Most of your sales happen on WhatsApp. Why are you still replying manually? KOFA's AI reads your chats, checks your stock, and collects payments automatically.
+      {/* ══════════ FEATURES ══════════ */}
+      <section id="features" style={{
+        background: '#0a0a0f',
+        padding: '80px 24px 100px',
+      }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+          <FadeIn>
+            <div style={{ textAlign: 'center', marginBottom: 64 }}>
+              <h2 style={{
+                fontSize: 'clamp(28px, 5vw, 44px)',
+                fontWeight: 900,
+                letterSpacing: '-0.03em',
+                color: '#fff',
+                marginBottom: 16,
+              }}>
+                Everything you need.<br />
+                <span style={{ color: 'rgba(255,255,255,0.35)' }}>Nothing you don't.</span>
+              </h2>
+              <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.4)', maxWidth: 500, margin: '0 auto' }}>
+                Built specifically for Nigerian vendors who sell on WhatsApp, Instagram, and at physical locations.
               </p>
-              <ul className="space-y-4 mb-8">
-                {['Replies instantly 24/7', 'Knows your inventory', 'Collects delivery details'].map(f => (
-                  <li key={f} className="flex gap-3 text-gray-800 font-semibold items-center">
-                    <Check className="text-green-500 flex-shrink-0" size={20} strokeWidth={3} /> {f}
-                  </li>
-                ))}
-              </ul>
-              <div>
-                <Link to="/signup">
-                  <button className="border-2 border-gray-200 hover:border-[#0095FF] text-gray-700 hover:text-[#0095FF] px-6 py-3 rounded-full font-bold text-sm transition-colors inline-flex items-center gap-2">
-                    See it in action <ArrowRight size={16} />
+            </div>
+          </FadeIn>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+            gap: 20,
+          }}>
+            {features.map((f, i) => (
+              <FadeIn key={i} delay={i * 0.08}>
+                <div style={{
+                  background: 'rgba(255,255,255,0.03)',
+                  border: '1px solid rgba(255,255,255,0.06)',
+                  borderRadius: 16,
+                  padding: 28,
+                  transition: 'border-color 0.3s, background 0.3s',
+                  cursor: 'default',
+                  height: '100%',
+                }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = `${f.color}33`; e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'; e.currentTarget.style.background = 'rgba(255,255,255,0.03)' }}
+                >
+                  <div style={{
+                    width: 44, height: 44,
+                    background: f.bg,
+                    borderRadius: 12,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    marginBottom: 20,
+                  }}>
+                    <f.icon size={22} color={f.color} />
+                  </div>
+                  <h3 style={{ fontSize: 18, fontWeight: 700, color: '#fff', marginBottom: 8 }}>{f.title}</h3>
+                  <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', lineHeight: 1.6 }}>{f.desc}</p>
+                </div>
+              </FadeIn>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════ HOW IT WORKS ══════════ */}
+      <section style={{
+        background: 'linear-gradient(180deg, #0a0a0f 0%, #0d1117 100%)',
+        padding: '80px 24px 100px',
+        borderTop: '1px solid rgba(255,255,255,0.04)',
+      }}>
+        <div style={{ maxWidth: 800, margin: '0 auto' }}>
+          <FadeIn>
+            <div style={{ textAlign: 'center', marginBottom: 60 }}>
+              <h2 style={{ fontSize: 'clamp(28px, 5vw, 40px)', fontWeight: 900, letterSpacing: '-0.03em', color: '#fff', marginBottom: 12 }}>
+                Up and running in 3 minutes
+              </h2>
+              <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.4)' }}>No training needed. No complex setup.</p>
+            </div>
+          </FadeIn>
+
+          {[
+            { step: '01', title: 'Sign up & add your products', desc: 'Type them in or import from a spreadsheet. Add prices, stock levels, and categories.', icon: Package },
+            { step: '02', title: 'Share your store link', desc: 'Get a beautiful storefront URL. Share it on WhatsApp status, Instagram bio, or anywhere.', icon: Store },
+            { step: '03', title: 'Let KOFA handle the rest', desc: 'AI manages inquiries, tracks inventory, records sales, and shows you your profit.', icon: Zap },
+          ].map((item, i) => (
+            <FadeIn key={i} delay={i * 0.15}>
+              <div style={{
+                display: 'flex', gap: 24, alignItems: 'flex-start',
+                padding: '24px 0',
+                borderBottom: i < 2 ? '1px solid rgba(255,255,255,0.06)' : 'none',
+              }}>
+                <div style={{
+                  minWidth: 56, height: 56,
+                  background: 'rgba(0,149,255,0.08)',
+                  border: '1px solid rgba(0,149,255,0.15)',
+                  borderRadius: 14,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 16, fontWeight: 800, color: '#4db8ff',
+                }}>
+                  {item.step}
+                </div>
+                <div>
+                  <h3 style={{ fontSize: 18, fontWeight: 700, color: '#fff', marginBottom: 6 }}>{item.title}</h3>
+                  <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', lineHeight: 1.6 }}>{item.desc}</p>
+                </div>
+              </div>
+            </FadeIn>
+          ))}
+        </div>
+      </section>
+
+      {/* ══════════ TESTIMONIALS ══════════ */}
+      <section style={{
+        background: '#0a0a0f',
+        padding: '80px 24px 100px',
+        borderTop: '1px solid rgba(255,255,255,0.04)',
+      }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+          <FadeIn>
+            <div style={{ textAlign: 'center', marginBottom: 48 }}>
+              <h2 style={{ fontSize: 'clamp(28px, 5vw, 40px)', fontWeight: 900, letterSpacing: '-0.03em', color: '#fff', marginBottom: 12 }}>
+                Vendors love KOFA
+              </h2>
+              <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.4)' }}>Don't just take our word for it.</p>
+            </div>
+          </FadeIn>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+            gap: 20,
+          }}>
+            {testimonials.map((t, i) => (
+              <FadeIn key={i} delay={i * 0.1}>
+                <div style={{
+                  background: 'rgba(255,255,255,0.03)',
+                  border: '1px solid rgba(255,255,255,0.06)',
+                  borderRadius: 16,
+                  padding: 28,
+                }}>
+                  <div style={{ display: 'flex', gap: 3, marginBottom: 16 }}>
+                    {Array.from({ length: t.rating }).map((_, j) => (
+                      <Star key={j} size={14} fill="#f59e0b" color="#f59e0b" />
+                    ))}
+                  </div>
+                  <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.7)', lineHeight: 1.65, marginBottom: 20, fontStyle: 'italic' }}>
+                    "{t.text}"
+                  </p>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>{t.name}</div>
+                    <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>{t.role}</div>
+                  </div>
+                </div>
+              </FadeIn>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════ PRICING ══════════ */}
+      <section id="pricing" style={{
+        background: 'linear-gradient(180deg, #0d1117 0%, #0a0a0f 100%)',
+        padding: '80px 24px 100px',
+        borderTop: '1px solid rgba(255,255,255,0.04)',
+      }}>
+        <div style={{ maxWidth: 1000, margin: '0 auto' }}>
+          <FadeIn>
+            <div style={{ textAlign: 'center', marginBottom: 48 }}>
+              <h2 style={{ fontSize: 'clamp(28px, 5vw, 44px)', fontWeight: 900, letterSpacing: '-0.03em', color: '#fff', marginBottom: 12 }}>
+                Simple pricing
+              </h2>
+              <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.4)' }}>Start free. Upgrade when you grow.</p>
+            </div>
+          </FadeIn>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gap: 20,
+            maxWidth: 960,
+            margin: '0 auto',
+          }}>
+            {/* Free */}
+            <FadeIn delay={0}>
+              <div style={{
+                background: 'rgba(255,255,255,0.03)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: 20,
+                padding: '32px 28px',
+              }}>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: '#fff', marginBottom: 4 }}>Free</h3>
+                <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', marginBottom: 24 }}>Get started</p>
+                <div style={{ marginBottom: 28 }}>
+                  <span style={{ fontSize: 44, fontWeight: 900, color: '#fff' }}>₦0</span>
+                  <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.3)', marginLeft: 4 }}>/month</span>
+                </div>
+                <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 28px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {['5 products', '15 AI queries/month', 'Basic analytics', 'Online storefront'].map(f => (
+                    <li key={f} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, color: 'rgba(255,255,255,0.6)' }}>
+                      <Check size={15} color="#22c55e" strokeWidth={3} /> {f}
+                    </li>
+                  ))}
+                </ul>
+                <Link to="/signup" style={{ display: 'block' }}>
+                  <button style={{
+                    width: '100%', padding: '14px', borderRadius: 12,
+                    background: 'rgba(255,255,255,0.06)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    color: '#fff', fontWeight: 700, fontSize: 14,
+                    cursor: 'pointer', transition: 'background 0.2s',
+                  }}
+                    onMouseEnter={e => e.target.style.background = 'rgba(255,255,255,0.1)'}
+                    onMouseLeave={e => e.target.style.background = 'rgba(255,255,255,0.06)'}
+                  >
+                    Start Free
                   </button>
                 </Link>
               </div>
-            </div>
-          </div>
-        </section>
+            </FadeIn>
 
-        {/* FEATURE 2: STOREFRONT */}
-        <section className="py-20 md:py-28 px-6 bg-gray-50 border-y border-gray-100">
-          <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-12 md:gap-16 items-center">
-            <div>
-              <div className="w-12 h-12 bg-orange-100 text-orange-600 rounded-2xl flex items-center justify-center mb-6">
-                <Store size={24} />
+            {/* Grow */}
+            <FadeIn delay={0.1}>
+              <div style={{
+                background: 'rgba(0,149,255,0.06)',
+                border: '1px solid rgba(0,149,255,0.25)',
+                borderRadius: 20,
+                padding: '32px 28px',
+                position: 'relative',
+              }}>
+                <div style={{
+                  position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)',
+                  background: 'linear-gradient(135deg, #0095FF, #00C2FF)',
+                  color: '#fff', fontSize: 11, fontWeight: 800,
+                  padding: '4px 14px', borderRadius: 99,
+                  textTransform: 'uppercase', letterSpacing: '0.05em',
+                }}>Popular</div>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: '#fff', marginBottom: 4 }}>Grow</h3>
+                <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', marginBottom: 24 }}>For growing businesses</p>
+                <div style={{ marginBottom: 28 }}>
+                  <span style={{ fontSize: 44, fontWeight: 900, color: '#fff' }}>₦4,500</span>
+                  <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.3)', marginLeft: 4 }}>/month</span>
+                </div>
+                <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 28px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {['Unlimited products', '150 AI queries/month', 'Full analytics & insights', 'CSV import/export', 'Priority support'].map(f => (
+                    <li key={f} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, color: 'rgba(255,255,255,0.6)' }}>
+                      <Check size={15} color="#4db8ff" strokeWidth={3} /> {f}
+                    </li>
+                  ))}
+                </ul>
+                <Link to="/signup" style={{ display: 'block' }}>
+                  <button style={{
+                    width: '100%', padding: '14px', borderRadius: 12,
+                    background: 'linear-gradient(135deg, #0095FF, #0077CC)',
+                    border: 'none',
+                    color: '#fff', fontWeight: 700, fontSize: 14,
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 16px rgba(0,149,255,0.3)',
+                    transition: 'transform 0.2s, box-shadow 0.2s',
+                  }}
+                    onMouseEnter={e => { e.target.style.transform = 'translateY(-1px)'; e.target.style.boxShadow = '0 6px 24px rgba(0,149,255,0.4)' }}
+                    onMouseLeave={e => { e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = '0 4px 16px rgba(0,149,255,0.3)' }}
+                  >
+                    Start Growing
+                  </button>
+                </Link>
               </div>
-              <h2 className="text-3xl md:text-5xl font-black text-gray-900 mb-6 tracking-tight">Your Own Online Store.</h2>
-              <p className="text-lg text-gray-500 mb-8 leading-relaxed">
-                Get a beautiful link to share on Instagram and TikTok. Customers can browse your latest catalog, place orders, and pay without DMing you.
-              </p>
-              <ul className="space-y-4 mb-8">
-                {['Takes orders whilst you sleep', 'Automatic inventory sync', 'Professional checkout flow'].map(f => (
-                  <li key={f} className="flex gap-3 text-gray-800 font-semibold items-center">
-                    <Check className="text-orange-500 flex-shrink-0" size={20} strokeWidth={3} /> {f}
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="flex justify-center transform rotate-2 hover:rotate-0 transition-transform duration-500">
-              <MockupImage
-                src="/images/storefront-mockup.png"
-                alt="Online Storefront"
-                className="max-w-xs sm:max-w-sm w-full ring-4 ring-white"
-              />
-            </div>
-          </div>
-        </section>
+            </FadeIn>
 
-        {/* FEATURE 3: BUSINESS AI */}
-        <section className="py-20 md:py-28 px-6 bg-white">
-          <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-12 md:gap-16 items-center">
-            <div className="order-2 md:order-1 flex justify-center transform -rotate-2 hover:rotate-0 transition-transform duration-500">
-              <MockupImage
-                src="/images/analytics-mockup.png"
-                alt="Business Analytics AI"
-                className="max-w-md w-full rounded-2xl shadow-2xl"
-              />
-            </div>
-            <div className="order-1 md:order-2 flex flex-col justify-center">
-              <div className="w-12 h-12 bg-blue-100 text-[#0095FF] rounded-2xl flex items-center justify-center mb-6">
-                <TrendingUp size={24} />
+            {/* Pro */}
+            <FadeIn delay={0.2}>
+              <div style={{
+                background: 'rgba(255,255,255,0.03)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: 20,
+                padding: '32px 28px',
+              }}>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: '#fff', marginBottom: 4 }}>Pro</h3>
+                <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', marginBottom: 24 }}>For power sellers</p>
+                <div style={{ marginBottom: 28 }}>
+                  <span style={{ fontSize: 44, fontWeight: 900, color: '#fff' }}>₦10,000</span>
+                  <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.3)', marginLeft: 4 }}>/month</span>
+                </div>
+                <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 28px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {['Everything in Grow', '1,000 AI queries/month', '3 team members', 'WhatsApp AI bot', 'Advanced reports'].map(f => (
+                    <li key={f} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, color: 'rgba(255,255,255,0.6)' }}>
+                      <Check size={15} color="#22c55e" strokeWidth={3} /> {f}
+                    </li>
+                  ))}
+                </ul>
+                <Link to="/signup" style={{ display: 'block' }}>
+                  <button style={{
+                    width: '100%', padding: '14px', borderRadius: 12,
+                    background: 'rgba(255,255,255,0.06)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    color: '#fff', fontWeight: 700, fontSize: 14,
+                    cursor: 'pointer', transition: 'background 0.2s',
+                  }}
+                    onMouseEnter={e => e.target.style.background = 'rgba(255,255,255,0.1)'}
+                    onMouseLeave={e => e.target.style.background = 'rgba(255,255,255,0.06)'}
+                  >
+                    Go Pro
+                  </button>
+                </Link>
               </div>
-              <h2 className="text-3xl md:text-5xl font-black text-gray-900 mb-6 tracking-tight">"How much did I make?"</h2>
-              <p className="text-lg text-gray-500 mb-8 leading-relaxed">
-                Stop guessing. Just ask KOFA. Our Business AI analyzes your sales and expenses to tell you your true profit margins and best-selling items instantly.
-              </p>
-              <ul className="space-y-4">
-                {['Instant profit calculations', 'Best and worst selling products', 'Expense tracking'].map(f => (
-                  <li key={f} className="flex gap-3 text-gray-800 font-semibold items-center">
-                    <Check className="text-[#0095FF] flex-shrink-0" size={20} strokeWidth={3} /> {f}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </section>
-      </div>
-
-      {/* --- PRICING --- */}
-      <section id="pricing" className="py-20 md:py-28 px-6 bg-gray-50 border-t border-gray-100">
-        <div className="max-w-5xl mx-auto text-center mb-16">
-          <h2 className="text-3xl md:text-5xl font-black text-gray-900 mb-4 tracking-tight">Simple, Honest Pricing</h2>
-          <p className="text-lg text-gray-500">Start free. Upgrade when you're ready.</p>
-        </div>
-        <div className="max-w-5xl mx-auto grid md:grid-cols-3 gap-6">
-          {/* Free */}
-          <div className="bg-white rounded-2xl p-8 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-            <h3 className="text-lg font-bold text-gray-900 mb-1">Free</h3>
-            <p className="text-gray-400 text-sm mb-6">Get started</p>
-            <div className="mb-6">
-              <span className="text-4xl font-black text-gray-900">₦0</span>
-              <span className="text-gray-400 text-sm"> /month</span>
-            </div>
-            <ul className="space-y-3 mb-8 text-sm text-gray-600">
-              {['5 products', '15 AI queries/month', 'Basic analytics', 'Online storefront'].map(f => (
-                <li key={f} className="flex gap-2 items-center"><Check size={16} className="text-green-500 flex-shrink-0" /> {f}</li>
-              ))}
-            </ul>
-            <Link to="/signup">
-              <button className="w-full py-3 rounded-xl font-semibold text-sm border-2 border-gray-200 text-gray-700 hover:border-[#0095FF] hover:text-[#0095FF] transition-colors">
-                Start Free
-              </button>
-            </Link>
-          </div>
-
-          {/* Grow - Popular */}
-          <div className="bg-white rounded-2xl p-8 border-2 border-[#0095FF] shadow-lg shadow-blue-500/10 relative">
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-              <span className="bg-[#0095FF] text-white text-xs font-bold px-4 py-1 rounded-full">POPULAR</span>
-            </div>
-            <h3 className="text-lg font-bold text-gray-900 mb-1">Grow</h3>
-            <p className="text-gray-400 text-sm mb-6">For growing businesses</p>
-            <div className="mb-6">
-              <span className="text-4xl font-black text-gray-900">₦4,500</span>
-              <span className="text-gray-400 text-sm"> /month</span>
-            </div>
-            <ul className="space-y-3 mb-8 text-sm text-gray-600">
-              {['Unlimited products', '150 AI queries/month', 'Full analytics & insights', 'CSV import/export', 'Priority support'].map(f => (
-                <li key={f} className="flex gap-2 items-center"><Check size={16} className="text-[#0095FF] flex-shrink-0" /> {f}</li>
-              ))}
-            </ul>
-            <Link to="/signup">
-              <button className="w-full py-3 rounded-xl font-semibold text-sm bg-[#0095FF] hover:bg-[#0077CC] text-white transition-colors shadow-lg shadow-blue-500/25">
-                Start Growing
-              </button>
-            </Link>
-          </div>
-
-          {/* Pro */}
-          <div className="bg-white rounded-2xl p-8 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-            <h3 className="text-lg font-bold text-gray-900 mb-1">Pro</h3>
-            <p className="text-gray-400 text-sm mb-6">For power sellers</p>
-            <div className="mb-6">
-              <span className="text-4xl font-black text-gray-900">₦10,000</span>
-              <span className="text-gray-400 text-sm"> /month</span>
-            </div>
-            <ul className="space-y-3 mb-8 text-sm text-gray-600">
-              {['Everything in Grow', '1,000 AI queries/month', '3 team members', 'WhatsApp AI bot', 'Advanced reports'].map(f => (
-                <li key={f} className="flex gap-2 items-center"><Check size={16} className="text-green-500 flex-shrink-0" /> {f}</li>
-              ))}
-            </ul>
-            <Link to="/signup">
-              <button className="w-full py-3 rounded-xl font-semibold text-sm border-2 border-gray-200 text-gray-700 hover:border-[#0095FF] hover:text-[#0095FF] transition-colors">
-                Go Pro
-              </button>
-            </Link>
+            </FadeIn>
           </div>
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="py-20 text-center px-6 bg-gradient-to-b from-white to-blue-50/50">
-        <h2 className="text-3xl md:text-4xl font-black text-gray-900 mb-6">Ready to professionalize your hustle?</h2>
-        <p className="text-gray-500 mb-8 max-w-md mx-auto">Join thousands of Nigerian vendors already using KOFA to grow their business.</p>
-        <Link to="/signup">
-          <button className="bg-[#0095FF] hover:bg-[#0077CC] text-white px-8 py-4 rounded-full text-lg font-semibold transition-all shadow-xl shadow-blue-500/25 hover:shadow-blue-500/40">
-            Get Started for Free
-          </button>
-        </Link>
+      {/* ══════════ FINAL CTA ══════════ */}
+      <section style={{
+        background: '#0a0a0f',
+        padding: '80px 24px 100px',
+        textAlign: 'center',
+        borderTop: '1px solid rgba(255,255,255,0.04)',
+        position: 'relative',
+        overflow: 'hidden',
+      }}>
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: 'radial-gradient(ellipse 60% 50% at 50% 100%, rgba(0,149,255,0.08), transparent)',
+        }} />
+        <div style={{ position: 'relative' }}>
+          <FadeIn>
+            <h2 style={{
+              fontSize: 'clamp(28px, 6vw, 48px)',
+              fontWeight: 900,
+              letterSpacing: '-0.03em',
+              color: '#fff',
+              marginBottom: 16,
+            }}>
+              Ready to professionalize<br />your hustle?
+            </h2>
+            <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.4)', marginBottom: 32, maxWidth: 440, margin: '0 auto 32px' }}>
+              Join hundreds of Nigerian vendors already using KOFA to grow their business.
+            </p>
+            <Link to="/signup">
+              <button style={{
+                background: 'linear-gradient(135deg, #0095FF, #0077CC)',
+                color: '#fff',
+                padding: '16px 40px',
+                borderRadius: 99,
+                fontSize: 17,
+                fontWeight: 700,
+                border: 'none',
+                cursor: 'pointer',
+                boxShadow: '0 8px 32px rgba(0,149,255,0.3), inset 0 1px 0 rgba(255,255,255,0.15)',
+                transition: 'transform 0.2s, box-shadow 0.2s',
+              }}
+                onMouseEnter={e => { e.target.style.transform = 'translateY(-2px)'; e.target.style.boxShadow = '0 12px 40px rgba(0,149,255,0.45), inset 0 1px 0 rgba(255,255,255,0.15)' }}
+                onMouseLeave={e => { e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = '0 8px 32px rgba(0,149,255,0.3), inset 0 1px 0 rgba(255,255,255,0.15)' }}
+              >
+                Get Started for Free →
+              </button>
+            </Link>
+          </FadeIn>
+        </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-gray-100 py-10 text-center text-sm text-gray-400 space-y-3 bg-white">
-        <div className="flex items-center justify-center gap-4">
-          <Link to="/privacy" className="hover:text-gray-600 transition-colors">Privacy Policy</Link>
-          <span className="text-gray-300">•</span>
-          <Link to="/terms" className="hover:text-gray-600 transition-colors">Terms of Service</Link>
+      {/* ══════════ FOOTER ══════════ */}
+      <footer style={{
+        background: '#0a0a0f',
+        borderTop: '1px solid rgba(255,255,255,0.06)',
+        padding: '40px 24px',
+      }}>
+        <div style={{
+          maxWidth: 1100,
+          margin: '0 auto',
+          display: 'flex',
+          flexWrap: 'wrap',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: 20,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{
+              width: 28, height: 28,
+              background: 'linear-gradient(135deg, #0095FF, #00C2FF)',
+              borderRadius: 8,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <Package size={14} color="#fff" strokeWidth={2.5} />
+            </div>
+            <span style={{ fontWeight: 800, fontSize: 15, color: 'rgba(255,255,255,0.5)' }}>KOFA</span>
+          </div>
+          <div style={{ display: 'flex', gap: 24, fontSize: 13, fontWeight: 500 }}>
+            <Link to="/privacy" style={{ color: 'rgba(255,255,255,0.3)', textDecoration: 'none', transition: 'color 0.2s' }}
+              onMouseEnter={e => e.target.style.color = 'rgba(255,255,255,0.6)'}
+              onMouseLeave={e => e.target.style.color = 'rgba(255,255,255,0.3)'}>Privacy</Link>
+            <Link to="/terms" style={{ color: 'rgba(255,255,255,0.3)', textDecoration: 'none', transition: 'color 0.2s' }}
+              onMouseEnter={e => e.target.style.color = 'rgba(255,255,255,0.6)'}
+              onMouseLeave={e => e.target.style.color = 'rgba(255,255,255,0.3)'}>Terms</Link>
+          </div>
+          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.2)' }}>© 2026 KOFA. Built in Lagos 🇳🇬</p>
         </div>
-        <p>© 2026 KOFA Commerce Engine. Built in Lagos.</p>
       </footer>
+
+      {/* ══════════ GLOBAL STYLES ══════════ */}
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+        
+        @keyframes shimmer {
+          0% { background-position: 200% center; }
+          100% { background-position: -200% center; }
+        }
+        
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        html { scroll-behavior: smooth; }
+        
+        ::selection {
+          background: rgba(0,149,255,0.3);
+          color: #fff;
+        }
+      `}</style>
     </div>
   )
 }
