@@ -167,7 +167,7 @@ const DashboardRedesign = () => {
                     <NotificationBell isDark={isDark} />
                     <button
                         onClick={() => {
-                            const storeUrl = `${window.location.origin}/shop/${encodeURIComponent(user?.businessName || user?.business_name || 'shop')}`
+                            const storeUrl = `https://kofa-backend-eu-2bb681b4e51a.herokuapp.com/store/${encodeURIComponent(user?.businessName || user?.business_name || 'shop')}`
                             navigator.clipboard.writeText(storeUrl)
                             alert('✅ Store link copied!')
                         }}
@@ -182,7 +182,7 @@ const DashboardRedesign = () => {
                     </button>
                     <button
                         onClick={() => {
-                            const storeUrl = `${window.location.origin}/shop/${encodeURIComponent(user?.businessName || user?.business_name || 'shop')}`
+                            const storeUrl = `https://kofa-backend-eu-2bb681b4e51a.herokuapp.com/store/${encodeURIComponent(user?.businessName || user?.business_name || 'shop')}`
                             window.open(storeUrl, '_blank')
                         }}
                         className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium bg-[#0095FF] hover:bg-[#0080DD] text-white transition-all"
