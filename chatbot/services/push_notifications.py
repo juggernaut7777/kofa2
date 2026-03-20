@@ -26,8 +26,6 @@ class PushNotificationService:
     def __init__(self):
         # In production, store tokens in database
         self._device_tokens: Dict[str, List[str]] = {}  # vendor_id -> [tokens]
-        self._supabase_url = os.getenv("SUPABASE_URL", "")
-        self._supabase_key = os.getenv("SUPABASE_KEY", "")
     
     def register_device(self, vendor_id: str, expo_token: str, device_type: str = "unknown"):
         """
