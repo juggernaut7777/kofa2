@@ -3,35 +3,42 @@ import { useLocation } from 'react-router-dom'
 import { apiCall, API_ENDPOINTS } from '../../config/api'
 import { ThemeContext } from '../../context/ThemeContext'
 import { useAuth } from '../../context/AuthContext'
-import { Send, X, MessageCircle, Mic, Plus, Package, AlertCircle } from 'lucide-react'
+import {
+    Send, X, MessageCircle, Package, AlertCircle,
+    TrendingUp, ShoppingBag, Wallet, BarChart3, Users, Zap
+} from 'lucide-react'
+
+const QUICK_ACTIONS = [
+    { icon: TrendingUp, label: "Today's sales", message: "Show me today's sales summary" },
+    { icon: ShoppingBag, label: "Low stock", message: "Which products are running low on stock?" },
+    { icon: Wallet, label: "Add expense", message: "I want to record a new expense" },
+    { icon: BarChart3, label: "Profit report", message: "Give me a profit and loss summary" },
+    { icon: Users, label: "Top customers", message: "Who are my top 5 customers by spending?" },
+    { icon: Zap, label: "Restock advice", message: "What products should I restock based on sales trends?" },
+]
 
 const BusinessAI = () => {
     const { theme } = useContext(ThemeContext)
     const { user } = useAuth()
-    const activeUserId = user?.id || 'demo-user'
     const isDark = theme === 'dark'
     const location = useLocation()
 
-    // Hide on public pages - only show when logged in
-    const isShopPage = location.pathname.startsWith('/shop')
-    const publicPages = ['/', '/login', '/signup', '/verify', '/privacy', '/terms']
-    const isPublicPage = publicPages.includes(location.pathname) || isShopPage
-    if (!user || isPublicPage) return null
-
     const [isOpen, setIsOpen] = useState(false)
-    const [messages, setMessages] = useState([
-        {
-            role: 'assistant',
-            content: "Hi! I'm your KOFA Assistant. How can I help you today?",
-            type: 'text',
-            suggestions: ["Show today's sales", "Low stock items", "Add expense"]
-        }
-    ])
+    const [messages, setMessages] = useState([])
     const [input, setInput] = useState('')
     const [loading, setLoading] = useState(false)
     const [connectionError, setConnectionError] = useState(false)
     const messagesEndRef = useRef(null)
     const inputRef = useRef(null)
+
+    // All hooks are above — conditional return is safe here
+    const isShopPage = location.pathname.startsWith('/shop')
+    const publicPages = ['/', '/login', '/signup', '/verify', '/privacy', '/terms']
+    const isPublicPage = publicPages.includes(location.pathname) || isShopPage
+    if (!user || isPublicPage) return null
+
+    const activeUserId = user?.id || 'demo-user'
+    const firstName = user?.first_name || user?.firstName || 'there'
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -76,7 +83,7 @@ const BusinessAI = () => {
             setConnectionError(true)
             setMessages(prev => [...prev, {
                 role: 'assistant',
-                content: "I couldn't connect to the backend. Please check that the Heroku server is running.",
+                content: "I couldn't connect to the AI service. Please check your internet connection and try again.",
                 type: 'error'
             }])
         } finally {
@@ -84,77 +91,233 @@ const BusinessAI = () => {
         }
     }
 
-    const handleKeyPress = (e) => {
+    const handleKeyDown = (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault()
             sendMessage()
         }
     }
 
-    // Small button in top right - MESSAGE ICON
+    // ─── COLLAPSED BUTTON ───
     if (!isOpen) {
         return (
             <button
                 onClick={() => setIsOpen(true)}
-                className={`fixed top-4 right-4 z-[60] flex items-center gap-2 px-3 py-2 rounded-lg font-medium text-sm transition-all ${isDark
-                    ? 'bg-[#1A1A1F] border border-white/10 text-white hover:bg-[#252530]'
-                    : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 shadow-sm'
-                    }`}
+                style={{
+                    position: 'fixed',
+                    bottom: 76,
+                    right: 16,
+                    zIndex: 45,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    padding: '10px 16px',
+                    borderRadius: 50,
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                    fontSize: 13,
+                    fontFamily: "'Inter', system-ui, sans-serif",
+                    background: 'linear-gradient(135deg, #0095FF, #0070DD)',
+                    color: '#fff',
+                    boxShadow: '0 4px 20px rgba(0,149,255,0.35)',
+                    transition: 'transform 0.2s, box-shadow 0.2s',
+                }}
+                onMouseEnter={e => {
+                    e.currentTarget.style.transform = 'scale(1.05)'
+                    e.currentTarget.style.boxShadow = '0 6px 28px rgba(0,149,255,0.45)'
+                }}
+                onMouseLeave={e => {
+                    e.currentTarget.style.transform = 'scale(1)'
+                    e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,149,255,0.35)'
+                }}
             >
-                <MessageCircle size={18} className="text-[#0095FF]" />
-                <span>Ask KOFA AI</span>
+                <MessageCircle size={18} />
+                <span>KOFA AI</span>
             </button>
         )
     }
 
-    // Full page AI
+    // ─── FULL SCREEN AI ───
     return (
-        <div className={`fixed inset-0 z-50 flex flex-col ${isDark ? 'bg-[#0F0F12]' : 'bg-white'}`}>
+        <div style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 55,
+            display: 'flex',
+            flexDirection: 'column',
+            background: isDark ? '#0F0F12' : '#fff',
+            fontFamily: "'Inter', system-ui, sans-serif",
+        }}>
             {/* Header */}
-            <header className={`flex items-center justify-between px-4 py-3 border-b ${isDark ? 'border-white/10' : 'border-gray-100'}`}>
-                <button onClick={() => setIsOpen(false)} className={`p-2 rounded-lg ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}>
-                    <X size={24} className={isDark ? 'text-white' : 'text-gray-700'} />
+            <header style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '12px 16px',
+                borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+            }}>
+                <button
+                    onClick={() => setIsOpen(false)}
+                    style={{
+                        background: 'none', border: 'none', padding: 8, borderRadius: 10,
+                        cursor: 'pointer', color: isDark ? '#fff' : '#374151',
+                    }}
+                >
+                    <X size={22} />
                 </button>
-                <div className="text-center">
-                    <h1 className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>KOFA AI Assistant</h1>
-                    <div className={`flex items-center justify-center gap-1 text-xs ${connectionError ? 'text-red-500' : 'text-green-500'}`}>
-                        <span className={`w-2 h-2 rounded-full ${connectionError ? 'bg-red-500' : 'bg-green-500'}`}></span>
+                <div style={{ textAlign: 'center' }}>
+                    <h1 style={{
+                        fontWeight: 700, fontSize: 16, margin: 0,
+                        color: isDark ? '#fff' : '#111',
+                    }}>KOFA AI Assistant</h1>
+                    <div style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        gap: 4, fontSize: 11, marginTop: 2,
+                        color: connectionError ? '#ef4444' : '#22c55e',
+                    }}>
+                        <span style={{
+                            width: 6, height: 6, borderRadius: 99,
+                            background: connectionError ? '#ef4444' : '#22c55e',
+                        }} />
                         {connectionError ? 'Reconnecting...' : 'Online'}
                     </div>
                 </div>
-                <div className="w-10"></div>
+                <div style={{ width: 38 }} />
             </header>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                <div className="text-center">
-                    <span className={`text-xs px-3 py-1 rounded-full ${isDark ? 'bg-white/10 text-gray-400' : 'bg-gray-100 text-gray-500'}`}>Today</span>
-                </div>
+            <div style={{
+                flex: 1, overflowY: 'auto', padding: 16,
+                display: 'flex', flexDirection: 'column', gap: 14,
+            }}>
+                {/* Welcome + Quick Actions (show when no messages) */}
+                {messages.length === 0 && (
+                    <div style={{
+                        display: 'flex', flexDirection: 'column',
+                        alignItems: 'center', justifyContent: 'center',
+                        flex: 1, gap: 24, padding: '32px 0',
+                    }}>
+                        {/* Avatar */}
+                        <div style={{
+                            width: 56, height: 56, borderRadius: 16,
+                            background: 'linear-gradient(135deg, #0095FF, #0070DD)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}>
+                            <Package size={28} color="#fff" />
+                        </div>
+                        <div style={{ textAlign: 'center' }}>
+                            <h2 style={{
+                                fontWeight: 700, fontSize: 20, margin: 0,
+                                color: isDark ? '#fff' : '#111',
+                            }}>Hey {firstName}!</h2>
+                            <p style={{
+                                fontSize: 14, color: isDark ? 'rgba(255,255,255,0.4)' : '#9ca3af',
+                                marginTop: 4,
+                            }}>How can I help you today?</p>
+                        </div>
 
+                        {/* Quick Actions Grid */}
+                        <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(2, 1fr)',
+                            gap: 10, width: '100%', maxWidth: 400,
+                        }}>
+                            {QUICK_ACTIONS.map((action, i) => {
+                                const Icon = action.icon
+                                return (
+                                    <button
+                                        key={i}
+                                        onClick={() => sendMessage(action.message)}
+                                        style={{
+                                            display: 'flex', alignItems: 'center', gap: 10,
+                                            padding: '12px 14px', borderRadius: 14, border: 'none',
+                                            cursor: 'pointer', textAlign: 'left',
+                                            fontSize: 13, fontWeight: 500, fontFamily: 'inherit',
+                                            background: isDark ? 'rgba(255,255,255,0.05)' : '#f3f4f6',
+                                            color: isDark ? 'rgba(255,255,255,0.7)' : '#374151',
+                                            transition: 'background 0.15s, transform 0.1s',
+                                        }}
+                                        onMouseEnter={e => {
+                                            e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.08)' : '#e5e7eb'
+                                            e.currentTarget.style.transform = 'scale(1.02)'
+                                        }}
+                                        onMouseLeave={e => {
+                                            e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.05)' : '#f3f4f6'
+                                            e.currentTarget.style.transform = 'scale(1)'
+                                        }}
+                                    >
+                                        <Icon size={16} style={{ color: '#0095FF', flexShrink: 0 }} />
+                                        {action.label}
+                                    </button>
+                                )
+                            })}
+                        </div>
+                    </div>
+                )}
+
+                {/* Chat Messages */}
                 {messages.map((msg, i) => (
-                    <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div key={i} style={{
+                        display: 'flex',
+                        justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                    }}>
                         {msg.role === 'assistant' && (
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-2 flex-shrink-0 ${msg.type === 'error' ? 'bg-red-100' : 'bg-[#E6F4FF]'}`}>
-                                {msg.type === 'error' ? <AlertCircle size={16} className="text-red-500" /> : <Package size={16} className="text-[#0095FF]" />}
+                            <div style={{
+                                width: 32, height: 32, borderRadius: 99, flexShrink: 0,
+                                marginRight: 8,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                background: msg.type === 'error' ? '#fef2f2' : '#e6f4ff',
+                            }}>
+                                {msg.type === 'error'
+                                    ? <AlertCircle size={16} color="#ef4444" />
+                                    : <Package size={16} color="#0095FF" />
+                                }
                             </div>
                         )}
 
-                        <div className="max-w-[80%] space-y-2">
-                            <div className={`p-3 rounded-2xl text-sm ${msg.role === 'user'
-                                ? 'bg-[#0095FF] text-white rounded-br-sm'
-                                : msg.type === 'error'
-                                    ? isDark ? 'bg-red-500/20 border border-red-500/30 text-red-400 rounded-bl-sm' : 'bg-red-50 border border-red-200 text-red-600 rounded-bl-sm'
-                                    : isDark ? 'bg-[#1A1A1F] border border-white/10 text-white rounded-bl-sm' : 'bg-gray-100 text-gray-900 rounded-bl-sm'
-                                }`}>
+                        <div style={{ maxWidth: '80%', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            <div style={{
+                                padding: '10px 14px', borderRadius: 18, fontSize: 14, lineHeight: 1.5,
+                                whiteSpace: 'pre-wrap',
+                                ...(msg.role === 'user'
+                                    ? {
+                                        background: '#0095FF', color: '#fff',
+                                        borderBottomRightRadius: 4,
+                                    }
+                                    : msg.type === 'error'
+                                        ? {
+                                            background: isDark ? 'rgba(239,68,68,0.15)' : '#fef2f2',
+                                            border: `1px solid ${isDark ? 'rgba(239,68,68,0.3)' : '#fecaca'}`,
+                                            color: isDark ? '#fca5a5' : '#dc2626',
+                                            borderBottomLeftRadius: 4,
+                                        }
+                                        : {
+                                            background: isDark ? '#1A1A1F' : '#f3f4f6',
+                                            border: isDark ? '1px solid rgba(255,255,255,0.06)' : 'none',
+                                            color: isDark ? '#fff' : '#111',
+                                            borderBottomLeftRadius: 4,
+                                        }
+                                )
+                            }}>
                                 {msg.content}
                             </div>
 
                             {msg.suggestions?.length > 0 && (
-                                <div className="flex flex-wrap gap-2">
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                                     {msg.suggestions.map((s, j) => (
                                         <button key={j} onClick={() => sendMessage(s)}
-                                            className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${isDark ? 'border-white/20 text-gray-300 hover:bg-white/10' : 'border-gray-200 text-gray-600 hover:bg-gray-50'
-                                                }`}>
+                                            style={{
+                                                fontSize: 12, padding: '6px 12px', borderRadius: 99,
+                                                border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : '#e5e7eb'}`,
+                                                background: 'none', cursor: 'pointer',
+                                                fontFamily: 'inherit',
+                                                color: isDark ? 'rgba(255,255,255,0.5)' : '#6b7280',
+                                                transition: 'background 0.15s',
+                                            }}
+                                            onMouseEnter={e => e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.05)' : '#f9fafb'}
+                                            onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                                        >
                                             {s}
                                         </button>
                                     ))}
@@ -163,24 +326,43 @@ const BusinessAI = () => {
                         </div>
 
                         {msg.role === 'user' && (
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ml-2 flex-shrink-0 ${isDark ? 'bg-white/10' : 'bg-gray-200'}`}>
-                                <span className={`text-xs font-medium ${isDark ? 'text-gray-300' : 'text-gray-500'}`}>You</span>
+                            <div style={{
+                                width: 32, height: 32, borderRadius: 99, flexShrink: 0,
+                                marginLeft: 8,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                background: isDark ? 'rgba(255,255,255,0.08)' : '#e5e7eb',
+                                fontSize: 11, fontWeight: 600,
+                                color: isDark ? 'rgba(255,255,255,0.5)' : '#6b7280',
+                            }}>
+                                You
                             </div>
                         )}
                     </div>
                 ))}
 
+                {/* Loading Indicator */}
                 {loading && (
-                    <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-[#E6F4FF] flex items-center justify-center">
-                            <Package size={16} className="text-[#0095FF]" />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{
+                            width: 32, height: 32, borderRadius: 99,
+                            background: '#e6f4ff',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}>
+                            <Package size={16} color="#0095FF" />
                         </div>
-                        <div className={`p-3 rounded-2xl ${isDark ? 'bg-[#1A1A1F]' : 'bg-gray-100'}`}>
-                            <div className="flex gap-1">
-                                <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                                <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                                <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
-                            </div>
+                        <div style={{
+                            padding: '12px 16px', borderRadius: 18,
+                            background: isDark ? '#1A1A1F' : '#f3f4f6',
+                            display: 'flex', gap: 4,
+                        }}>
+                            {[0, 1, 2].map(i => (
+                                <span key={i} style={{
+                                    width: 7, height: 7, borderRadius: 99,
+                                    background: isDark ? 'rgba(255,255,255,0.3)' : '#9ca3af',
+                                    animation: 'aiBounce 1.4s infinite',
+                                    animationDelay: `${i * 0.16}s`,
+                                }} />
+                            ))}
                         </div>
                     </div>
                 )}
@@ -188,34 +370,62 @@ const BusinessAI = () => {
                 <div ref={messagesEndRef} />
             </div>
 
-            {/* Input */}
-            <div className={`p-4 border-t ${isDark ? 'border-white/10 bg-[#0F0F12]' : 'border-gray-100 bg-white'}`}>
-                <div className="flex items-center gap-2">
-                    <button className={`p-2 rounded-lg ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}>
-                        <Plus size={22} className="text-[#0095FF]" />
-                    </button>
-                    <div className={`flex-1 flex items-center px-4 py-2 rounded-full ${isDark ? 'bg-[#1A1A1F]' : 'bg-gray-100'}`}>
+            {/* Input Area */}
+            <div style={{
+                padding: '12px 16px',
+                paddingBottom: 'max(12px, env(safe-area-inset-bottom, 12px))',
+                borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+                background: isDark ? '#0F0F12' : '#fff',
+            }}>
+                <div style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                }}>
+                    <div style={{
+                        flex: 1, display: 'flex', alignItems: 'center',
+                        padding: '10px 16px', borderRadius: 50,
+                        background: isDark ? '#1A1A1F' : '#f3f4f6',
+                        border: isDark ? '1px solid rgba(255,255,255,0.06)' : 'none',
+                    }}>
                         <input
                             ref={inputRef}
                             type="text"
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
-                            onKeyPress={handleKeyPress}
+                            onKeyDown={handleKeyDown}
                             placeholder="Ask KOFA anything..."
-                            className={`flex-1 bg-transparent outline-none text-sm ${isDark ? 'text-white placeholder-gray-500' : 'text-gray-900 placeholder-gray-400'}`}
+                            style={{
+                                flex: 1, background: 'none', border: 'none', outline: 'none',
+                                fontSize: 14, fontFamily: 'inherit',
+                                color: isDark ? '#fff' : '#111',
+                            }}
                         />
-                        <button className={`p-1 rounded-full ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-200'}`}>
-                            <Mic size={18} className={isDark ? 'text-gray-500' : 'text-gray-400'} />
-                        </button>
                     </div>
                     <button
                         onClick={() => sendMessage()}
                         disabled={!input.trim() || loading}
-                        className="w-10 h-10 bg-[#0095FF] text-white rounded-full flex items-center justify-center disabled:opacity-50">
+                        style={{
+                            width: 42, height: 42, borderRadius: 99, border: 'none',
+                            cursor: input.trim() && !loading ? 'pointer' : 'default',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            background: input.trim() && !loading
+                                ? 'linear-gradient(135deg, #0095FF, #0070DD)'
+                                : isDark ? 'rgba(255,255,255,0.06)' : '#e5e7eb',
+                            color: input.trim() && !loading ? '#fff' : (isDark ? 'rgba(255,255,255,0.2)' : '#9ca3af'),
+                            transition: 'background 0.2s, transform 0.15s',
+                        }}
+                    >
                         <Send size={18} />
                     </button>
                 </div>
             </div>
+
+            {/* Animation Styles */}
+            <style>{`
+                @keyframes aiBounce {
+                    0%, 80%, 100% { transform: translateY(0) }
+                    40% { transform: translateY(-6px) }
+                }
+            `}</style>
         </div>
     )
 }
