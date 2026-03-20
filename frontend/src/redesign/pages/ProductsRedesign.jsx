@@ -27,6 +27,7 @@ const ProductsRedesign = () => {
     const [uploadingImage, setUploadingImage] = useState(false)
     const [showBarcodeScanner, setShowBarcodeScanner] = useState(false)
     const [scanningProduct, setScanningProduct] = useState(false)
+    const [importingCSV, setImportingCSV] = useState(false)
     const productCameraRef = useRef(null)
 
     const [newProduct, setNewProduct] = useState({
@@ -204,40 +205,34 @@ const ProductsRedesign = () => {
         }
     }
 
-    const handleCSVImport = (e) => {
+    const handleCSVImport = async (e) => {
         const file = e.target.files?.[0]
         if (!file) return
-
-        const reader = new FileReader()
-        reader.onload = async (event) => {
-            try {
-                const text = event.target?.result
-                const lines = text.split('\n')
-                const headers = lines[0].split(',').map(h => h.trim().toLowerCase())
-
-                for (let i = 1; i < lines.length; i++) {
-                    if (!lines[i].trim()) continue
-                    const values = lines[i].split(',')
-                    const product = {}
-                    headers.forEach((h, idx) => {
-                        if (h.includes('name')) product.name = values[idx]?.trim()
-                        if (h.includes('price')) product.price = parseFloat(values[idx]) || 0
-                        if (h.includes('stock') || h.includes('quantity')) product.stock_level = parseInt(values[idx]) || 0
-                        if (h.includes('category')) product.category = values[idx]?.trim()
-                    })
-                    if (product.name && product.price) {
-                        await apiCall(API_ENDPOINTS.CREATE_PRODUCT, {
-                            method: 'POST',
-                            body: JSON.stringify(product)
-                        })
-                    }
-                }
-                alert('Products imported!')
-                loadProducts()
-            } catch (err) { alert('Failed to import CSV') }
-        }
-        reader.readAsText(file)
         e.target.value = ''
+
+        setImportingCSV(true)
+        try {
+            const formData = new FormData()
+            formData.append('file', file)
+
+            const res = await fetch(
+                `${API_BASE_URL}/products/import-csv?user_id=${user?.id}`,
+                { method: 'POST', body: formData }
+            )
+            const data = await res.json()
+
+            if (data.imported > 0) {
+                alert(`✅ Imported ${data.imported} products!${data.skipped > 0 ? ` (${data.skipped} skipped)` : ''}${data.errors?.length ? `\n\nWarnings:\n${data.errors.join('\n')}` : ''}`)
+                clearCache(CACHE_KEYS.PRODUCTS)
+                loadProducts(true)
+            } else {
+                alert(`Import failed: ${data.message || 'No valid products found'}${data.errors?.length ? `\n\n${data.errors.join('\n')}` : ''}`)
+            }
+        } catch (err) {
+            alert('Failed to import CSV. Check the file format.')
+        } finally {
+            setImportingCSV(false)
+        }
     }
 
     // Snap-to-Add: photograph product → AI fills form
@@ -325,9 +320,9 @@ const ProductsRedesign = () => {
                         <ScanLine size={20} className="text-[#0095FF]" />
                     </button>
                     <input type="file" ref={fileInputRef} accept=".csv" onChange={handleCSVImport} className="hidden" />
-                    <button className={`p-2 rounded-lg ${isDark ? 'bg-white/10 hover:bg-white/20' : 'bg-gray-100 hover:bg-gray-200'}`}
-                        title="Import CSV" onClick={() => fileInputRef.current?.click()}>
-                        <Upload size={20} className={isDark ? 'text-gray-400' : 'text-gray-500'} />
+                    <button className={`p-2 rounded-lg ${importingCSV ? 'bg-blue-100' : isDark ? 'bg-white/10 hover:bg-white/20' : 'bg-gray-100 hover:bg-gray-200'}`}
+                        title="Import CSV" disabled={importingCSV} onClick={() => fileInputRef.current?.click()}>
+                        {importingCSV ? <Loader2 size={20} className="text-[#0095FF] animate-spin" /> : <Upload size={20} className={isDark ? 'text-gray-400' : 'text-gray-500'} />}
                     </button>
                 </div>
             </div>

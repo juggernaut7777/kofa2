@@ -3580,6 +3580,212 @@ async def get_translation(key: str, language: str = "en", **kwargs):
     }
 
 
+# ══════════════════════════════════════════════════════════════
+# FIX: Business AI endpoint (was missing — frontend calls this)
+# ══════════════════════════════════════════════════════════════
+
+class BusinessAIRequest(BaseModel):
+    user_id: str
+    message: str
+
+@app.post("/business-ai", tags=["Business AI"])
+async def business_ai_chat(req: BusinessAIRequest):
+    """
+    Business AI assistant for vendors.
+    Loads vendor context (products, orders, expenses) and sends to AI.
+    """
+    from .ai_unified import send_to_ai, build_business_ai_prompt
+    from .database import SessionLocal
+    from .models import Product, Order, Expense
+
+    db = SessionLocal()
+    try:
+        # Load vendor's data for context
+        products_raw = db.query(Product).filter(
+            Product.user_id == req.user_id
+        ).all()
+        products = [
+            {
+                "name": p.name,
+                "price_ngn": p.price_ngn or 0,
+                "stock_level": p.stock_level or 0,
+                "category": p.category or "",
+            }
+            for p in products_raw
+        ]
+
+        orders_raw = db.query(Order).filter(
+            Order.user_id == req.user_id
+        ).order_by(Order.created_at.desc()).limit(50).all()
+        orders = [
+            {
+                "total_amount": o.total_amount or 0,
+                "status": o.status or "pending",
+                "channel": o.channel or "walkin",
+                "created_at": o.created_at.isoformat() if o.created_at else None,
+            }
+            for o in orders_raw
+        ]
+
+        expenses_list = []
+        try:
+            expenses_raw = db.query(Expense).filter(
+                Expense.user_id == req.user_id
+            ).order_by(Expense.date.desc()).limit(30).all()
+            expenses_list = [
+                {
+                    "amount": e.amount or 0,
+                    "category": e.category or "",
+                    "description": e.description or "",
+                }
+                for e in expenses_raw
+            ]
+        except Exception:
+            pass  # Expenses table may not exist yet
+
+        # Build context-aware system prompt
+        system_prompt = build_business_ai_prompt(
+            products=products,
+            orders=orders,
+            expenses=expenses_list,
+            store_name="your store"
+        )
+
+        # Send to AI (Groq → Gemini fallback)
+        messages = [{"role": "user", "content": req.message}]
+        response_text, api_used = await send_to_ai(
+            messages=messages,
+            system_prompt=system_prompt,
+            max_tokens=500,
+            temperature=0.7
+        )
+
+        # Generate contextual suggestions
+        suggestions = []
+        msg_lower = req.message.lower()
+        if any(w in msg_lower for w in ["sale", "revenue", "sell"]):
+            suggestions = ["Show this week's revenue", "Best selling products", "Pending orders"]
+        elif any(w in msg_lower for w in ["stock", "inventory", "product"]):
+            suggestions = ["Low stock items", "Restock suggestions", "Add new product"]
+        elif any(w in msg_lower for w in ["expense", "spend", "cost"]):
+            suggestions = ["This month's expenses", "Profit breakdown", "Add expense"]
+        else:
+            suggestions = ["Show today's sales", "Low stock items", "Profit summary"]
+
+        return {
+            "response": response_text,
+            "suggestions": suggestions,
+            "api_used": api_used,
+            "action_taken": None,
+        }
+
+    except Exception as e:
+        logger.error(f"Business AI error: {e}")
+        return {
+            "response": "I'm having trouble right now. Please try again in a moment.",
+            "suggestions": ["Show today's sales", "Low stock items"],
+            "api_used": "error",
+            "action_taken": None,
+        }
+    finally:
+        db.close()
+
+
+# ══════════════════════════════════════════════════════════════
+# FIX: CSV Import endpoint (was missing — service existed but no route)
+# ══════════════════════════════════════════════════════════════
+
+@app.post("/products/import-csv", tags=["Products"])
+async def import_products_csv(
+    file: UploadFile = File(...),
+    user_id: str = None,
+):
+    """
+    Import products from a CSV file upload.
+    Expects columns: name, price (or price_ngn), stock (or stock_level), category, description
+    """
+    from .services.csv_import import parse_products_csv
+    from .database import SessionLocal
+    from .models import Product
+
+    if not user_id:
+        raise HTTPException(status_code=400, detail="user_id is required")
+
+    # Read file
+    try:
+        content = await file.read()
+        csv_text = content.decode("utf-8-sig")  # Handle BOM from Excel
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Could not read file: {e}")
+
+    # Parse CSV
+    products_data, errors = parse_products_csv(csv_text)
+
+    if not products_data and errors:
+        return {
+            "imported": 0,
+            "skipped": 0,
+            "errors": errors[:10],
+            "message": "No valid products found in CSV"
+        }
+
+    # Insert into database
+    db = SessionLocal()
+    imported = 0
+    skipped = 0
+    try:
+        for p in products_data:
+            try:
+                # Check for duplicate by name
+                existing = db.query(Product).filter(
+                    Product.user_id == user_id,
+                    Product.name == p["name"]
+                ).first()
+
+                if existing:
+                    # Update existing
+                    existing.price_ngn = p["price_ngn"]
+                    existing.stock_level = p["stock_level"]
+                    if p.get("category"):
+                        existing.category = p["category"]
+                    if p.get("description"):
+                        existing.description = p["description"]
+                    if p.get("cost_price") is not None:
+                        existing.cost_price = p["cost_price"]
+                    imported += 1
+                else:
+                    # Create new
+                    new_product = Product(
+                        id=str(uuid.uuid4()),
+                        user_id=user_id,
+                        name=p["name"],
+                        price_ngn=p["price_ngn"],
+                        stock_level=p["stock_level"],
+                        category=p.get("category") or None,
+                        description=p.get("description") or None,
+                        cost_price=p.get("cost_price"),
+                    )
+                    db.add(new_product)
+                    imported += 1
+            except Exception as e:
+                skipped += 1
+                errors.append(f"Error importing {p.get('name', '?')}: {str(e)}")
+
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error: {e}")
+    finally:
+        db.close()
+
+    return {
+        "imported": imported,
+        "skipped": skipped,
+        "errors": errors[:10],
+        "message": f"Successfully imported {imported} products"
+    }
+
+
 # Include routers
 # #region agent log - Router setup
 log_to_file("Setting up main router", {"routers_count": "12+"})
@@ -3602,6 +3808,7 @@ app.include_router(storefront.router, tags=["Storefront"])  # Public shop pages
 app.include_router(sales.router, prefix="/sales", tags=["Sales"])  # Walk-in sales
 app.include_router(export.router, prefix="/export", tags=["Export"])  # CSV data export
 app.include_router(customers.router, prefix="/customers", tags=["CRM"])  # Customer CRM
+
 
 # #region agent log - FastAPI app fully configured
 log_to_file("FastAPI app fully configured", {
