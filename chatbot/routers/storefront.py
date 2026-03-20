@@ -160,17 +160,20 @@ def _build_product_card(product: dict, vendor_phone: str) -> str:
             <h3 class="product-name">{name}</h3>
             <div class="product-price">₦{price:,.0f}</div>
             {stock_badge}
-            <a href="{wa_link}" target="_blank" rel="noopener" class="btn-order" id="order-{html_module.escape(product['id'])}">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492a.5.5 0 00.612.638l4.769-1.42A11.94 11.94 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-2.137 0-4.146-.554-5.894-1.558l-.42-.258-3.077.916.858-2.906-.266-.423C2.082 16.092 2 14.077 2 12 2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
-                Order via WhatsApp
-            </a>
+            <div style="display:flex;gap:6px">
+                <button onclick="addToCart('{name.replace(chr(39), chr(92)+chr(39))}', {price})" style="flex:1;padding:9px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:#fff;font-weight:600;font-size:0.75rem;cursor:pointer;font-family:inherit;transition:all 0.2s" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='transparent'">+ Cart</button>
+                <a href="{wa_link}" target="_blank" rel="noopener" class="btn-order" id="order-{html_module.escape(product['id'])}" style="flex:2">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492a.5.5 0 00.612.638l4.769-1.42A11.94 11.94 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-2.137 0-4.146-.554-5.894-1.558l-.42-.258-3.077.916.858-2.906-.266-.423C2.082 16.092 2 14.077 2 12 2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+                    Order
+                </a>
+            </div>
         </div>
     </div>
     '''
 
 
 def _build_storefront_html(data: dict) -> str:
-    """Build the complete storefront HTML page."""
+    """Build the complete storefront HTML page — premium KOFA design."""
     store_name = html_module.escape(data["business_name"])
     display_name = html_module.escape(data["display_name"])
     phone = data["phone"]
@@ -191,6 +194,9 @@ def _build_storefront_html(data: dict) -> str:
     # WhatsApp general link
     wa_general = f"https://wa.me/{phone.replace('+', '')}"
 
+    # Store initials
+    initials = store_name[:1].upper()
+
     # Empty state
     if product_count == 0:
         product_cards = '''
@@ -205,7 +211,7 @@ def _build_storefront_html(data: dict) -> str:
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>{store_name} | Shop on KOFA</title>
     <meta name="description" content="Shop {store_name} — {product_count} products available. Order instantly via WhatsApp.">
 
@@ -221,22 +227,25 @@ def _build_storefront_html(data: dict) -> str:
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
     <style>
         :root {{
-            --bg: #000000;
-            --bg-elevated: #121212;
-            --bg-card: #181818;
-            --bg-card-hover: #282828;
-            --accent: #1DB954;
-            --accent-hover: #1ed760;
-            --accent-dim: rgba(29, 185, 84, 0.1);
+            --bg: #07070A;
+            --bg-elevated: #0F0F14;
+            --bg-card: #16161D;
+            --bg-card-hover: #1E1E28;
+            --accent: #0095FF;
+            --accent-hover: #0080E0;
+            --accent-soft: rgba(0, 149, 255, 0.08);
+            --green: #25D366;
+            --green-hover: #20c157;
             --text-primary: #FFFFFF;
-            --text-secondary: #B3B3B3;
-            --text-muted: #727272;
-            --border: rgba(255, 255, 255, 0.1);
-            --border-hover: rgba(255, 255, 255, 0.2);
+            --text-secondary: #A0A0B0;
+            --text-muted: #5A5A6E;
+            --border: rgba(255, 255, 255, 0.06);
+            --border-hover: rgba(255, 255, 255, 0.12);
+            --radius: 16px;
         }}
 
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
@@ -251,48 +260,68 @@ def _build_storefront_html(data: dict) -> str:
         }}
 
         .container {{
-            max-width: 960px;
+            max-width: 920px;
             margin: 0 auto;
-            padding: 0 20px;
+            padding: 0 16px;
+        }}
+
+        /* ===== ANIMATIONS ===== */
+        @keyframes fadeUp {{
+            from {{ opacity: 0; transform: translateY(16px); }}
+            to {{ opacity: 1; transform: translateY(0); }}
+        }}
+        @keyframes pulse {{
+            0%, 100% {{ opacity: 0.4; }}
+            50% {{ opacity: 0.8; }}
         }}
 
         /* ===== STORE HEADER ===== */
         .store-header {{
-            padding: 48px 0 32px;
+            padding: 40px 0 28px;
             text-align: center;
-            border-bottom: 1px solid var(--border);
+            animation: fadeUp 0.5s ease;
         }}
 
         .store-avatar {{
-            width: 80px;
-            height: 80px;
-            background: var(--accent);
-            border-radius: 50%;
+            width: 72px;
+            height: 72px;
+            background: linear-gradient(135deg, var(--accent), #0070DD);
+            border-radius: 20px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 2rem;
-            font-weight: 800;
-            color: #000;
-            margin: 0 auto 16px;
-            letter-spacing: -0.02em;
+            font-size: 1.75rem;
+            font-weight: 900;
+            color: #fff;
+            margin: 0 auto 14px;
+            box-shadow: 0 8px 32px rgba(0, 149, 255, 0.25);
         }}
 
         .store-name {{
-            font-size: 1.75rem;
+            font-size: 1.65rem;
             font-weight: 800;
             letter-spacing: -0.03em;
-            margin-bottom: 4px;
+            margin-bottom: 2px;
+        }}
+
+        .store-verified {{
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.75rem;
+            color: var(--accent);
+            font-weight: 600;
+            margin-bottom: 8px;
         }}
 
         .store-meta {{
             color: var(--text-muted);
-            font-size: 0.875rem;
+            font-size: 0.8rem;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 16px;
-            margin-bottom: 20px;
+            gap: 14px;
+            margin-bottom: 16px;
         }}
 
         .store-meta span {{
@@ -301,44 +330,112 @@ def _build_storefront_html(data: dict) -> str:
             gap: 4px;
         }}
 
+        .store-actions {{
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }}
+
         .store-wa-btn {{
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            padding: 10px 24px;
-            background: #25D366;
+            padding: 10px 22px;
+            background: var(--green);
             color: #fff;
-            border-radius: 500px;
+            border-radius: 99px;
             text-decoration: none;
             font-weight: 600;
-            font-size: 0.875rem;
+            font-size: 0.82rem;
             transition: all 0.2s;
+            border: none;
         }}
 
         .store-wa-btn:hover {{
             transform: scale(1.04);
-            background: #20c157;
+            background: var(--green-hover);
+            box-shadow: 0 4px 16px rgba(37, 211, 102, 0.3);
+        }}
+
+        .store-share-btn {{
+            padding: 10px 18px;
+            border-radius: 99px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 0.82rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }}
+
+        .store-share-btn:hover {{
+            border-color: var(--border-hover);
+            color: var(--text-primary);
+        }}
+
+        /* ===== SEARCH BAR ===== */
+        .search-wrap {{
+            padding: 0 0 16px;
+            animation: fadeUp 0.5s ease 0.1s both;
+        }}
+
+        .search-bar {{
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            border-radius: 14px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            transition: border-color 0.2s;
+        }}
+
+        .search-bar:focus-within {{
+            border-color: var(--accent);
+        }}
+
+        .search-bar svg {{
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }}
+
+        .search-bar input {{
+            flex: 1;
+            background: none;
+            border: none;
+            outline: none;
+            font-size: 0.85rem;
+            font-family: inherit;
+            color: var(--text-primary);
+        }}
+
+        .search-bar input::placeholder {{
+            color: var(--text-muted);
         }}
 
         /* ===== CATEGORY FILTER ===== */
         .categories {{
-            padding: 20px 0;
+            padding: 0 0 16px;
             display: flex;
             gap: 8px;
             overflow-x: auto;
             scrollbar-width: none;
             -ms-overflow-style: none;
+            animation: fadeUp 0.5s ease 0.15s both;
         }}
 
         .categories::-webkit-scrollbar {{ display: none; }}
 
         .cat-btn {{
-            padding: 8px 18px;
-            border-radius: 500px;
+            padding: 8px 16px;
+            border-radius: 99px;
             border: 1px solid var(--border);
             background: transparent;
             color: var(--text-secondary);
-            font-size: 0.8rem;
+            font-size: 0.78rem;
             font-weight: 500;
             cursor: pointer;
             transition: all 0.2s;
@@ -350,7 +447,7 @@ def _build_storefront_html(data: dict) -> str:
 
         .cat-btn.active {{
             background: var(--accent);
-            color: #000;
+            color: #fff;
             border-color: var(--accent);
             font-weight: 600;
         }}
@@ -358,23 +455,24 @@ def _build_storefront_html(data: dict) -> str:
         /* ===== PRODUCT GRID ===== */
         .product-grid {{
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-            gap: 16px;
-            padding: 24px 0 60px;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 14px;
+            padding: 0 0 40px;
         }}
 
         .product-card {{
             background: var(--bg-card);
             border: 1px solid var(--border);
-            border-radius: 16px;
+            border-radius: var(--radius);
             overflow: hidden;
             transition: all 0.25s ease;
+            animation: fadeUp 0.4s ease both;
         }}
 
         .product-card:hover {{
             border-color: var(--border-hover);
-            transform: translateY(-4px);
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
         }}
 
         .product-img {{
@@ -387,17 +485,17 @@ def _build_storefront_html(data: dict) -> str:
         }}
 
         .product-placeholder span {{
-            font-size: 2rem;
+            font-size: 1.75rem;
             font-weight: 800;
             letter-spacing: -0.02em;
         }}
 
         .product-info {{
-            padding: 16px;
+            padding: 14px;
         }}
 
         .product-category {{
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             color: var(--accent);
             font-weight: 600;
             text-transform: uppercase;
@@ -405,53 +503,179 @@ def _build_storefront_html(data: dict) -> str:
         }}
 
         .product-name {{
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             font-weight: 600;
-            margin: 4px 0 8px;
+            margin: 3px 0 6px;
             letter-spacing: -0.01em;
             line-height: 1.3;
         }}
 
         .product-price {{
-            font-size: 1.25rem;
+            font-size: 1.15rem;
             font-weight: 700;
             letter-spacing: -0.02em;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }}
 
         .stock-badge {{
             display: inline-block;
-            padding: 3px 10px;
-            border-radius: 500px;
-            font-size: 0.7rem;
+            padding: 2px 8px;
+            border-radius: 99px;
+            font-size: 0.65rem;
             font-weight: 600;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
         }}
 
-        .stock-ok {{ background: rgba(29, 185, 84, 0.15); color: #1DB954; }}
-        .stock-med {{ background: rgba(255, 152, 0, 0.15); color: #FF9800; }}
-        .stock-low {{ background: rgba(244, 67, 54, 0.15); color: #F44336; }}
+        .stock-ok {{ background: rgba(34, 197, 94, 0.12); color: #22c55e; }}
+        .stock-med {{ background: rgba(251, 191, 36, 0.12); color: #fbbf24; }}
+        .stock-low {{ background: rgba(239, 68, 68, 0.12); color: #ef4444; }}
 
         .btn-order {{
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
+            gap: 6px;
             width: 100%;
-            padding: 10px;
-            background: var(--accent);
-            color: #000;
+            padding: 9px;
+            background: var(--green);
+            color: #fff;
             border-radius: 10px;
             text-decoration: none;
             font-weight: 600;
-            font-size: 0.8rem;
+            font-size: 0.78rem;
             transition: all 0.2s;
         }}
 
         .btn-order:hover {{
-            background: var(--accent-hover);
+            background: var(--green-hover);
             transform: scale(1.02);
         }}
+
+        /* ===== CART SHEET ===== */
+        .cart-fab {{
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 50;
+            display: none;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 22px;
+            border-radius: 99px;
+            border: none;
+            cursor: pointer;
+            background: var(--green);
+            color: #fff;
+            font-weight: 700;
+            font-size: 0.85rem;
+            font-family: inherit;
+            box-shadow: 0 6px 24px rgba(37, 211, 102, 0.35);
+            transition: all 0.2s;
+        }}
+
+        .cart-fab.visible {{ display: flex; }}
+        .cart-fab:hover {{ transform: scale(1.06); }}
+
+        .cart-fab .count {{
+            background: #fff;
+            color: var(--green);
+            width: 22px;
+            height: 22px;
+            border-radius: 99px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 800;
+        }}
+
+        /* Cart Overlay */
+        .cart-overlay {{
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            display: none;
+            align-items: flex-end;
+            justify-content: center;
+        }}
+
+        .cart-overlay.open {{ display: flex; }}
+
+        .cart-sheet {{
+            width: 100%;
+            max-width: 500px;
+            max-height: 70vh;
+            background: var(--bg-elevated);
+            border-radius: 24px 24px 0 0;
+            padding: 24px;
+            overflow-y: auto;
+        }}
+
+        .cart-sheet h2 {{
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }}
+
+        .cart-item {{
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+        }}
+
+        .cart-item-name {{
+            font-size: 0.85rem;
+            font-weight: 500;
+        }}
+
+        .cart-item-price {{
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text-secondary);
+        }}
+
+        .cart-item-remove {{
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 4px;
+            font-size: 1rem;
+        }}
+
+        .cart-total {{
+            display: flex;
+            justify-content: space-between;
+            padding: 14px 0;
+            font-weight: 700;
+            font-size: 1rem;
+        }}
+
+        .cart-send-btn {{
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 14px;
+            background: var(--green);
+            color: #fff;
+            border-radius: 14px;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 0.9rem;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+            margin-top: 8px;
+        }}
+
+        .cart-send-btn:hover {{ background: var(--green-hover); }}
 
         /* ===== EMPTY STATE ===== */
         .empty-state {{
@@ -464,6 +688,15 @@ def _build_storefront_html(data: dict) -> str:
         .empty-state h3 {{ font-size: 1.25rem; margin-bottom: 8px; }}
         .empty-state p {{ color: var(--text-muted); }}
 
+        .no-results {{
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 48px 20px;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            display: none;
+        }}
+
         /* ===== FOOTER ===== */
         .store-footer {{
             padding: 32px 0;
@@ -473,17 +706,17 @@ def _build_storefront_html(data: dict) -> str:
 
         .store-footer p {{
             color: var(--text-muted);
-            font-size: 0.8rem;
-            margin-bottom: 8px;
+            font-size: 0.78rem;
+            margin-bottom: 6px;
         }}
 
         .footer-cta {{
             display: inline-flex;
             align-items: center;
-            gap: 6px;
+            gap: 4px;
             color: var(--accent);
             text-decoration: none;
-            font-size: 0.85rem;
+            font-size: 0.82rem;
             font-weight: 600;
             transition: opacity 0.2s;
         }}
@@ -496,24 +729,24 @@ def _build_storefront_html(data: dict) -> str:
             gap: 6px;
             background: var(--bg-card);
             border: 1px solid var(--border);
-            padding: 6px 14px;
-            border-radius: 500px;
-            font-size: 0.75rem;
+            padding: 5px 12px;
+            border-radius: 99px;
+            font-size: 0.72rem;
             color: var(--text-muted);
-            margin-top: 12px;
+            margin-top: 10px;
         }}
 
-        .kofa-badge .k {{ 
-            background: var(--accent);
-            color: #000;
-            width: 18px;
-            height: 18px;
+        .kofa-badge .k {{
+            background: linear-gradient(135deg, var(--accent), #0070DD);
+            color: #fff;
+            width: 16px;
+            height: 16px;
             border-radius: 4px;
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: 800;
-            font-size: 0.65rem;
+            font-size: 0.6rem;
         }}
 
         /* ===== RESPONSIVE ===== */
@@ -523,16 +756,17 @@ def _build_storefront_html(data: dict) -> str:
                 gap: 10px;
             }}
 
-            .store-header {{ padding: 32px 0 24px; }}
-            .store-name {{ font-size: 1.4rem; }}
-            .store-avatar {{ width: 64px; height: 64px; font-size: 1.5rem; }}
-            .product-info {{ padding: 12px; }}
-            .product-name {{ font-size: 0.85rem; }}
-            .product-price {{ font-size: 1.1rem; }}
-            .btn-order {{ padding: 8px; font-size: 0.75rem; }}
+            .store-header {{ padding: 28px 0 20px; }}
+            .store-name {{ font-size: 1.3rem; }}
+            .store-avatar {{ width: 56px; height: 56px; font-size: 1.3rem; border-radius: 16px; }}
+            .product-info {{ padding: 10px; }}
+            .product-name {{ font-size: 0.8rem; }}
+            .product-price {{ font-size: 1rem; }}
+            .btn-order {{ padding: 7px; font-size: 0.72rem; }}
+            .cart-fab {{ bottom: 16px; right: 16px; }}
         }}
 
-        @media (max-width: 380px) {{
+        @media (max-width: 340px) {{
             .product-grid {{ grid-template-columns: 1fr; }}
         }}
     </style>
@@ -541,17 +775,34 @@ def _build_storefront_html(data: dict) -> str:
     <div class="container">
         <!-- Store Header -->
         <header class="store-header">
-            <div class="store-avatar">{html_module.escape(store_name[:1].upper())}</div>
+            <div class="store-avatar">{initials}</div>
             <h1 class="store-name">{store_name}</h1>
+            <div class="store-verified">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                Verified Store
+            </div>
             <div class="store-meta">
                 <span>📦 {product_count} product{"s" if product_count != 1 else ""}</span>
                 <span>📍 Nigeria</span>
             </div>
-            <a href="{wa_general}" target="_blank" rel="noopener" class="store-wa-btn" id="store-whatsapp-btn">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492a.5.5 0 00.612.638l4.769-1.42A11.94 11.94 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-2.137 0-4.146-.554-5.894-1.558l-.42-.258-3.077.916.858-2.906-.266-.423C2.082 16.092 2 14.077 2 12 2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
-                Chat on WhatsApp
-            </a>
+            <div class="store-actions">
+                <a href="{wa_general}" target="_blank" rel="noopener" class="store-wa-btn" id="store-whatsapp-btn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492a.5.5 0 00.612.638l4.769-1.42A11.94 11.94 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-2.137 0-4.146-.554-5.894-1.558l-.42-.258-3.077.916.858-2.906-.266-.423C2.082 16.092 2 14.077 2 12 2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+                    Chat on WhatsApp
+                </a>
+                <button class="store-share-btn" onclick="navigator.clipboard.writeText(window.location.href).then(()=>this.textContent='Copied!')">
+                    Share Store
+                </button>
+            </div>
         </header>
+
+        <!-- Search Bar -->
+        <div class="search-wrap">
+            <div class="search-bar">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="search-input" placeholder="Search products..." autocomplete="off">
+            </div>
+        </div>
 
         <!-- Category Filter -->
         <div class="categories" id="category-filter">
@@ -563,6 +814,8 @@ def _build_storefront_html(data: dict) -> str:
             {product_cards}
         </div>
 
+        <div class="no-results" id="no-results">No products found</div>
+
         <!-- Footer -->
         <footer class="store-footer">
             <p>Want your own online store?</p>
@@ -571,23 +824,122 @@ def _build_storefront_html(data: dict) -> str:
         </footer>
     </div>
 
+    <!-- Cart FAB -->
+    <button class="cart-fab" id="cart-fab" onclick="openCart()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>
+        Order <span class="count" id="cart-count">0</span>
+    </button>
+
+    <!-- Cart Overlay -->
+    <div class="cart-overlay" id="cart-overlay" onclick="closeCart()">
+        <div class="cart-sheet" onclick="event.stopPropagation()">
+            <h2>🛒 Your Order</h2>
+            <div id="cart-items"></div>
+            <div class="cart-total">
+                <span>Total</span>
+                <span id="cart-total">₦0</span>
+            </div>
+            <a id="cart-wa-link" href="#" target="_blank" rel="noopener" class="cart-send-btn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492a.5.5 0 00.612.638l4.769-1.42A11.94 11.94 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-2.137 0-4.146-.554-5.894-1.558l-.42-.258-3.077.916.858-2.906-.266-.423C2.082 16.092 2 14.077 2 12 2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+                Send Order via WhatsApp
+            </a>
+        </div>
+    </div>
+
     <script>
-        // Category filter
+        // ===== Cart Logic =====
+        const cart = [];
+        const VENDOR_PHONE = '{phone.replace("+", "")}';
+
+        function addToCart(name, price) {{
+            cart.push({{ name, price }});
+            updateCartUI();
+        }}
+
+        function removeFromCart(index) {{
+            cart.splice(index, 1);
+            updateCartUI();
+        }}
+
+        function updateCartUI() {{
+            const fab = document.getElementById('cart-fab');
+            const countEl = document.getElementById('cart-count');
+            const itemsEl = document.getElementById('cart-items');
+            const totalEl = document.getElementById('cart-total');
+            const waLink = document.getElementById('cart-wa-link');
+
+            if (cart.length > 0) {{
+                fab.classList.add('visible');
+                countEl.textContent = cart.length;
+            }} else {{
+                fab.classList.remove('visible');
+            }}
+
+            // Render items
+            itemsEl.innerHTML = cart.map((item, i) =>
+                `<div class="cart-item">
+                    <span class="cart-item-name">${{item.name}}</span>
+                    <span class="cart-item-price">₦${{item.price.toLocaleString()}}</span>
+                    <button class="cart-item-remove" onclick="removeFromCart(${{i}})">✕</button>
+                </div>`
+            ).join('');
+
+            // Total
+            const total = cart.reduce((s, item) => s + item.price, 0);
+            totalEl.textContent = '₦' + total.toLocaleString();
+
+            // WhatsApp link
+            const orderList = cart.map((item, i) => `${{i+1}}. ${{item.name}} — ₦${{item.price.toLocaleString()}}`).join('%0A');
+            const msg = encodeURIComponent(`Hi! I'd like to order:\\n${{cart.map((item, i) => `${{i+1}}. ${{item.name}} — ₦${{item.price.toLocaleString()}}`).join('\\n')}}\\n\\nTotal: ₦${{total.toLocaleString()}}`);
+            waLink.href = `https://wa.me/${{VENDOR_PHONE}}?text=${{msg}}`;
+        }}
+
+        function openCart() {{
+            document.getElementById('cart-overlay').classList.add('open');
+        }}
+
+        function closeCart() {{
+            document.getElementById('cart-overlay').classList.remove('open');
+        }}
+
+        // ===== Category Filter =====
         document.querySelectorAll('.cat-btn').forEach(btn => {{
             btn.addEventListener('click', () => {{
-                // Update active state
                 document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-
-                const cat = btn.dataset.cat;
-                document.querySelectorAll('.product-card').forEach(card => {{
-                    if (cat === 'all' || card.dataset.category === cat) {{
-                        card.style.display = '';
-                    }} else {{
-                        card.style.display = 'none';
-                    }}
-                }});
+                filterProducts();
             }});
+        }});
+
+        // ===== Search =====
+        const searchInput = document.getElementById('search-input');
+        searchInput.addEventListener('input', () => filterProducts());
+
+        function filterProducts() {{
+            const query = searchInput.value.toLowerCase().trim();
+            const activeCat = document.querySelector('.cat-btn.active')?.dataset.cat || 'all';
+            let visible = 0;
+
+            document.querySelectorAll('.product-card').forEach(card => {{
+                const name = card.querySelector('.product-name')?.textContent.toLowerCase() || '';
+                const cat = card.dataset.category || '';
+                const matchesSearch = !query || name.includes(query);
+                const matchesCat = activeCat === 'all' || cat === activeCat;
+
+                if (matchesSearch && matchesCat) {{
+                    card.style.display = '';
+                    visible++;
+                }} else {{
+                    card.style.display = 'none';
+                }}
+            }});
+
+            document.getElementById('no-results').style.display = visible === 0 ? 'block' : 'none';
+        }}
+
+        // ===== Staggered card animation =====
+        document.querySelectorAll('.product-card').forEach((card, i) => {{
+            card.style.animationDelay = `${{0.05 * i}}s`;
         }});
     </script>
 </body>
