@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, APIRouter, UploadFile, File, Request
-from fastapi.responses import PlainTextResponse, JSONResponse
+from fastapi.responses import PlainTextResponse, JSONResponse, FileResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.gzip import GZipMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, validator
@@ -356,9 +357,9 @@ class OrderResponse(BaseModel):
     message: str
 
 # Health endpoints
-@app.get("/")
-async def root():
-    """Health check endpoint."""
+@app.get("/api/health")
+async def api_health():
+    """API health check endpoint."""
     return {"status": "online", "service": "KOFA Commerce Engine", "version": "2.0.0"}
 
 @app.get("/health")
@@ -3818,3 +3819,69 @@ log_to_file("FastAPI app fully configured", {
     "app_version": app.version
 })
 # #endregion
+
+# ===== FRONTEND SPA SERVING =====
+# Serve React frontend from frontend/dist
+import pathlib
+
+_frontend_dir = pathlib.Path(__file__).resolve().parent.parent / "frontend" / "dist"
+
+if _frontend_dir.exists():
+    # Mount static assets (JS, CSS, images)
+    _assets_dir = _frontend_dir / "assets"
+    if _assets_dir.exists():
+        app.mount("/assets", StaticFiles(directory=str(_assets_dir)), name="static-assets")
+
+    # Serve specific static files at root level
+    _static_filenames = {
+        "favicon.png", "manifest.json", "robots.txt", "sitemap.xml",
+        "sw.js", "og-image.png", "kofa-logo.png", "vite.svg",
+        "google4fb4da65917dbe3e.html"
+    }
+
+    @app.get("/favicon.png")
+    @app.get("/manifest.json")
+    @app.get("/robots.txt")
+    @app.get("/sitemap.xml")
+    @app.get("/sw.js")
+    @app.get("/og-image.png")
+    @app.get("/kofa-logo.png")
+    @app.get("/vite.svg")
+    @app.get("/google4fb4da65917dbe3e.html")
+    async def serve_root_static(request: Request):
+        fname = request.url.path.lstrip("/")
+        fpath = _frontend_dir / fname
+        if fpath.exists():
+            return FileResponse(str(fpath))
+        raise HTTPException(status_code=404)
+
+    # Icons directory
+    _icons_dir = _frontend_dir / "icons"
+    if _icons_dir.exists():
+        app.mount("/icons", StaticFiles(directory=str(_icons_dir)), name="static-icons")
+
+    # Images directory
+    _images_dir = _frontend_dir / "images"
+    if _images_dir.exists():
+        app.mount("/images", StaticFiles(directory=str(_images_dir)), name="static-images")
+
+    # SPA catch-all: serve index.html for all unmatched routes
+    @app.get("/")
+    async def serve_spa_root():
+        return FileResponse(str(_frontend_dir / "index.html"))
+
+    @app.get("/{full_path:path}")
+    async def serve_spa_catchall(full_path: str):
+        # Don't intercept API or known backend paths
+        if full_path.startswith(("api/", "docs", "redoc", "openapi")):
+            raise HTTPException(status_code=404)
+        # Try to serve the file directly if it exists
+        file_path = _frontend_dir / full_path
+        if file_path.exists() and file_path.is_file():
+            return FileResponse(str(file_path))
+        # Otherwise serve index.html for SPA routing
+        return FileResponse(str(_frontend_dir / "index.html"))
+else:
+    @app.get("/")
+    async def root_no_frontend():
+        return {"status": "online", "service": "KOFA Commerce Engine", "version": "2.0.0", "note": "Frontend not built. Run 'npm run build' in frontend/"}
