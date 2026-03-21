@@ -122,9 +122,9 @@ ELSE BEGIN
     IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('products') AND name = 'user_id')
     BEGIN
         ALTER TABLE products ADD user_id VARCHAR(36) NULL;
-        -- Copy vendor_id to user_id if vendor_id column exists
+        -- Use EXEC() so T-SQL doesn't parse vendor_id at compile time
         IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('products') AND name = 'vendor_id')
-            UPDATE products SET user_id = vendor_id WHERE user_id IS NULL;
+            EXEC('UPDATE products SET user_id = vendor_id WHERE user_id IS NULL');
         PRINT '  [MIGRATE] products: added user_id (copied from vendor_id)';
     END
     IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('products') AND name = 'cost_price')
@@ -200,7 +200,7 @@ ELSE BEGIN
     BEGIN
         ALTER TABLE orders ADD user_id VARCHAR(36) NULL;
         IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('orders') AND name = 'vendor_id')
-            UPDATE orders SET user_id = vendor_id WHERE user_id IS NULL;
+            EXEC('UPDATE orders SET user_id = vendor_id WHERE user_id IS NULL');
         PRINT '  [MIGRATE] orders: added user_id (copied from vendor_id)';
     END
     IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('orders') AND name = 'customer_name')
@@ -279,7 +279,7 @@ ELSE BEGIN
     BEGIN
         ALTER TABLE expenses ADD user_id VARCHAR(36) NULL;
         IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('expenses') AND name = 'vendor_id')
-            UPDATE expenses SET user_id = vendor_id WHERE user_id IS NULL;
+            EXEC('UPDATE expenses SET user_id = vendor_id WHERE user_id IS NULL');
         PRINT '  [MIGRATE] expenses: added user_id';
     END
     IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('expenses') AND name = 'expense_type')
