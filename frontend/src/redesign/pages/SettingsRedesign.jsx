@@ -6,8 +6,7 @@ import { apiCall, API_ENDPOINTS } from '../../config/api'
 import {
     ChevronLeft, ChevronRight, Store, Lock, Bell, Globe,
     MessageSquare, Instagram, CreditCard, HelpCircle, FileText,
-    LogOut, Moon, Sun, Bot, Zap, Send, Pause, Play,
-    Users, UserPlus, Trash2, Crown, Shield, AlertCircle
+    LogOut, Moon, Sun, Bot, Send, Pause, Play
 } from 'lucide-react'
 
 const SettingsRedesign = () => {
@@ -51,66 +50,10 @@ const SettingsRedesign = () => {
     const [connectLoading, setConnectLoading] = useState(false)
     const [connectError, setConnectError] = useState('')
 
-    // Team Members state
-    const [teamMembers, setTeamMembers] = useState([])
-    const [teamLoading, setTeamLoading] = useState(false)
-    const [inviteEmail, setInviteEmail] = useState('')
-    const [inviteRole, setInviteRole] = useState('staff')
-    const [inviteLoading, setInviteLoading] = useState(false)
-    const [teamError, setTeamError] = useState('')
-    const [usageSummary, setUsageSummary] = useState(null)
-
     useEffect(() => {
         loadBotSettings()
-        loadUsageSummary()
         loadBotConnections()
     }, [])
-
-    const loadUsageSummary = async () => {
-        try {
-            const data = await apiCall(API_ENDPOINTS.USAGE_STATS)
-            setUsageSummary(data)
-        } catch (e) { /* ignore */ }
-    }
-
-    const loadTeamMembers = async () => {
-        setTeamLoading(true)
-        try {
-            const data = await apiCall(API_ENDPOINTS.TEAM_MEMBERS)
-            setTeamMembers(data.members || [])
-        } catch (e) { setTeamMembers([]) }
-        finally { setTeamLoading(false) }
-    }
-
-    const handleInviteMember = async () => {
-        if (!inviteEmail.trim()) return
-        setInviteLoading(true)
-        setTeamError('')
-        try {
-            const res = await apiCall(API_ENDPOINTS.TEAM_INVITE, {
-                method: 'POST',
-                body: JSON.stringify({ email: inviteEmail.trim(), role: inviteRole })
-            })
-            if (res.success) {
-                setInviteEmail('')
-                loadTeamMembers()
-            } else {
-                setTeamError(res.error || 'Failed to invite')
-            }
-        } catch (e) {
-            const detail = e.message || 'Failed to invite member'
-            setTeamError(detail)
-        }
-        setInviteLoading(false)
-    }
-
-    const handleRevokeMember = async (memberId) => {
-        if (!confirm('Remove this team member?')) return
-        try {
-            await apiCall(API_ENDPOINTS.TEAM_REVOKE(memberId), { method: 'DELETE' })
-            loadTeamMembers()
-        } catch (e) { alert('Failed to remove member') }
-    }
 
     const loadBotSettings = async () => {
         setBotLoading(true)
@@ -170,7 +113,6 @@ const SettingsRedesign = () => {
 
     const tabs = [
         { id: 'account', label: 'Account' },
-        { id: 'team', label: 'Team' },
         { id: 'integrations', label: 'Integrations' },
         { id: 'bot', label: 'Bot' },
         { id: 'support', label: 'Support' }
@@ -224,11 +166,10 @@ const SettingsRedesign = () => {
 
     const handleTabChange = (tabId) => {
         setActiveTab(tabId)
-        if (tabId === 'team') loadTeamMembers()
         if (tabId === 'integrations') loadBotConnections()
     }
 
-    const isPro = usageSummary?.tier === 'pro'
+    const isPro = false // Pro tier coming soon
 
     const ToggleSwitch = ({ enabled, onChange }) => (
         <button onClick={() => onChange(!enabled)}
@@ -326,147 +267,6 @@ const SettingsRedesign = () => {
                 </div>
             )}
 
-            {/* TEAM TAB */}
-            {activeTab === 'team' && (
-                <div className="px-4 pb-32">
-                    {!isPro ? (
-                        /* Upgrade Prompt for Free/Grow users */
-                        <div className={`rounded-2xl p-6 text-center ${isDark ? 'bg-[#1A1A1F] border border-white/10' : 'bg-white shadow-sm'}`}>
-                            <div className={`w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center bg-gradient-to-br from-amber-400 to-orange-500`}>
-                                <Crown size={32} className="text-white" />
-                            </div>
-                            <h3 className={`text-lg font-bold mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>Team Members</h3>
-                            <p className={`text-sm mb-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                                Add up to 3 team members to help manage your business. Available on the <span className="font-bold text-[#0095FF]">Pro plan</span> (₦10,000/mo).
-                            </p>
-                            <button
-                                onClick={() => alert('Payment integration coming soon! Contact support to upgrade.')}
-                                className="px-6 py-3 rounded-xl bg-gradient-to-r from-[#0095FF] to-[#0066CC] text-white font-semibold text-sm shadow-lg"
-                            >
-                                Upgrade to Pro
-                            </button>
-                        </div>
-                    ) : (
-                        /* Pro users — Team Management */
-                        <>
-                            {/* Invite Card */}
-                            <div className={`rounded-2xl p-5 mb-4 ${isDark ? 'bg-[#1A1A1F] border border-white/10' : 'bg-white shadow-sm'}`}>
-                                <div className="flex items-center gap-3 mb-4">
-                                    <div className="w-10 h-10 rounded-lg bg-blue-100 text-blue-500 flex items-center justify-center">
-                                        <UserPlus size={20} />
-                                    </div>
-                                    <div>
-                                        <p className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>Invite Team Member</p>
-                                        <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                                            {teamMembers.length}/3 slots used
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-3">
-                                    <input
-                                        type="email"
-                                        value={inviteEmail}
-                                        onChange={(e) => setInviteEmail(e.target.value)}
-                                        placeholder="team@example.com"
-                                        className={`w-full px-4 py-3 rounded-xl text-sm ${isDark ? 'bg-white/5 text-white placeholder-gray-500 border-white/10' : 'bg-gray-50 text-gray-800 placeholder-gray-400 border-gray-200'} border focus:outline-none focus:ring-2 focus:ring-[#0095FF]/50`}
-                                    />
-
-                                    {/* Role selector */}
-                                    <div className="flex gap-2">
-                                        {['staff', 'manager'].map(r => (
-                                            <button key={r}
-                                                onClick={() => setInviteRole(r)}
-                                                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${inviteRole === r
-                                                    ? 'bg-[#0095FF] text-white'
-                                                    : isDark ? 'bg-white/5 text-gray-400 border border-white/10' : 'bg-gray-50 text-gray-600 border border-gray-200'
-                                                    }`}
-                                            >
-                                                {r === 'staff' && <Shield size={14} className="inline mr-1" />}
-                                                {r === 'manager' && <Crown size={14} className="inline mr-1" />}
-                                                {r.charAt(0).toUpperCase() + r.slice(1)}
-                                            </button>
-                                        ))}
-                                    </div>
-
-                                    {teamError && (
-                                        <div className="flex items-center gap-2 text-red-500 text-sm">
-                                            <AlertCircle size={14} /> {teamError}
-                                        </div>
-                                    )}
-
-                                    <button
-                                        onClick={handleInviteMember}
-                                        disabled={inviteLoading || !inviteEmail.trim() || teamMembers.length >= 3}
-                                        className={`w-full py-3 rounded-xl font-semibold text-sm transition-colors ${inviteLoading || !inviteEmail.trim() || teamMembers.length >= 3
-                                            ? isDark ? 'bg-white/5 text-gray-600' : 'bg-gray-100 text-gray-400'
-                                            : 'bg-[#0095FF] text-white'
-                                            }`}
-                                    >
-                                        {inviteLoading ? 'Sending Invite...' : teamMembers.length >= 3 ? 'Team Full (3/3)' : 'Send Invite'}
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Team Members List */}
-                            <h3 className={`text-xs font-semibold uppercase tracking-wide mb-2 px-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>TEAM MEMBERS</h3>
-                            <div className={`rounded-2xl overflow-hidden ${isDark ? 'bg-[#1A1A1F] border border-white/10' : 'bg-white shadow-sm'}`}>
-                                {teamLoading ? (
-                                    <div className={`p-8 text-center ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Loading...</div>
-                                ) : teamMembers.length === 0 ? (
-                                    <div className={`p-8 text-center`}>
-                                        <Users size={32} className={`mx-auto mb-2 ${isDark ? 'text-gray-600' : 'text-gray-300'}`} />
-                                        <p className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>No team members yet. Invite someone above!</p>
-                                    </div>
-                                ) : (
-                                    teamMembers.map((member, idx) => (
-                                        <div key={member.id}
-                                            className={`flex items-center justify-between p-4 ${idx < teamMembers.length - 1 ? isDark ? 'border-b border-white/5' : 'border-b border-gray-50' : ''}`}>
-                                            <div className="flex items-center gap-3">
-                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${member.status === 'active'
-                                                    ? 'bg-green-100 text-green-600'
-                                                    : 'bg-amber-100 text-amber-600'
-                                                    }`}>
-                                                    {member.email.charAt(0).toUpperCase()}
-                                                </div>
-                                                <div>
-                                                    <p className={`font-medium text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>{member.email}</p>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className={`text-xs px-2 py-0.5 rounded-full ${member.role === 'manager'
-                                                            ? 'bg-purple-100 text-purple-600'
-                                                            : isDark ? 'bg-white/10 text-gray-400' : 'bg-gray-100 text-gray-500'
-                                                            }`}>
-                                                            {member.role}
-                                                        </span>
-                                                        <span className={`text-xs ${member.status === 'active' ? 'text-green-500' : 'text-amber-500'}`}>
-                                                            {member.status === 'active' ? '● Active' : '◌ Pending'}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <button
-                                                onClick={() => handleRevokeMember(member.id)}
-                                                className="p-2 rounded-lg hover:bg-red-100 text-red-400 hover:text-red-600 transition-colors"
-                                            >
-                                                <Trash2 size={16} />
-                                            </button>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-
-                            {/* Role explanation */}
-                            <div className={`mt-4 rounded-xl p-4 ${isDark ? 'bg-white/5' : 'bg-blue-50'}`}>
-                                <p className={`text-xs font-semibold mb-2 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>Role Permissions</p>
-                                <div className={`text-xs space-y-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                                    <p><Shield size={12} className="inline mr-1" /><strong>Staff:</strong> View products, orders & respond to customers</p>
-                                    <p><Crown size={12} className="inline mr-1" /><strong>Manager:</strong> Everything + edit products, expenses & settings</p>
-                                </div>
-                            </div>
-                        </>
-                    )}
-                </div>
-            )}
 
             {/* INTEGRATIONS TAB */}
             {activeTab === 'integrations' && (

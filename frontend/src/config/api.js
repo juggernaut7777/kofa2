@@ -67,12 +67,6 @@ export const API_ENDPOINTS = {
   // Dashboard
   DASHBOARD_SUMMARY: '/dashboard/summary',
 
-  // Delivery
-  DELIVERY_ZONES: '/delivery/zones',
-  DELIVERY_ESTIMATE: '/delivery/estimate',
-  CREATE_SHIPMENT: '/delivery/create',
-  TRACK_SHIPMENT: (trackingId) => `/delivery/track/${trackingId}`,
-  UPDATE_SHIPMENT: (trackingId) => `/delivery/track/${trackingId}/update`,
 
   // Expenses
   LOG_EXPENSE: '/expenses/log',
@@ -103,16 +97,7 @@ export const API_ENDPOINTS = {
   VENDOR_PAYMENT_ACCOUNT: '/vendor/payment-account',
   VENDOR_BUSINESS_INFO: '/vendor/business-info',
 
-  // Push Notifications
-  DEVICE_TOKENS: '/device-tokens',
 
-  // Subscription & Payments
-  SUBSCRIPTION_PLANS: '/subscription/plans',
-  PURCHASE_SUBSCRIPTION: '/subscription/purchase',
-  SUBSCRIPTION_UPGRADE: '/subscription/upgrade',
-
-  // Usage Stats (Freemium)
-  USAGE_STATS: '/usage',
 
   // Receipts & Invoices
   GENERATE_RECEIPT: '/receipts/generate',
@@ -125,16 +110,6 @@ export const API_ENDPOINTS = {
   // Sales Channels
   CHANNELS_SUMMARY: '/channels/summary',
 
-  // Support & Troubleshooting
-  SUBMIT_SUPPORT_TICKET: '/support/ticket',
-  TROUBLESHOOTING_GUIDES: '/support/troubleshooting',
-  FAQ: '/support/faq',
-
-
-  // Team Members (Pro only)
-  TEAM_MEMBERS: '/team/members',
-  TEAM_INVITE: '/team/invite',
-  TEAM_REVOKE: (id) => `/team/members/${id}`,
 
   // CRM (Customers)
   CUSTOMERS_LIST: '/customers/list',
