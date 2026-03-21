@@ -148,23 +148,30 @@ async def get_credit_sales(user_id: str = None):
 
 
 @router.post("/mark-paid/{order_id}")
-async def mark_credit_paid(order_id: str):
+async def mark_credit_paid(order_id: str, user_id: str = None):
     """
-    Mark a credit sale as paid.
+    Mark a credit sale as paid. Requires user_id to verify ownership.
     """
     from ..database import SessionLocal
     from ..models import Order
-    
+
+    if not user_id:
+        raise HTTPException(status_code=400, detail="user_id is required")
+
     db = SessionLocal()
     try:
         order = db.query(Order).filter(Order.id == order_id).first()
         if not order:
             raise HTTPException(status_code=404, detail="Order not found")
-        
+
+        # Security: verify the order belongs to this user
+        if order.user_id != user_id:
+            raise HTTPException(status_code=403, detail="Not authorised to update this order")
+
         order.status = "paid"
         order.payment_method = "credit_paid"
         db.commit()
-        
+
         return {
             "success": True,
             "message": "Payment recorded",
@@ -177,3 +184,4 @@ async def mark_credit_paid(order_id: str):
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         db.close()
+

@@ -144,22 +144,26 @@ async def list_expenses(user_id: str = None, expense_type: Optional[str] = None)
 
 
 @router.delete("/{expense_id}")
-async def delete_expense(expense_id: str):
+async def delete_expense(expense_id: str, user_id: str = None):
     """
-    Delete an expense by ID.
+    Delete an expense by ID. user_id is used to verify ownership.
     """
     from ..database import SessionLocal
     from ..models import Expense as ExpenseModel
-    
+
     db = SessionLocal()
     try:
-        expense = db.query(ExpenseModel).filter(ExpenseModel.id == expense_id).first()
+        query = db.query(ExpenseModel).filter(ExpenseModel.id == expense_id)
+        # If user_id provided, restrict to their expenses only
+        if user_id:
+            query = query.filter(ExpenseModel.user_id == user_id)
+        expense = query.first()
         if not expense:
             raise HTTPException(status_code=404, detail="Expense not found")
-        
+
         db.delete(expense)
         db.commit()
-        
+
         return {"success": True, "message": "Expense deleted successfully"}
     except HTTPException:
         raise
@@ -168,6 +172,7 @@ async def delete_expense(expense_id: str):
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         db.close()
+
 
 
 @router.put("/{expense_id}")
