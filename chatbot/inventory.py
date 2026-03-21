@@ -536,7 +536,7 @@ class InventoryManager:
         
         Returns: List of matching products (may be empty only if truly nothing matches)
         """
-        from fuzzywuzzy import fuzz
+        from thefuzz import fuzz
         from .conversation import get_all_synonyms
 
         with self._get_db_session() as db:
@@ -678,7 +678,7 @@ class InventoryManager:
         Handles: "1", "first", "the red one", "green yam", etc.
         PRIORITIZES exact name matches over partial matches.
         """
-        from fuzzywuzzy import fuzz
+        from thefuzz import fuzz
 
         selection_lower = selection.lower().strip()
 
