@@ -1,7 +1,7 @@
 """Intent recognition for customer messages."""
 from enum import Enum
 from typing import Optional
-from fuzzywuzzy import fuzz
+from thefuzz import fuzz
 
 
 class Intent(str, Enum):

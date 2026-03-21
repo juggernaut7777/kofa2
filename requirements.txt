@@ -4,7 +4,7 @@ python-dotenv==1.0.1
 pydantic==2.10.3
 pydantic-settings==2.6.1
 aiohttp==3.11.9
-fuzzywuzzy==0.18.0
+thefuzz==0.22.1
 python-Levenshtein==0.26.1
 python-multipart==0.0.20
 pytest==8.3.4
@@ -18,3 +18,5 @@ opencensus-ext-azure
 redis
 slowapi
 bcrypt>=4.0.0
+resend>=2.0.0
+Pillow>=10.0.0
