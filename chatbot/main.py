@@ -3133,7 +3133,7 @@ class BulkProductImportRequest(BaseModel):
     """Bulk product import from JSON."""
     products: List[ProductImportItem]
 
-@router.post("/products/import")
+@router.post("/products/import-json")
 async def import_products_json(request: BulkProductImportRequest, user_id: str = None):
     """Import multiple products from JSON array."""
     if not user_id:
