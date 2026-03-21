@@ -31,25 +31,24 @@ const BusinessAI = () => {
     const messagesEndRef = useRef(null)
     const inputRef = useRef(null)
 
-    // All hooks are above — conditional return is safe here
+    // ✅ ALL hooks MUST be before any conditional return (Rules of Hooks)
     const isShopPage = location.pathname.startsWith('/shop')
     const publicPages = ['/', '/login', '/signup', '/verify', '/privacy', '/terms']
     const isPublicPage = publicPages.includes(location.pathname) || isShopPage
+
+    // This useEffect MUST be here — above the early return — or React crashes (#310)
+    useEffect(() => {
+        if (isOpen) {
+            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+            setTimeout(() => inputRef.current?.focus(), 100)
+        }
+    }, [messages, isOpen])
+
+    // Early return only AFTER all hooks
     if (!user || isPublicPage) return null
 
     const activeUserId = user?.id || 'demo-user'
     const firstName = user?.first_name || user?.firstName || 'there'
-
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-    }
-
-    useEffect(() => {
-        if (isOpen) {
-            scrollToBottom()
-            setTimeout(() => inputRef.current?.focus(), 100)
-        }
-    }, [messages, isOpen])
 
     const sendMessage = async (text = input) => {
         if (!text.trim() || loading) return
