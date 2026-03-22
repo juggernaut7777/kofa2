@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { apiCall, cachedApiCall, API_ENDPOINTS, CACHE_KEYS, API_BASE_URL } from '../../config/api'
 import { useAuth } from '../../context/AuthContext'
 import { ThemeContext } from '../../context/ThemeContext'
+import { useToast } from '../../components/Toast'
 import {
     TrendingUp,
     Users,
@@ -35,6 +36,7 @@ const DashboardRedesign = () => {
     const navigate = useNavigate()
     const { user } = useAuth()
     const { theme } = useContext(ThemeContext)
+    const { showToast } = useToast()
     const isDark = theme === 'dark'
 
     const [stats, setStats] = useState({ revenue: 0, orders: 0, customers: 0, profit: 0 })
@@ -167,9 +169,9 @@ const DashboardRedesign = () => {
                     <NotificationBell isDark={isDark} />
                     <button
                         onClick={() => {
-                            const storeUrl = `https://kofa-backend-eu-2bb681b4e51a.herokuapp.com/store/${encodeURIComponent(user?.businessName || user?.business_name || 'shop')}`
+                            const storeUrl = `https://www.kofaapp.me/shop/${encodeURIComponent(user?.businessName || user?.business_name || 'shop')}`
                             navigator.clipboard.writeText(storeUrl)
-                            alert('✅ Store link copied!')
+                            showToast('Store link copied!', 'success')
                         }}
                         className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all ${isDark
                             ? 'bg-white/10 hover:bg-white/20 text-white border border-white/10'
@@ -182,7 +184,7 @@ const DashboardRedesign = () => {
                     </button>
                     <button
                         onClick={() => {
-                            const storeUrl = `https://kofa-backend-eu-2bb681b4e51a.herokuapp.com/store/${encodeURIComponent(user?.businessName || user?.business_name || 'shop')}`
+                            const storeUrl = `https://www.kofaapp.me/shop/${encodeURIComponent(user?.businessName || user?.business_name || 'shop')}`
                             window.open(storeUrl, '_blank')
                         }}
                         className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium bg-[#0095FF] hover:bg-[#0080DD] text-white transition-all"

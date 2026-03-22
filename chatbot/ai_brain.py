@@ -64,6 +64,10 @@ AVAILABLE ACTIONS (respond with JSON):
 - LOG_EXPENSE: {{"action": "LOG_EXPENSE", "amount": 5000, "description": "Delivery fee for 3 packages", "category": "delivery"}}
   Categories: rent, marketing, restock, delivery, misc
 
+💳 CREDIT/DEBT:
+- CREDIT_REPORT: {{"action": "CREDIT_REPORT"}}
+- SEND_REMINDER: {{"action": "SEND_REMINDER", "customer_name": "Ayo"}}
+
 💰 PAYMENTS:
 - CONFIRM_PAYMENT: {{"action": "CONFIRM_PAYMENT", "order_id": "abc123", "amount": 15000, "method": "transfer"}}
 
@@ -95,6 +99,14 @@ You: Let me log that expense.
 User: "Customer paid 15000 for order abc123"
 You: I'll confirm that payment now.
 {{"action": "CONFIRM_PAYMENT", "order_id": "abc123", "amount": 15000, "method": "transfer"}}
+
+User: "Who owes me money?" or "Show me credit sales"
+You: Let me check your credit book.
+{{"action": "CREDIT_REPORT"}}
+
+User: "Remind Ayo to pay" or "Send reminder to Ayo"
+You: I'll generate a WhatsApp reminder for Ayo.
+{{"action": "SEND_REMINDER", "customer_name": "Ayo"}}
 
 If the user's intent is unclear, ask clarifying questions.
 If it's just conversation, respond naturally without JSON.
@@ -416,6 +428,78 @@ Current Inventory ({len(products)} products):
                         db.close()
                 except Exception as e:
                     action_result = f"❌ Failed to confirm payment: {str(e)}"
+
+            # ===== CREDIT/DEBT =====
+
+            elif action_type == "CREDIT_REPORT":
+                action_taken = "CREDIT_REPORT"
+                try:
+                    from .database import SessionLocal
+                    from .models import Order
+
+                    db = SessionLocal()
+                    try:
+                        credit_orders = db.query(Order).filter(
+                            Order.user_id == user_id,
+                            Order.payment_method == "credit",
+                            Order.status == "pending"
+                        ).order_by(Order.created_at.desc()).all()
+
+                        if credit_orders:
+                            total = sum(o.total_amount or 0 for o in credit_orders)
+                            items = "\n".join([
+                                f"  • {o.customer_name or 'Unknown'}: ₦{(o.total_amount or 0):,.0f} ({o.customer_phone or 'no phone'})"
+                                for o in credit_orders[:15]
+                            ])
+                            action_result = f"💳 Credit Report ({len(credit_orders)} unpaid, total: ₦{total:,.0f}):\n{items}"
+                        else:
+                            action_result = "✅ No outstanding credit sales! All customers have paid."
+                    finally:
+                        db.close()
+                except Exception as e:
+                    action_result = f"❌ Failed to fetch credit report: {str(e)}"
+
+            elif action_type == "SEND_REMINDER":
+                action_taken = "SEND_REMINDER"
+                try:
+                    from .database import SessionLocal
+                    from .models import Order
+                    from thefuzz import fuzz
+
+                    target_name = action_data.get("customer_name", "")
+                    db = SessionLocal()
+                    try:
+                        credit_orders = db.query(Order).filter(
+                            Order.user_id == user_id,
+                            Order.payment_method == "credit",
+                            Order.status == "pending"
+                        ).all()
+
+                        # Fuzzy match customer name
+                        best_match = None
+                        best_score = 0
+                        for o in credit_orders:
+                            score = fuzz.partial_ratio(target_name.lower(), (o.customer_name or "").lower())
+                            if score > best_score:
+                                best_score = score
+                                best_match = o
+
+                        if best_match and best_score > 60:
+                            phone = (best_match.customer_phone or "").replace(" ", "")
+                            amount = best_match.total_amount or 0
+                            name = best_match.customer_name or target_name
+                            if phone:
+                                msg = f"Hi {name}, this is a friendly reminder that you have an outstanding balance of ₦{amount:,.0f}. Please settle at your earliest convenience. Thank you! 🙏"
+                                wa_link = f"https://wa.me/{phone}?text={msg}"
+                                action_result = f"📱 WhatsApp reminder ready for {name} (₦{amount:,.0f}):\n🔗 Open this link to send: {wa_link}"
+                            else:
+                                action_result = f"⚠️ Found {name} owing ₦{amount:,.0f} but no phone number on file. Please add their phone first."
+                        else:
+                            action_result = f"❌ No customer named '{target_name}' found in your credit book."
+                    finally:
+                        db.close()
+                except Exception as e:
+                    action_result = f"❌ Failed to send reminder: {str(e)}"
                     
     except (json.JSONDecodeError, KeyError):
         pass  # No valid JSON action, just use AI response

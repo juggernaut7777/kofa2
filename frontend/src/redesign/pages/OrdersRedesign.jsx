@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { apiCall, cachedApiCall, API_ENDPOINTS, CACHE_KEYS } from '../../config/api'
 import { ThemeContext } from '../../context/ThemeContext'
 import { useAuth } from '../../context/AuthContext'
+import { useToast } from '../../components/Toast'
 import {
     ChevronLeft, Search, Clock, CheckCircle, XCircle, Truck, Package,
     MessageSquare, Plus, FileText, Send, DollarSign, ShoppingCart, CreditCard, Banknote, Smartphone,
@@ -16,6 +17,7 @@ const OrdersRedesign = () => {
     const { theme } = useContext(ThemeContext)
     const { user } = useAuth()
     const isDark = theme === 'dark'
+    const { showToast } = useToast()
 
     // Tab state: 'orders', 'invoices', or 'quicksale'
     const [activeTab, setActiveTab] = useState(location.state?.action === 'quick-sale' ? 'quicksale' : 'orders')
@@ -110,7 +112,7 @@ const OrdersRedesign = () => {
     useEffect(() => { if (activeTab === 'credit') loadCredits() }, [creditFilter])
 
     const handleAddCredit = async () => {
-        if (!newCredit.customer_name || !newCredit.amount) { alert('Name and amount required'); return }
+        if (!newCredit.customer_name || !newCredit.amount) { showToast('Name and amount required', 'warning'); return }
         try {
             await apiCall(API_ENDPOINTS.CREDIT_SALES, {
                 method: 'POST',
@@ -119,11 +121,11 @@ const OrdersRedesign = () => {
             setShowAddCredit(false)
             setNewCredit({ customer_name: '', customer_phone: '', amount: '', items_description: '', due_date: '', notes: '' })
             loadCredits()
-        } catch (e) { alert('Failed to add credit sale') }
+        } catch (e) { showToast('Failed to add credit sale', 'error') }
     }
 
     const handleRecordPayment = async () => {
-        if (!paymentAmount || parseFloat(paymentAmount) <= 0) { alert('Enter a valid amount'); return }
+        if (!paymentAmount || parseFloat(paymentAmount) <= 0) { showToast('Enter a valid amount', 'warning'); return }
         try {
             await apiCall(API_ENDPOINTS.CREDIT_PAYMENT(payingCredit.id), {
                 method: 'POST',
@@ -132,7 +134,7 @@ const OrdersRedesign = () => {
             setPayingCredit(null)
             setPaymentAmount('')
             loadCredits()
-        } catch (e) { alert('Failed to record payment') }
+        } catch (e) { showToast('Failed to record payment', 'error') }
     }
 
     const handleDeleteCredit = async (credit) => {
@@ -140,7 +142,7 @@ const OrdersRedesign = () => {
         try {
             await apiCall(`${API_ENDPOINTS.DELETE_CREDIT(credit.id)}?user_id=${user?.id}`, { method: 'DELETE' })
             loadCredits()
-        } catch (e) { alert('Failed to delete') }
+        } catch (e) { showToast('Failed to delete', 'error') }
     }
 
     const formatCurrency = (n) => `₦${parseFloat(n || 0).toLocaleString('en-NG', { minimumFractionDigits: 0 })}`
@@ -167,14 +169,14 @@ const OrdersRedesign = () => {
                 body: JSON.stringify({ status: 'completed' })
             })
             loadOrders()
-        } catch (e) { alert('Failed to update order') }
+        } catch (e) { showToast('Failed to update order', 'error') }
     }
 
     const handleMarkInvoicePaid = async (invoiceId) => {
         try {
             await apiCall(API_ENDPOINTS.MARK_INVOICE_PAID(invoiceId), { method: 'PUT' })
             loadInvoices()
-        } catch (e) { alert('Failed to mark as paid') }
+        } catch (e) { showToast('Failed to mark as paid', 'error') }
     }
 
     const handleConfirmPayment = async (order) => {
@@ -191,20 +193,20 @@ const OrdersRedesign = () => {
                 })
             })
             if (res.status === 'success' || res.status === 'already_paid') {
-                alert('✅ Payment confirmed!')
+                showToast('Payment confirmed!', 'success')
                 loadOrders()
             } else if (res.status === 'partial') {
-                alert(res.message)
+                showToast(res.message, 'info')
                 loadOrders()
             } else {
-                alert(res.message || 'Payment confirmation failed')
+                showToast(res.message || 'Payment confirmation failed', 'error')
             }
-        } catch (e) { alert('Failed to confirm payment') }
+        } catch (e) { showToast('Failed to confirm payment', 'error') }
         finally { setConfirmingPayment(null) }
     }
 
     const handleCreateInvoice = async () => {
-        if (!newInvoice.customer_name || !newInvoice.amount) { alert('Fill required fields'); return }
+        if (!newInvoice.customer_name || !newInvoice.amount) { showToast('Fill required fields', 'warning'); return }
         try {
             await apiCall(API_ENDPOINTS.CREATE_INVOICE, {
                 method: 'POST',
@@ -223,7 +225,7 @@ const OrdersRedesign = () => {
             setShowCreateInvoice(false)
             setNewInvoice({ customer_name: '', customer_phone: '', items: '', amount: '' })
             loadInvoices()
-        } catch (e) { alert('Failed to create invoice') }
+        } catch (e) { showToast('Failed to create invoice', 'error') }
     }
 
     const handleShareWhatsApp = (order) => {
@@ -416,14 +418,15 @@ const OrdersRedesign = () => {
                         {/* Submit Button */}
                         <button
                             onClick={async () => {
-                                if (!quickSale.product_id) return alert('Please select a product')
-                                if (quickSale.payment_method === 'credit' && !quickSale.customer_name) return alert('Customer name required for credit sales')
+                                if (!quickSale.product_id) return showToast('Please select a product', 'warning')
+                                if (quickSale.payment_method === 'credit' && !quickSale.customer_name) return showToast('Customer name required for credit sales', 'warning')
 
                                 setQuickSaleLoading(true)
                                 try {
                                     const product = products.find(p => p.id === quickSale.product_id)
                                     const unitPrice = product?.price || product?.price_ngn || 0
-                                    await apiCall(API_ENDPOINTS.SALES_RECORD, {
+                                    const totalAmount = unitPrice * quickSale.quantity
+                                    const res = await apiCall(API_ENDPOINTS.SALES_RECORD, {
                                         method: 'POST',
                                         body: JSON.stringify({
                                             user_id: user?.id,
@@ -431,18 +434,35 @@ const OrdersRedesign = () => {
                                             product_name: product?.name,
                                             quantity: quickSale.quantity,
                                             unit_price: unitPrice,
-                                            total_amount: unitPrice * quickSale.quantity,
+                                            total_amount: totalAmount,
                                             payment_method: quickSale.payment_method,
                                             customer_name: quickSale.customer_name,
                                             customer_phone: quickSale.customer_phone,
                                         })
                                     })
-                                    alert('✅ Sale recorded successfully!')
+                                    showToast('Sale recorded successfully!', 'success')
+
+                                    // Offer WhatsApp receipt sharing
+                                    if (quickSale.customer_phone) {
+                                        const receiptMsg = `🧾 *Receipt — ${user?.businessName || 'KOFA Store'}*\n\n` +
+                                            `📦 ${product?.name} x${quickSale.quantity}\n` +
+                                            `💰 Total: ₦${totalAmount.toLocaleString()}\n` +
+                                            `💳 Payment: ${quickSale.payment_method.toUpperCase()}\n` +
+                                            `📅 Date: ${new Date().toLocaleDateString()}\n\n` +
+                                            `Thank you for your purchase! 🙏`
+                                        const phone = quickSale.customer_phone.replace(/[^0-9]/g, '')
+                                        setTimeout(() => {
+                                            if (window.confirm('Send receipt via WhatsApp?')) {
+                                                window.open(`https://wa.me/${phone}?text=${encodeURIComponent(receiptMsg)}`, '_blank')
+                                            }
+                                        }, 500)
+                                    }
+
                                     setQuickSale({ product_id: '', quantity: 1, payment_method: 'cash', customer_name: '', customer_phone: '' })
-                                    loadProducts() // Refresh to show updated stock
+                                    loadProducts()
                                     loadOrders()
                                 } catch (e) {
-                                    alert('Failed to record sale: ' + e.message)
+                                    showToast('Failed to record sale: ' + e.message, 'error')
                                 } finally {
                                     setQuickSaleLoading(false)
                                 }
@@ -726,7 +746,17 @@ const OrdersRedesign = () => {
                                         <div className="flex gap-2 mt-3">
                                             <button onClick={() => { setPayingCredit(c); setPaymentAmount('') }}
                                                 className="flex-1 py-2 rounded-xl text-xs font-semibold bg-green-500/20 text-green-400 flex items-center justify-center gap-1">
-                                                <Banknote size={14} /> Record Payment
+                                                <Banknote size={14} /> Pay
+                                            </button>
+                                            <button onClick={() => {
+                                                const phone = (c.customer_phone || '').replace(/[^0-9]/g, '')
+                                                if (!phone) { showToast('No phone number for this customer', 'warning'); return }
+                                                const msg = `Hi ${c.customer_name}, this is a friendly reminder that you have an outstanding balance of ₦${(c.balance || 0).toLocaleString()} with ${user?.businessName || 'us'}.${c.due_date ? ` Payment was due on ${new Date(c.due_date).toLocaleDateString()}.` : ''} Please settle at your earliest convenience. Thank you! 🙏`
+                                                window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank')
+                                                showToast('WhatsApp reminder opened', 'success')
+                                            }}
+                                                className="flex-1 py-2 rounded-xl text-xs font-semibold bg-[#25D366]/20 text-[#25D366] flex items-center justify-center gap-1">
+                                                <MessageSquare size={14} /> Remind
                                             </button>
                                             <button onClick={() => handleDeleteCredit(c)}
                                                 className="py-2 px-3 rounded-xl text-xs font-semibold bg-red-500/20 text-red-400">
