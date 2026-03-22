@@ -8,36 +8,49 @@ import {
   Smartphone, Users, Bot, Receipt, Star
 } from 'lucide-react'
 
-/* ─── Animated counter hook ─── */
-const useCountUp = (end, duration = 2000, startOnView = true) => {
+/* ─── Animated counter component (avoids hook-in-loop violation) ─── */
+const StatItem = ({ end, suffix = '', prefix = '', label, duration = 2000 }) => {
   const [count, setCount] = useState(0)
   const ref = useRef(null)
   const started = useRef(false)
 
   useEffect(() => {
-    if (!startOnView) return
+    const startAnimation = () => {
+      if (started.current) return
+      started.current = true
+      const startTime = Date.now()
+      const tick = () => {
+        const elapsed = Date.now() - startTime
+        const progress = Math.min(elapsed / duration, 1)
+        const eased = 1 - Math.pow(1 - progress, 3)
+        setCount(Math.floor(eased * end))
+        if (progress < 1) requestAnimationFrame(tick)
+      }
+      tick()
+    }
+
     const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting && !started.current) {
-          started.current = true
-          const startTime = Date.now()
-          const tick = () => {
-            const elapsed = Date.now() - startTime
-            const progress = Math.min(elapsed / duration, 1)
-            const eased = 1 - Math.pow(1 - progress, 3)
-            setCount(Math.floor(eased * end))
-            if (progress < 1) requestAnimationFrame(tick)
-          }
-          tick()
-        }
-      },
-      { threshold: 0.3 }
+      ([entry]) => { if (entry.isIntersecting) startAnimation() },
+      { threshold: 0.1 }
     )
     if (ref.current) observer.observe(ref.current)
-    return () => observer.disconnect()
-  }, [end, duration, startOnView])
 
-  return { count, ref }
+    // Fallback: start after 1s if observer doesn't fire
+    const fallback = setTimeout(startAnimation, 1000)
+
+    return () => { observer.disconnect(); clearTimeout(fallback) }
+  }, [end, duration])
+
+  return (
+    <div ref={ref} style={{ textAlign: 'center', minWidth: 100 }}>
+      <div style={{ fontSize: 32, fontWeight: 800, letterSpacing: '-0.02em', color: '#fff' }}>
+        {prefix}{count.toLocaleString()}{suffix}
+      </div>
+      <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', fontWeight: 500, marginTop: 4 }}>
+        {label}
+      </div>
+    </div>
+  )
 }
 
 /* ─── Fade-in on scroll component ─── */
@@ -48,11 +61,15 @@ const FadeIn = ({ children, className = '', delay = 0 }) => {
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => { if (entry.isIntersecting) setVisible(true) },
-      { threshold: 0.15 }
+      { threshold: 0.1 }
     )
     if (ref.current) observer.observe(ref.current)
-    return () => observer.disconnect()
-  }, [])
+
+    // Fallback: if observer doesn't trigger within 2s, show anyway
+    const fallback = setTimeout(() => setVisible(true), 2000 + delay * 1000)
+
+    return () => { observer.disconnect(); clearTimeout(fallback) }
+  }, [delay])
 
   return (
     <div
@@ -338,24 +355,10 @@ const Landing = () => {
         padding: '40px 24px',
       }}>
         <div style={{ maxWidth: 900, margin: '0 auto', display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '40px 60px' }}>
-          {[
-            { end: 500, suffix: '+', label: 'Vendors' },
-            { end: 10, suffix: 'M+', label: 'Naira processed', prefix: '₦' },
-            { end: 15000, suffix: '+', label: 'Orders handled' },
-            { end: 99, suffix: '%', label: 'Uptime' },
-          ].map((stat, i) => {
-            const { count, ref } = useCountUp(stat.end, 2000)
-            return (
-              <div key={i} ref={ref} style={{ textAlign: 'center', minWidth: 100 }}>
-                <div style={{ fontSize: 32, fontWeight: 800, letterSpacing: '-0.02em', color: '#fff' }}>
-                  {stat.prefix || ''}{count.toLocaleString()}{stat.suffix}
-                </div>
-                <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', fontWeight: 500, marginTop: 4 }}>
-                  {stat.label}
-                </div>
-              </div>
-            )
-          })}
+          <StatItem end={500} suffix="+" label="Vendors" />
+          <StatItem end={10} suffix="M+" label="Naira processed" prefix="₦" />
+          <StatItem end={15000} suffix="+" label="Orders handled" />
+          <StatItem end={99} suffix="%" label="Uptime" />
         </div>
       </section>
 

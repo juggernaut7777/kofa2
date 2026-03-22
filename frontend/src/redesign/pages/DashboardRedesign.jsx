@@ -238,7 +238,7 @@ const DashboardRedesign = () => {
             {/* Quick Sale Button - Prominent CTA for walk-in sales */}
             <button
                 onClick={() => navigate('/orders', { state: { action: 'quick-sale' } })}
-                className="w-full p-4 rounded-2xl bg-gradient-to-r from-[#0095FF] to-[#00D4FF] hover:from-[#0080DD] hover:to-[#00B8E0] text-white font-semibold text-lg flex items-center justify-center gap-3 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0"
+                className="w-full p-4 rounded-2xl bg-gradient-to-r from-[#0095FF] to-[#00D4FF] hover:from-[#0080DD] hover:to-[#00B8E0] text-white font-semibold text-lg flex items-center justify-center gap-3 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 pulse-glow"
             >
                 <ShoppingCart size={24} />
                 <span>Record Walk-in Sale</span>
