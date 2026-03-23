@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { apiCall, API_BASE_URL, API_ENDPOINTS } from '../../config/api'
 import { ThemeContext } from '../../context/ThemeContext'
 import { useAuth } from '../../context/AuthContext'
+import { useToast } from '../../components/Toast'
 import {
     ChevronLeft, Plus, TrendingUp, TrendingDown, Home, Megaphone,
     Package, Truck, Wrench, FileText, Edit2, Trash2, BarChart3, DollarSign,
@@ -15,6 +16,7 @@ const ExpensesRedesign = () => {
     const { theme } = useContext(ThemeContext)
     const isDark = theme === 'dark'
     const { user } = useAuth()
+    const { showToast } = useToast()
 
     // Tab state: 'expenses' or 'reports'
     const [activeTab, setActiveTab] = useState('expenses')
@@ -88,7 +90,7 @@ const ExpensesRedesign = () => {
     const totalSpend = expenses.reduce((sum, e) => sum + (e.amount || 0), 0)
 
     const handleSaveExpense = async () => {
-        if (!newExpense.description || !newExpense.amount) { alert('Please fill all fields'); return }
+        if (!newExpense.description || !newExpense.amount) { showToast('Please fill all fields', 'warning'); return }
         setSaving(true)
         try {
             // Use PUT for editing, POST for creating new
@@ -122,7 +124,7 @@ const ExpensesRedesign = () => {
             setNewExpense({ description: '', amount: '', category: 'restock' })
             loadExpenses()
             loadReports()
-        } catch (e) { alert('Failed to save expense') }
+        } catch (e) { showToast('Failed to save expense', 'error') }
         finally { setSaving(false) }
     }
 
@@ -143,7 +145,7 @@ const ExpensesRedesign = () => {
             loadExpenses()
             loadReports()
         } catch (e) {
-            alert('Failed to delete expense')
+            showToast('Failed to delete expense', 'error')
         }
     }
 
@@ -191,12 +193,12 @@ const ExpensesRedesign = () => {
                 })
                 setEditingExpense(null)
                 setShowAddModal(true)
-                alert('✅ Receipt scanned! Review the details and tap Save.')
+                showToast('Receipt scanned! Review the details and tap Save.', 'success')
             } else {
-                alert(data.detail || 'Could not read this receipt. Try a clearer photo.')
+                showToast(data.detail || 'Could not read this receipt. Try a clearer photo.', 'error')
             }
         } catch (err) {
-            alert('Scan failed. Please try again.')
+            showToast('Scan failed. Please try again.', 'error')
         } finally {
             setScanning(false)
             if (fileInputRef.current) fileInputRef.current.value = ''
@@ -211,7 +213,7 @@ const ExpensesRedesign = () => {
                     <ChevronLeft size={24} />
                 </button>
                 <h1 className="text-lg font-semibold">Financials</h1>
-                <div className="w-10"><ExportButton type="expenses" label="Export" isDark={isDark} /></div>
+                <ExportButton type="expenses" label="Export" isDark={isDark} />
             </header>
 
             {/* Top Tabs */}
@@ -408,8 +410,8 @@ const ExpensesRedesign = () => {
 
             {/* Add/Edit Expense Modal */}
             {showAddModal && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center">
-                    <div className={`rounded-t-2xl sm:rounded-2xl w-full max-w-md p-6 ${isDark ? 'bg-[#1A1A1F]' : 'bg-white'}`}>
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center" onClick={() => { setShowAddModal(false); setEditingExpense(null) }}>
+                    <div className={`rounded-t-2xl sm:rounded-2xl w-full max-w-md p-6 ${isDark ? 'bg-[#1A1A1F]' : 'bg-white'}`} onClick={e => e.stopPropagation()}>
                         <h2 className={`text-xl font-bold mb-6 ${isDark ? 'text-white' : ''}`}>{editingExpense ? 'Edit Expense' : 'Log Expense'}</h2>
                         <div className="space-y-4">
                             <div>

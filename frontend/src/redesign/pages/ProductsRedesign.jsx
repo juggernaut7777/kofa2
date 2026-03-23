@@ -7,6 +7,7 @@ import { useAuth } from '../../context/AuthContext'
 import { Plus, Search, ScanLine, Package, Upload, X, RefreshCw, Edit2, Image, Camera, Loader2, Trash2 } from 'lucide-react'
 import BarcodeScanner from '../../components/BarcodeScanner/BarcodeScanner'
 import ExportButton from '../../components/ExportButton'
+import { useToast } from '../../components/Toast'
 
 const ProductsRedesign = () => {
     const navigate = useNavigate()
@@ -16,6 +17,7 @@ const ProductsRedesign = () => {
     const isDark = theme === 'dark'
     const fileInputRef = useRef(null)
     const imageInputRef = useRef(null)
+    const { showToast } = useToast()
 
     const [products, setProducts] = useState([])
     const [loading, setLoading] = useState(true)
@@ -105,7 +107,7 @@ const ProductsRedesign = () => {
     }
 
     const handleSaveProduct = async () => {
-        if (!newProduct.name || !newProduct.price) { alert('Please fill name and price'); return }
+        if (!newProduct.name || !newProduct.price) { showToast('Please fill name and price', 'warning'); return }
         setSaving(true)
         try {
             const productData = {
@@ -157,7 +159,7 @@ const ProductsRedesign = () => {
             clearCache(CACHE_KEYS.PRODUCTS)  // Clear cache to force fresh fetch
             loadProducts(true)  // Force refresh - skip cache
         } catch (e) {
-            alert('Failed to save product')
+            showToast('Failed to save product', 'error')
         } finally {
             setSaving(false)
         }
@@ -188,7 +190,7 @@ const ProductsRedesign = () => {
                 body: JSON.stringify({ quantity: amount })
             })
             loadProducts(true)
-        } catch (e) { alert('Failed to restock') }
+        } catch (e) { showToast('Failed to restock', 'error') }
     }
 
     // Delete product
@@ -201,7 +203,7 @@ const ProductsRedesign = () => {
             await apiCall(deleteUrl, { method: 'DELETE' })
             loadProducts(true)
         } catch (e) {
-            alert('Failed to delete product.')
+            showToast('Failed to delete product.', 'error')
         }
     }
 
@@ -222,14 +224,14 @@ const ProductsRedesign = () => {
             const data = await res.json()
 
             if (data.imported > 0) {
-                alert(`✅ Imported ${data.imported} products!${data.skipped > 0 ? ` (${data.skipped} skipped)` : ''}${data.errors?.length ? `\n\nWarnings:\n${data.errors.join('\n')}` : ''}`)
+                showToast(`Imported ${data.imported} products!${data.skipped > 0 ? ` (${data.skipped} skipped)` : ''}`, 'success')
                 clearCache(CACHE_KEYS.PRODUCTS)
                 loadProducts(true)
             } else {
-                alert(`Import failed: ${data.message || 'No valid products found'}${data.errors?.length ? `\n\n${data.errors.join('\n')}` : ''}`)
+                showToast(`Import failed: ${data.message || 'No valid products found'}`, 'error')
             }
         } catch (err) {
-            alert('Failed to import CSV. Check the file format.')
+            showToast('Failed to import CSV. Check the file format.', 'error')
         } finally {
             setImportingCSV(false)
         }
@@ -267,12 +269,12 @@ const ProductsRedesign = () => {
                 })
                 setEditingProduct(null)
                 setShowAddModal(true)
-                alert('✅ Product identified! Review details, set stock & price, then save.')
+                showToast('Product identified! Review details, set stock & price, then save.', 'success')
             } else {
-                alert(data.detail || 'Could not identify product. Try a clearer photo.')
+                showToast(data.detail || 'Could not identify product. Try a clearer photo.', 'error')
             }
         } catch (err) {
-            alert('Scan failed. Please try again.')
+            showToast('Scan failed. Please try again.', 'error')
         } finally {
             setScanningProduct(false)
             if (productCameraRef.current) productCameraRef.current.value = ''
@@ -304,8 +306,8 @@ const ProductsRedesign = () => {
 
             <div className="px-4 pb-4 flex items-center justify-between">
                 <p className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Manage stock levels and pricing</p>
-                <ExportButton type="products" label="Export" isDark={isDark} />
                 <div className="flex items-center gap-2">
+                    <ExportButton type="products" label="Export" isDark={isDark} />
                     <input type="file" ref={productCameraRef} accept="image/*" capture="environment" className="hidden" onChange={handleSnapProduct} />
                     <button
                         className={`p-2 rounded-lg ${scanningProduct ? 'bg-green-100' : isDark ? 'bg-white/10 hover:bg-white/20' : 'bg-gray-100 hover:bg-gray-200'}`}
@@ -408,8 +410,8 @@ const ProductsRedesign = () => {
 
             {/* Add/Edit Modal */}
             {showAddModal && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center">
-                    <div className={`rounded-t-2xl sm:rounded-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto ${isDark ? 'bg-[#1A1A1F]' : 'bg-white'}`}>
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center" onClick={() => { setShowAddModal(false); setEditingProduct(null) }}>
+                    <div className={`rounded-t-2xl sm:rounded-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto ${isDark ? 'bg-[#1A1A1F]' : 'bg-white'}`} onClick={e => e.stopPropagation()}>
                         <div className="flex items-center justify-between mb-6">
                             <h2 className={`text-xl font-bold ${isDark ? 'text-white' : ''}`}>{editingProduct ? 'Edit Product' : 'Add Product'}</h2>
                             <button onClick={() => { setShowAddModal(false); setEditingProduct(null) }} className={`p-1 rounded-lg ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}>
@@ -496,9 +498,9 @@ const ProductsRedesign = () => {
                             })
                         })
                         loadProducts()
-                        alert(`✅ Product "${scannedProduct.name}" added successfully!`)
+                        showToast(`Product "${scannedProduct.name}" added!`, 'success')
                     } catch (e) {
-                        alert('Failed to add product. Please try again.')
+                        showToast('Failed to add product. Please try again.', 'error')
                     }
                 }}
             />
