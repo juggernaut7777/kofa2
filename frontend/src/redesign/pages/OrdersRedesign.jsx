@@ -269,7 +269,7 @@ const OrdersRedesign = () => {
                     <ChevronLeft size={24} />
                 </button>
                 <h1 className="text-lg font-semibold">Orders & Invoices</h1>
-                <div className="w-10"><ExportButton type="orders" label="Export" isDark={isDark} /></div>
+                <ExportButton type="orders" label="Export" isDark={isDark} />
             </header>
 
             {/* Top Tabs */}
