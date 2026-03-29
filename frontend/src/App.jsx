@@ -26,6 +26,7 @@ import Verify from './pages/Verify'
 import Shop from './pages/Shop'
 import PrivacyPolicy from './pages/PrivacyPolicy'
 import TermsOfService from './pages/TermsOfService'
+import DataDeletion from './pages/DataDeletion'
 import CookieNotice from './components/CookieNotice'
 
 function App() {
@@ -42,6 +43,7 @@ function App() {
             <Route path="/verify" element={<Verify />} />
             <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/terms" element={<TermsOfService />} />
+            <Route path="/data-deletion" element={<DataDeletion />} />
             <Route path="/shop/:shopName" element={<Shop />} />
 
             {/* Protected Routes - Redesigned UI (5 main pages) */}
