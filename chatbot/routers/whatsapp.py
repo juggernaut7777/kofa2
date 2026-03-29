@@ -26,8 +26,9 @@ class WhatsAppWebhookPayload(BaseModel):
     entry: List[dict]
 
 
-# Verification token for webhook setup - SECURITY: Read from environment
-VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN", "")
+# Verification token for webhook setup - uses centralized config
+from ..config import settings
+VERIFY_TOKEN = settings.whatsapp_verify_token
 
 
 @router.get("/webhook")
@@ -345,7 +346,7 @@ async def send_whatsapp_message(to_number: str, message_text: str):
         print("⚠️ WhatsApp credentials not configured - message not sent")
         return
     
-    url = f"https://graph.facebook.com/v18.0/{phone_number_id}/messages"
+    url = f"https://graph.facebook.com/v21.0/{phone_number_id}/messages"
     
     headers = {
         "Authorization": f"Bearer {access_token}",
