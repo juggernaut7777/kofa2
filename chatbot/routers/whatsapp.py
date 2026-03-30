@@ -189,7 +189,11 @@ async def process_whatsapp_message(message: WhatsAppMessage):
     
     try:
         # Recognize intent from text (original or transcribed)
-        intent, entities = intent_recognizer.recognize(message_text)
+        result = intent_recognizer.recognize(message_text)
+        if isinstance(result, tuple) and len(result) >= 2:
+            intent, entities = result[0], result[1]
+        else:
+            intent, entities = result, {}
         
         # Generate response based on intent (simplified version)
         response_text = generate_chatbot_response(
