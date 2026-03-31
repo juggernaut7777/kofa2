@@ -1,11 +1,12 @@
 """
 Unified AI Client for KOFA
-Handles Groq (primary) → Gemini (backup) fallback
+Handles Groq (primary) → Gemini (backup) → Grok (3rd) fallback
 Plus context injection for product/inventory awareness
 """
 from typing import List, Dict
 from .groq_client import send_to_groq
 from .gemini_client import send_to_gemini
+from .xai_client import send_to_grok
 
 
 async def send_to_ai(
@@ -16,12 +17,12 @@ async def send_to_ai(
 ) -> tuple[str, str]:
     """
     Send prompt to AI with automatic fallback.
-    Tries Groq first, then Gemini if Groq fails.
+    Tries Groq first, then Gemini, then Grok if both fail.
     
     Returns:
         Tuple of (response_text, api_used)
     """
-    # Try Groq first (primary)
+    # Try Groq first (primary — fastest)
     try:
         response = await send_to_groq(
             messages=messages,
@@ -54,7 +55,20 @@ async def send_to_ai(
     except Exception:
         pass
     
-    # Both failed - return error
+    # Try xAI Grok as 3rd fallback
+    try:
+        response = await send_to_grok(
+            messages=messages,
+            system_prompt=system_prompt,
+            max_tokens=max_tokens,
+            temperature=temperature
+        )
+        if response:
+            return response, "grok"
+    except Exception:
+        pass
+    
+    # All three failed - return error
     return "I'm sorry, I'm having trouble connecting right now. Please try again.", "fallback"
 
 
