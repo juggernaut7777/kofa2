@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     # Gemini AI (optional - for enhanced chatbot features)
     gemini_api_key: str = ""
     
+    # xAI Grok (3rd AI fallback)
+    xai_api_key: str = ""
+    
     # WhatsApp Business API (optional)
     whatsapp_phone_id: str = ""
     whatsapp_access_token: str = ""
