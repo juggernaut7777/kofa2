@@ -116,6 +116,12 @@ export const API_ENDPOINTS = {
   CUSTOMERS_STATS: '/customers/stats',
   CUSTOMER_BY_ID: (id) => `/customers/${id}`,
 
+  // Marketing (AI Ad Generation)
+  MARKETING_GENERATE: '/marketing/generate',
+  MARKETING_CAPTION: '/marketing/generate-caption',
+  MARKETING_ASSETS: '/marketing/assets',
+  MARKETING_DELETE_ASSET: (id) => `/marketing/assets/${id}`,
+
   // Health check
   HEALTH: '/health'
 };
