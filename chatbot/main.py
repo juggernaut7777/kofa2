@@ -66,7 +66,7 @@ from .services import storage_service
 from .routers import (
     expenses, analytics, invoice, 
     recommendations, notifications, installments, profit_loss, sales_channels, whatsapp,
-    instagram, tiktok, auth, storefront, sales, export, customers
+    instagram, tiktok, auth, storefront, sales, export, customers, marketing
 )
 
 # ===== PRODUCTION MODE =====
@@ -3809,6 +3809,7 @@ app.include_router(storefront.router, tags=["Storefront"])  # Public shop pages
 app.include_router(sales.router, prefix="/sales", tags=["Sales"])  # Walk-in sales
 app.include_router(export.router, prefix="/export", tags=["Export"])  # CSV data export
 app.include_router(customers.router, prefix="/customers", tags=["CRM"])  # Customer CRM
+app.include_router(marketing.router, prefix="/marketing", tags=["Marketing"])  # AI Ad Generation
 
 
 # #region agent log - FastAPI app fully configured

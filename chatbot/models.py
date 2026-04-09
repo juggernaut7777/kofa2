@@ -310,3 +310,50 @@ class Customer(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user = relationship("User")
+
+
+class MarketingAsset(Base):
+    """AI-generated marketing assets (ad images, videos, captions).
+    
+    Created when a vendor clicks 'Generate AI Ad' on a product.
+    Status flow: pending → generating → completed / failed
+    """
+    __tablename__ = "marketing_assets"
+
+    id = Column(GUID, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(GUID, ForeignKey("users.id"), nullable=False, index=True)
+    product_id = Column(GUID, ForeignKey("products.id"), nullable=True, index=True)
+    
+    # Asset details
+    asset_type = Column(String(20), nullable=False, default="image")  # image, video, carousel, caption
+    title = Column(String(255), nullable=True)  # e.g. "Product Ad - Nike Air Max"
+    prompt_used = Column(Text, nullable=True)  # The AI prompt that generated this
+    
+    # Generated content
+    file_url = Column(Text, nullable=True)  # URL to the generated image/video
+    thumbnail_url = Column(Text, nullable=True)  # Thumbnail for videos
+    caption = Column(Text, nullable=True)  # AI-generated caption text
+    hashtags = Column(Text, nullable=True)  # JSON array of hashtags
+    
+    # Processing status
+    status = Column(String(20), nullable=False, default="pending", index=True)  # pending, generating, completed, failed
+    error_message = Column(Text, nullable=True)  # Error details if failed
+    
+    # Tracking
+    platform_target = Column(String(50), nullable=True)  # tiktok, instagram, whatsapp, all
+    downloads = Column(Integer, default=0)  # How many times the vendor downloaded this
+    posted = Column(Integer, default=0)  # 1 if auto-posted to social media
+    
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    completed_at = Column(DateTime, nullable=True)
+    
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('pending', 'generating', 'completed', 'failed')",
+            name="check_marketing_status"
+        ),
+    )
+    
+    user = relationship("User")
+    product = relationship("Product")
+

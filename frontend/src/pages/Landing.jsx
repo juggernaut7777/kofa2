@@ -189,6 +189,9 @@ const Landing = () => {
             <a href="#pricing" style={{ color: 'rgba(255,255,255,0.5)', transition: 'color 0.2s' }}
               onMouseEnter={e => e.target.style.color = '#fff'}
               onMouseLeave={e => e.target.style.color = 'rgba(255,255,255,0.5)'}>Pricing</a>
+            <a href="#about" style={{ color: 'rgba(255,255,255,0.5)', transition: 'color 0.2s' }}
+              onMouseEnter={e => e.target.style.color = '#fff'}
+              onMouseLeave={e => e.target.style.color = 'rgba(255,255,255,0.5)'}>About</a>
             <Link to="/login" style={{ color: 'rgba(255,255,255,0.5)', transition: 'color 0.2s' }}
               onMouseEnter={e => e.target.style.color = '#fff'}
               onMouseLeave={e => e.target.style.color = 'rgba(255,255,255,0.5)'}>Login</Link>
@@ -227,6 +230,8 @@ const Landing = () => {
               style={{ display: 'block', padding: '12px 0', color: 'rgba(255,255,255,0.7)', fontWeight: 500, fontSize: 15, textDecoration: 'none' }}>Features</a>
             <a href="#pricing" onClick={() => setMobileMenuOpen(false)}
               style={{ display: 'block', padding: '12px 0', color: 'rgba(255,255,255,0.7)', fontWeight: 500, fontSize: 15, textDecoration: 'none' }}>Pricing</a>
+            <a href="#about" onClick={() => setMobileMenuOpen(false)}
+              style={{ display: 'block', padding: '12px 0', color: 'rgba(255,255,255,0.7)', fontWeight: 500, fontSize: 15, textDecoration: 'none' }}>About</a>
             <Link to="/login" style={{ display: 'block', padding: '12px 0', color: 'rgba(255,255,255,0.7)', fontWeight: 500, fontSize: 15, textDecoration: 'none' }}>Login</Link>
             <Link to="/signup" style={{ display: 'block', marginTop: 8 }}>
               <button style={{
@@ -668,6 +673,128 @@ const Landing = () => {
         </div>
       </section>
 
+      {/* ══════════ ABOUT KOFA TECH ══════════ */}
+      <section id="about" style={{
+        background: '#0a0a0f',
+        padding: '80px 24px 100px',
+        borderTop: '1px solid rgba(255,255,255,0.04)',
+      }}>
+        <div style={{ maxWidth: 900, margin: '0 auto' }}>
+          <FadeIn>
+            <div style={{ textAlign: 'center', marginBottom: 48 }}>
+              <h2 style={{ fontSize: 'clamp(28px, 5vw, 40px)', fontWeight: 900, letterSpacing: '-0.03em', color: '#fff', marginBottom: 12 }}>
+                About Kofa Tech
+              </h2>
+              <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.4)', maxWidth: 600, margin: '0 auto' }}>
+                We're building the operating system for African commerce — one vendor at a time.
+              </p>
+            </div>
+          </FadeIn>
+
+          <FadeIn delay={0.1}>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+              gap: 20,
+            }}>
+              {/* Mission */}
+              <div style={{
+                background: 'rgba(255,255,255,0.03)',
+                border: '1px solid rgba(255,255,255,0.06)',
+                borderRadius: 16,
+                padding: 28,
+              }}>
+                <div style={{
+                  width: 44, height: 44,
+                  background: 'rgba(0,149,255,0.12)',
+                  borderRadius: 12,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  marginBottom: 16,
+                }}>
+                  <TrendingUp size={22} color="#0095FF" />
+                </div>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: '#fff', marginBottom: 8 }}>Our Mission</h3>
+                <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', lineHeight: 1.65 }}>
+                  Over 40 million small merchants in Nigeria run their businesses on WhatsApp and handwritten ledgers.
+                  KOFA replaces the chaos with AI-powered automation — inventory, sales, expenses, and customer management
+                  in one mobile-first platform.
+                </p>
+              </div>
+
+              {/* Company */}
+              <div style={{
+                background: 'rgba(255,255,255,0.03)',
+                border: '1px solid rgba(255,255,255,0.06)',
+                borderRadius: 16,
+                padding: 28,
+              }}>
+                <div style={{
+                  width: 44, height: 44,
+                  background: 'rgba(34,197,94,0.12)',
+                  borderRadius: 12,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  marginBottom: 16,
+                }}>
+                  <Shield size={22} color="#22c55e" />
+                </div>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: '#fff', marginBottom: 8 }}>Registered Business</h3>
+                <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', lineHeight: 1.65 }}>
+                  <strong style={{ color: 'rgba(255,255,255,0.7)' }}>KOFA TECH</strong> is a registered Nigerian business
+                  (BN: 9369855) headquartered in Abuja, FCT. We are an early-stage, bootstrapped startup focused on
+                  making AI-first business tools accessible to every African merchant.
+                </p>
+              </div>
+
+              {/* Technology */}
+              <div style={{
+                background: 'rgba(255,255,255,0.03)',
+                border: '1px solid rgba(255,255,255,0.06)',
+                borderRadius: 16,
+                padding: 28,
+              }}>
+                <div style={{
+                  width: 44, height: 44,
+                  background: 'rgba(168,85,247,0.12)',
+                  borderRadius: 12,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  marginBottom: 16,
+                }}>
+                  <Zap size={22} color="#a855f7" />
+                </div>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: '#fff', marginBottom: 8 }}>Our Technology</h3>
+                <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', lineHeight: 1.65 }}>
+                  Built with Python (FastAPI), React, and powered by <strong style={{ color: 'rgba(255,255,255,0.7)' }}>Google Gemini AI</strong> and
+                  {' '}<strong style={{ color: 'rgba(255,255,255,0.7)' }}>Google Cloud</strong>. Our AI engine handles natural language processing,
+                  product recognition, receipt scanning, and intelligent business recommendations.
+                </p>
+              </div>
+            </div>
+          </FadeIn>
+
+          {/* Tech stack badges */}
+          <FadeIn delay={0.2}>
+            <div style={{ textAlign: 'center', marginTop: 48 }}>
+              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.25)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 16 }}>
+                Building With
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 12 }}>
+                {['Google Cloud', 'Gemini AI', 'WhatsApp API', 'React', 'FastAPI', 'Paystack'].map(tech => (
+                  <span key={tech} style={{
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    padding: '6px 14px',
+                    borderRadius: 99,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: 'rgba(255,255,255,0.4)',
+                  }}>{tech}</span>
+                ))}
+              </div>
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+
       {/* ══════════ FINAL CTA ══════════ */}
       <section style={{
         background: '#0a0a0f',
@@ -722,37 +849,82 @@ const Landing = () => {
       <footer style={{
         background: '#0a0a0f',
         borderTop: '1px solid rgba(255,255,255,0.06)',
-        padding: '40px 24px',
+        padding: '48px 24px 32px',
       }}>
         <div style={{
           maxWidth: 1100,
           margin: '0 auto',
-          display: 'flex',
-          flexWrap: 'wrap',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          gap: 20,
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{
-              width: 28, height: 28,
-              background: 'linear-gradient(135deg, #0095FF, #00C2FF)',
-              borderRadius: 8,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <Package size={14} color="#fff" strokeWidth={2.5} />
+          {/* Top row: logo + links */}
+          <div style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            gap: 32,
+            marginBottom: 32,
+            paddingBottom: 32,
+            borderBottom: '1px solid rgba(255,255,255,0.06)',
+          }}>
+            {/* Brand + description */}
+            <div style={{ maxWidth: 300 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                <div style={{
+                  width: 28, height: 28,
+                  background: 'linear-gradient(135deg, #0095FF, #00C2FF)',
+                  borderRadius: 8,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <Package size={14} color="#fff" strokeWidth={2.5} />
+                </div>
+                <span style={{ fontWeight: 800, fontSize: 15, color: 'rgba(255,255,255,0.7)' }}>KOFA</span>
+              </div>
+              <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.3)', lineHeight: 1.6 }}>
+                AI-powered business management for African merchants. Inventory, sales, expenses, and customer relationships — all in one platform.
+              </p>
             </div>
-            <span style={{ fontWeight: 800, fontSize: 15, color: 'rgba(255,255,255,0.5)' }}>KOFA</span>
+
+            {/* Product links */}
+            <div>
+              <h4 style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>Product</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13 }}>
+                <a href="#features" style={{ color: 'rgba(255,255,255,0.3)', textDecoration: 'none' }}>Features</a>
+                <a href="#pricing" style={{ color: 'rgba(255,255,255,0.3)', textDecoration: 'none' }}>Pricing</a>
+                <a href="#about" style={{ color: 'rgba(255,255,255,0.3)', textDecoration: 'none' }}>About</a>
+              </div>
+            </div>
+
+            {/* Legal links */}
+            <div>
+              <h4 style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>Legal</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13 }}>
+                <Link to="/privacy" style={{ color: 'rgba(255,255,255,0.3)', textDecoration: 'none' }}>Privacy Policy</Link>
+                <Link to="/terms" style={{ color: 'rgba(255,255,255,0.3)', textDecoration: 'none' }}>Terms of Service</Link>
+                <Link to="/data-deletion" style={{ color: 'rgba(255,255,255,0.3)', textDecoration: 'none' }}>Data Deletion</Link>
+              </div>
+            </div>
+
+            {/* Contact */}
+            <div>
+              <h4 style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>Contact</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13, color: 'rgba(255,255,255,0.3)' }}>
+                <a href="mailto:support@kofaapp.me" style={{ color: 'rgba(255,255,255,0.3)', textDecoration: 'none' }}>support@kofaapp.me</a>
+                <span>Abuja, FCT, Nigeria</span>
+              </div>
+            </div>
           </div>
-          <div style={{ display: 'flex', gap: 24, fontSize: 13, fontWeight: 500 }}>
-            <Link to="/privacy" style={{ color: 'rgba(255,255,255,0.3)', textDecoration: 'none', transition: 'color 0.2s' }}
-              onMouseEnter={e => e.target.style.color = 'rgba(255,255,255,0.6)'}
-              onMouseLeave={e => e.target.style.color = 'rgba(255,255,255,0.3)'}>Privacy</Link>
-            <Link to="/terms" style={{ color: 'rgba(255,255,255,0.3)', textDecoration: 'none', transition: 'color 0.2s' }}
-              onMouseEnter={e => e.target.style.color = 'rgba(255,255,255,0.6)'}
-              onMouseLeave={e => e.target.style.color = 'rgba(255,255,255,0.3)'}>Terms</Link>
+
+          {/* Bottom row: copyright + registration */}
+          <div style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: 12,
+          }}>
+            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.2)' }}>© 2026 KOFA TECH (BN: 9369855). All rights reserved.</p>
+            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.15)' }}>Built in Nigeria 🇳🇬 • Powered by Google Cloud & Gemini AI</p>
           </div>
-          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.2)' }}>© 2026 KOFA. Built in Lagos 🇳🇬</p>
         </div>
       </footer>
 

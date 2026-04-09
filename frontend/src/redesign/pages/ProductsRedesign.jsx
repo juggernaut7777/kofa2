@@ -4,7 +4,7 @@ import { apiCall, cachedApiCall, API_ENDPOINTS, CACHE_KEYS, API_BASE_URL } from 
 import { clearCache } from '../../utils/cache'
 import { ThemeContext } from '../../context/ThemeContext'
 import { useAuth } from '../../context/AuthContext'
-import { Plus, Search, ScanLine, Package, Upload, X, RefreshCw, Edit2, Image, Camera, Loader2, Trash2 } from 'lucide-react'
+import { Plus, Search, ScanLine, Package, Upload, X, RefreshCw, Edit2, Image, Camera, Loader2, Trash2, Sparkles } from 'lucide-react'
 import BarcodeScanner from '../../components/BarcodeScanner/BarcodeScanner'
 import ExportButton from '../../components/ExportButton'
 import { useToast } from '../../components/Toast'
@@ -30,6 +30,7 @@ const ProductsRedesign = () => {
     const [showBarcodeScanner, setShowBarcodeScanner] = useState(false)
     const [scanningProduct, setScanningProduct] = useState(false)
     const [importingCSV, setImportingCSV] = useState(false)
+    const [generatingAd, setGeneratingAd] = useState(null)  // product ID being generated
     const productCameraRef = useRef(null)
 
     const [newProduct, setNewProduct] = useState({
@@ -393,6 +394,18 @@ const ProductsRedesign = () => {
                                         <button onClick={() => handleDeleteProduct(product)}
                                             className={`p-2 rounded-lg ${isDark ? 'hover:bg-red-500/20' : 'hover:bg-red-50'}`}>
                                             <Trash2 size={16} className="text-red-400" />
+                                        </button>
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); handleGenerateAd(product) }}
+                                            disabled={generatingAd === product.id}
+                                            className={`p-2 rounded-lg transition-all ${generatingAd === product.id 
+                                                ? 'animate-pulse bg-purple-500/20' 
+                                                : isDark ? 'hover:bg-purple-500/20' : 'hover:bg-purple-50'}`}
+                                            title="Generate AI Ad"
+                                        >
+                                            {generatingAd === product.id 
+                                                ? <Loader2 size={16} className="text-purple-400 animate-spin" />
+                                                : <Sparkles size={16} className="text-purple-400" />}
                                         </button>
                                     </div>
                                 </div>
