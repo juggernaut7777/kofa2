@@ -1,5 +1,6 @@
-// API Configuration - Points to Heroku EU backend (uses free student credits!)
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://kofa-backend-eu-2bb681b4e51a.herokuapp.com';
+// API Configuration - Configurable via VITE_API_URL, defaults to localhost:8000 in dev and live Heroku in prod
+export const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:8000' : 'https://kofa-backend-eu-2bb681b4e51a.herokuapp.com');
+
 
 // Import browser-side cache utilities
 import { getCache, setCache, clearCache, CACHE_KEYS } from '../utils/cache';
