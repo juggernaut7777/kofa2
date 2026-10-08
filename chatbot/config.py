@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     whatsapp_access_token: str = ""
     whatsapp_verify_token: str = "kofa_webhook_verify_token"
     
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 
 # Global settings instance
