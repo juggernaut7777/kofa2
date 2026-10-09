@@ -9,6 +9,7 @@ import httpx
 import json
 import logging
 from typing import Optional, Dict, Any
+from ..claude_client import send_image_to_claude
 
 logger = logging.getLogger(__name__)
 
@@ -34,9 +35,39 @@ Return as JSON:
 {"name": "Red Ankara Gown", "description": "Beautiful red Ankara print gown with modern styling. Premium African wax fabric, suitable for weddings and special occasions. Available in all sizes.", "category": "clothing", "suggested_price_ngn": 25000}"""
 
 
+def _parse_product_json(raw_text: str) -> Optional[Dict[str, Any]]:
+    """Helper to parse and validate product identification JSON."""
+    try:
+        text = raw_text.strip()
+        if text.startswith("```"):
+            text = text.split("\n", 1)[1] if "\n" in text else text[3:]
+        if text.endswith("```"):
+            text = text[:-3]
+        text = text.strip()
+
+        result = json.loads(text)
+        if "name" not in result:
+            return None
+
+        if "suggested_price_ngn" in result:
+            try:
+                result["suggested_price_ngn"] = float(result["suggested_price_ngn"])
+            except (ValueError, TypeError):
+                result["suggested_price_ngn"] = 0
+
+        valid_categories = ["clothing", "electronics", "food", "beauty", "accessories", "home", "other"]
+        if "category" not in result or result["category"] not in valid_categories:
+            result["category"] = "other"
+
+        return result
+    except Exception as e:
+        logger.warning(f"Failed to parse product JSON: {e}")
+        return None
+
+
 async def scan_product(image_bytes: bytes, mime_type: str = "image/jpeg") -> Optional[Dict[str, Any]]:
     """
-    Scan a product photo and identify it using Gemini Vision.
+    Scan a product photo and identify it using Claude Vision (primary) or Gemini Vision (fallback).
     
     Args:
         image_bytes: Raw image bytes
@@ -45,8 +76,27 @@ async def scan_product(image_bytes: bytes, mime_type: str = "image/jpeg") -> Opt
     Returns:
         Product data dict or None on failure
     """
-    if not GEMINI_API_KEY:
-        logger.error("GEMINI_API_KEY not configured — cannot scan product")
+    # 1. Try Claude 3.5 Sonnet / Haiku Vision
+    try:
+        claude_text = await send_image_to_claude(
+            image_bytes=image_bytes,
+            prompt=PRODUCT_IDENTIFICATION_PROMPT,
+            mime_type=mime_type,
+            max_tokens=500,
+            temperature=0.2
+        )
+        if claude_text:
+            parsed = _parse_product_json(claude_text)
+            if parsed:
+                logger.info(f"✅ Product identified via Claude: {parsed['name']} (~₦{parsed.get('suggested_price_ngn', 0):,.0f})")
+                return parsed
+    except Exception as e:
+        logger.warning(f"Claude product scan failed, falling back to Gemini: {e}")
+
+    # 2. Fallback to Gemini Vision
+    gemini_key = os.getenv("GEMINI_API_KEY", GEMINI_API_KEY)
+    if not gemini_key:
+        logger.error("Neither Claude nor Gemini API keys configured for product scanning")
         return None
     
     # Encode image to base64

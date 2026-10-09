@@ -9,6 +9,7 @@ import httpx
 import json
 import logging
 from typing import Optional, Dict, Any
+from ..claude_client import send_image_to_claude
 
 logger = logging.getLogger(__name__)
 
@@ -34,9 +35,33 @@ Return as JSON:
 {"amount": 15000, "description": "Stock purchase - 10 polo shirts", "category": "restock", "date": "2026-03-09", "vendor_name": "ABC Store"}"""
 
 
+def _parse_extracted_json(raw_text: str) -> Optional[Dict[str, Any]]:
+    """Helper to parse and validate receipt JSON output."""
+    try:
+        text = raw_text.strip()
+        if text.startswith("```"):
+            text = text.split("\n", 1)[1] if "\n" in text else text[3:]
+        if text.endswith("```"):
+            text = text[:-3]
+        text = text.strip()
+
+        result = json.loads(text)
+        if "amount" not in result or "description" not in result:
+            return None
+
+        result["amount"] = float(result["amount"])
+        if "category" not in result or result["category"] not in ["rent", "marketing", "restock", "delivery", "misc"]:
+            result["category"] = "misc"
+
+        return result
+    except Exception as e:
+        logger.warning(f"Failed to parse receipt JSON: {e}")
+        return None
+
+
 async def scan_receipt(image_bytes: bytes, mime_type: str = "image/jpeg") -> Optional[Dict[str, Any]]:
     """
-    Scan a receipt image and extract expense data using Gemini Vision.
+    Scan a receipt image and extract expense data using Claude Vision (primary) or Gemini Vision (fallback).
     
     Args:
         image_bytes: Raw image bytes
@@ -45,8 +70,27 @@ async def scan_receipt(image_bytes: bytes, mime_type: str = "image/jpeg") -> Opt
     Returns:
         Extracted expense data dict or None on failure
     """
-    if not GEMINI_API_KEY:
-        logger.error("GEMINI_API_KEY not configured — cannot scan receipt")
+    # 1. Try Claude 3.5 Sonnet / Haiku Vision
+    try:
+        claude_text = await send_image_to_claude(
+            image_bytes=image_bytes,
+            prompt=RECEIPT_EXTRACTION_PROMPT,
+            mime_type=mime_type,
+            max_tokens=500,
+            temperature=0.1
+        )
+        if claude_text:
+            parsed = _parse_extracted_json(claude_text)
+            if parsed:
+                logger.info(f"✅ Receipt scanned via Claude: ₦{parsed['amount']:,.0f} - {parsed['description']}")
+                return parsed
+    except Exception as e:
+        logger.warning(f"Claude receipt scan failed, falling back to Gemini: {e}")
+
+    # 2. Fallback to Gemini Vision
+    gemini_key = os.getenv("GEMINI_API_KEY", GEMINI_API_KEY)
+    if not gemini_key:
+        logger.error("Neither Claude nor Gemini API keys configured for receipt scanning")
         return None
     
     # Encode image to base64

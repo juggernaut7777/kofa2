@@ -214,10 +214,20 @@ class InventoryManager:
             ).all()
 
             for prod in all_products:
-                tags = prod.voice_tags or []
+                tags_raw = prod.voice_tags or []
+                if isinstance(tags_raw, str):
+                    try:
+                        tags = json.loads(tags_raw)
+                    except (json.JSONDecodeError, TypeError):
+                        tags = [t.strip() for t in tags_raw.split(",") if t.strip()]
+                else:
+                    tags = tags_raw or []
+
                 for tag in tags:
-                    if query_lower in tag.lower() or tag.lower() in query_lower:
-                        return self._dict_to_product(self._model_to_dict(prod))
+                    if isinstance(tag, str) and tag.strip():
+                        tag_clean = tag.strip().lower()
+                        if query_lower == tag_clean or (len(tag_clean) >= 3 and tag_clean in query_lower) or (len(query_lower) >= 3 and query_lower in tag_clean):
+                            return self._dict_to_product(self._model_to_dict(prod))
 
             return None
 

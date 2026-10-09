@@ -9,11 +9,15 @@ class Settings(BaseSettings):
     order_reservation_minutes: int = 15
     min_stock_threshold: int = 1
     
+    # Anthropic Claude (Primary reasoning engine)
+    anthropic_api_key: str = ""
+    
     # Gemini AI (optional - for enhanced chatbot features)
     gemini_api_key: str = ""
     
-    # xAI Grok (3rd AI fallback)
+    # xAI Grok (4th AI fallback)
     xai_api_key: str = ""
+
     
     # WhatsApp Business API (optional)
     whatsapp_phone_id: str = ""

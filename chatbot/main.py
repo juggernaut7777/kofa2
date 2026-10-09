@@ -3426,16 +3426,19 @@ async def get_pricing_plans():
                 "price_yearly": p.price_ngn_yearly,
                 "features": p.features,
                 "limits": {
-                    "messages_per_day": p.limits.messages_per_day,
-                    "products_limit": p.limits.products_limit,
+                    "messages_per_day": p.limits.max_whatsapp_messages_per_day,
+                    "products_limit": p.limits.max_products,
+                    "orders_limit": p.limits.max_orders_per_month,
+                    "ai_queries_limit": p.limits.max_ai_queries_per_month,
                     "analytics_access": p.limits.analytics_access,
-                    "multi_platform": p.limits.multi_platform,
-                    "bulk_operations": p.limits.bulk_operations
+                    "multi_platform": p.limits.instagram_bot,
+                    "bulk_operations": p.limits.bulk_messaging
                 }
             }
             for p in plans
         ]
     }
+
 
 
 @router.get("/subscription/status")
@@ -3866,9 +3869,12 @@ if _frontend_dir.exists():
     if _images_dir.exists():
         app.mount("/images", StaticFiles(directory=str(_images_dir)), name="static-images")
 
-    # SPA catch-all: serve index.html for all unmatched routes
+    # SPA catch-all: serve index.html for browser navigation, JSON for API/tests
     @app.get("/")
-    async def serve_spa_root():
+    async def serve_spa_root(request: Request):
+        accept = request.headers.get("accept", "")
+        if "text/html" not in accept:
+            return {"status": "online", "service": "KOFA Commerce Engine", "version": "2.0.0"}
         return FileResponse(str(_frontend_dir / "index.html"))
 
     @app.get("/{full_path:path}")
