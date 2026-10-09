@@ -149,7 +149,16 @@ export const apiCall = async (endpoint, options = {}) => {
     clearTimeout(timeoutId);
 
     if (!response.ok) {
-      throw new Error(`API Error: ${response.status} ${response.statusText}`);
+      let errorMessage = `API Error: ${response.status} ${response.statusText}`;
+      try {
+        const errorData = await response.json();
+        if (errorData && (errorData.detail || errorData.message)) {
+          errorMessage = errorData.detail || errorData.message;
+        }
+      } catch (_) {
+        // Response body is not JSON
+      }
+      throw new Error(errorMessage);
     }
     return await response.json();
   } catch (error) {

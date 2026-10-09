@@ -31,7 +31,8 @@ async def send_verification_email(to_email: str, verification_code: str, first_n
     Returns:
         Dict with success status and email_id or error
     """
-    if not RESEND_API_KEY:
+    api_key = os.getenv("RESEND_API_KEY", RESEND_API_KEY)
+    if not api_key:
         return {
             "success": False,
             "error": "RESEND_API_KEY not configured"
@@ -142,7 +143,7 @@ async def send_verification_email(to_email: str, verification_code: str, first_n
     }
     
     headers = {
-        "Authorization": f"Bearer {RESEND_API_KEY}",
+        "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json"
     }
     
