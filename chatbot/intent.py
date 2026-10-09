@@ -163,18 +163,23 @@ class IntentRecognizer:
         """
         message_lower = message.lower().strip()
         
+        # Conversational noise and intent action words to remove
+        stopwords = [
+            "the", "a", "an", "?", ".", ",", "!", "get", "need", "have", "i", "to",
+            "want", "buy", "purchase", "order", "how", "much", "is", "are", "cost",
+            "price", "show", "see", "check", "looking", "do", "can", "would", "like",
+            "please", "kindly", "give", "tell", "any", "some", "available", "stock", "in"
+        ]
+        
         # Nigerian English filler words to remove
         nigerian_fillers = [
             "abeg", "oya", "na", "wetin", "dey", "fit", "una", "am", "e", "o",
-            "that", "this", "my", "brother", "sister", "hope", "you", "me", "I",
+            "that", "this", "my", "brother", "sister", "hope", "you", "me",
             "wan", "make", "for", "be", "go", "don"
         ]
         
         # Combine all filters
-        all_filters = set(
-            ["the", "a", "an", "?", ".", ",", "!", "get", "need", "have"] +
-            nigerian_fillers
-        )
+        all_filters = set(stopwords + nigerian_fillers)
         
         words = message_lower.split()
         product_words = []

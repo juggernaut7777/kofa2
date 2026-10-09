@@ -1,10 +1,11 @@
 """
 Unified AI Client for KOFA
-Handles Groq (primary) → Gemini (backup) → Grok (3rd) fallback
+Handles Groq (fast inference) → Claude (reasoning) → Gemini (backup) → Grok (3rd) fallback
 Plus context injection for product/inventory awareness
 """
 from typing import List, Dict
 from .groq_client import send_to_groq
+from .claude_client import send_to_claude
 from .gemini_client import send_to_gemini
 from .xai_client import send_to_grok
 
@@ -17,7 +18,7 @@ async def send_to_ai(
 ) -> tuple[str, str]:
     """
     Send prompt to AI with automatic fallback.
-    Tries Groq first, then Gemini, then Grok if both fail.
+    Tries Groq first, then Claude, then Gemini, then Grok.
     
     Returns:
         Tuple of (response_text, api_used)
@@ -35,9 +36,21 @@ async def send_to_ai(
     except Exception:
         pass
     
+    # Try Anthropic Claude (deep reasoning & multilingual nuance)
+    try:
+        response = await send_to_claude(
+            messages=messages,
+            system_prompt=system_prompt,
+            max_tokens=max_tokens,
+            temperature=temperature
+        )
+        if response:
+            return response, "claude"
+    except Exception:
+        pass
+
     # Try Gemini as backup
     try:
-        # Gemini uses a different message format - combine into one prompt
         user_message = ""
         for msg in messages:
             if msg.get("role") == "user":
@@ -55,7 +68,7 @@ async def send_to_ai(
     except Exception:
         pass
     
-    # Try xAI Grok as 3rd fallback
+    # Try xAI Grok as 4th fallback
     try:
         response = await send_to_grok(
             messages=messages,
@@ -68,8 +81,9 @@ async def send_to_ai(
     except Exception:
         pass
     
-    # All three failed - return error
+    # All failed - return graceful error
     return "I'm sorry, I'm having trouble connecting right now. Please try again.", "fallback"
+
 
 
 def build_context_prompt(

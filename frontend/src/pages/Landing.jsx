@@ -763,9 +763,10 @@ const Landing = () => {
                 </div>
                 <h3 style={{ fontSize: 16, fontWeight: 700, color: '#fff', marginBottom: 8 }}>Our Technology</h3>
                 <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', lineHeight: 1.65 }}>
-                  Built with Python (FastAPI), React, and powered by <strong style={{ color: 'rgba(255,255,255,0.7)' }}>Google Gemini AI</strong> and
-                  {' '}<strong style={{ color: 'rgba(255,255,255,0.7)' }}>Google Cloud</strong>. Our AI engine handles natural language processing,
-                  product recognition, receipt scanning, and intelligent business recommendations.
+                  Built with Python (FastAPI), React, and powered by <strong style={{ color: 'rgba(255,255,255,0.7)' }}>Anthropic Claude</strong>,
+                  {' '}<strong style={{ color: 'rgba(255,255,255,0.7)' }}>Google Gemini AI</strong>, and
+                  {' '}<strong style={{ color: 'rgba(255,255,255,0.7)' }}>Supabase PostgreSQL</strong>. Our multi-LLM engine handles natural language understanding,
+                  multilingual African commerce nuance, receipt scanning, and automated sales operations.
                 </p>
               </div>
             </div>
@@ -778,7 +779,7 @@ const Landing = () => {
                 Building With
               </p>
               <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 12 }}>
-                {['Google Cloud', 'Gemini AI', 'WhatsApp API', 'React', 'FastAPI', 'Paystack'].map(tech => (
+                {['Anthropic Claude', 'Google Cloud', 'Gemini AI', 'WhatsApp API', 'Supabase', 'React', 'FastAPI', 'Paystack'].map(tech => (
                   <span key={tech} style={{
                     background: 'rgba(255,255,255,0.04)',
                     border: '1px solid rgba(255,255,255,0.08)',
@@ -792,6 +793,7 @@ const Landing = () => {
               </div>
             </div>
           </FadeIn>
+
         </div>
       </section>
 
