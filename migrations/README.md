@@ -28,7 +28,7 @@ This migration adds database indexes to improve query performance across KOFA.
 
 ### Option 4: Command Line (sqlcmd)
 ```batch
-sqlcmd -S your-db-server.database.windows.net -d Kofa-db -U admin -P YourPassword < performance_indexes.sql
+sqlcmd -S <YOUR_SERVER>.database.windows.net -d Kofa-db -U <YOUR_USERNAME> -P <YOUR_PASSWORD> < performance_indexes.sql
 ```
 
 ## Safety
